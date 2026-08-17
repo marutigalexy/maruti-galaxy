@@ -325,10 +325,10 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
             Remaining Main Job Than: {formatThan(job.remaining_than)}. Sub-job number is assigned on save.
           </p>
           <FormField label="Than" htmlFor="create-sub-than" required>
-            <Input id="create-sub-than" name="than" inputMode="decimal" required disabled={pending} />
+            <Input id="create-sub-than" name="than" inputMode="decimal" required disabled={pending} placeholder="e.g. 4.00" />
           </FormField>
           <FormField label="Weight" htmlFor="create-sub-weight" required>
-            <Input id="create-sub-weight" name="weight" inputMode="decimal" required disabled={pending} />
+            <Input id="create-sub-weight" name="weight" inputMode="decimal" required disabled={pending} placeholder="e.g. 1.250" />
           </FormField>
           <FormField label="Status" htmlFor="create-sub-status" required>
             <Select id="create-sub-status" name="status" required defaultValue="Pending" disabled={pending}>
@@ -390,6 +390,7 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
                 required
                 defaultValue={String(editSub.than)}
                 disabled={pending}
+                placeholder="e.g. 4.00"
               />
             </FormField>
             <FormField label="Weight" htmlFor="edit-sub-weight" required>
@@ -400,6 +401,7 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
                 required
                 defaultValue={String(editSub.weight)}
                 disabled={pending}
+                placeholder="e.g. 1.250"
               />
             </FormField>
             <FormField label="Status" htmlFor="edit-sub-status" required>
@@ -484,6 +486,7 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
                 inputMode="decimal"
                 required
                 disabled={pending}
+                placeholder="e.g. 2.00"
                 value={workDoneThan}
                 onChange={(event) => setWorkDoneThan(event.target.value)}
               />
@@ -543,6 +546,7 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
                 required
                 defaultValue={String(editWork.done_than)}
                 disabled={pending}
+                placeholder="e.g. 2.00"
               />
             </FormField>
             {formError && editWork ? (

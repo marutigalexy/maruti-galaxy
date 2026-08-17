@@ -218,7 +218,7 @@ export function AccountsView({ query, result }: AccountsViewProps) {
           }}
         >
           <FormField label="Account Name" htmlFor="create-account-name" required>
-            <Input id="create-account-name" name="name" required disabled={pending} />
+            <Input id="create-account-name" name="name" required disabled={pending} placeholder="e.g. HDFC Current" />
           </FormField>
           <FormField label="Opening Balance" htmlFor="create-opening" required>
             <Input
@@ -228,6 +228,7 @@ export function AccountsView({ query, result }: AccountsViewProps) {
               required
               defaultValue="0.00"
               disabled={pending}
+              placeholder="e.g. 0.00"
             />
           </FormField>
           <Checkbox id="create-account-active" name="is_active" label="Active" defaultChecked disabled={pending} />
@@ -278,6 +279,7 @@ export function AccountsView({ query, result }: AccountsViewProps) {
                 required
                 defaultValue={editAccount.name}
                 disabled={pending}
+                placeholder="e.g. HDFC Current"
               />
             </FormField>
             <FormField
@@ -298,6 +300,7 @@ export function AccountsView({ query, result }: AccountsViewProps) {
                 defaultValue={String(editAccount.opening_balance)}
                 disabled={pending || editAccount.entry_count > 0}
                 readOnly={editAccount.entry_count > 0}
+                placeholder="e.g. 0.00"
               />
               {editAccount.entry_count > 0 ? (
                 <input type="hidden" name="opening_balance" value={String(editAccount.opening_balance)} />

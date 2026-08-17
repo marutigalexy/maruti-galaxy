@@ -199,16 +199,16 @@ export function PartiesView({ query, result }: PartiesViewProps) {
           }}
         >
           <FormField label="Company Name" htmlFor="create-company" required>
-            <Input id="create-company" name="company_name" required disabled={pending} />
+            <Input id="create-company" name="company_name" required disabled={pending} placeholder="e.g. Shree Ram Diamonds" />
           </FormField>
           <FormField label="Contact Person Name" htmlFor="create-contact">
-            <Input id="create-contact" name="contact_person_name" disabled={pending} />
+            <Input id="create-contact" name="contact_person_name" disabled={pending} placeholder="e.g. Amit Patel" />
           </FormField>
           <FormField label="Mobile Number" htmlFor="create-mobile" required>
-            <Input id="create-mobile" name="mobile_number" required disabled={pending} />
+            <Input id="create-mobile" name="mobile_number" required disabled={pending} placeholder="e.g. 9876543210" />
           </FormField>
           <FormField label="Price" htmlFor="create-price" required>
-            <Input id="create-price" name="price" inputMode="decimal" required disabled={pending} />
+            <Input id="create-price" name="price" inputMode="decimal" required disabled={pending} placeholder="e.g. 1500.00" />
           </FormField>
           <Checkbox id="create-party-active" name="is_active" label="Active" defaultChecked disabled={pending} />
           {formError && createOpen ? (
@@ -260,6 +260,7 @@ export function PartiesView({ query, result }: PartiesViewProps) {
                 required
                 defaultValue={editParty.company_name}
                 disabled={pending}
+                placeholder="e.g. Shree Ram Diamonds"
               />
             </FormField>
             <FormField label="Contact Person Name" htmlFor="edit-contact">
@@ -268,6 +269,7 @@ export function PartiesView({ query, result }: PartiesViewProps) {
                 name="contact_person_name"
                 defaultValue={editParty.contact_person_name ?? ""}
                 disabled={pending}
+                placeholder="e.g. Amit Patel"
               />
             </FormField>
             <FormField label="Mobile Number" htmlFor="edit-mobile" required>
@@ -277,6 +279,7 @@ export function PartiesView({ query, result }: PartiesViewProps) {
                 required
                 defaultValue={editParty.mobile_number}
                 disabled={pending}
+                placeholder="e.g. 9876543210"
               />
             </FormField>
             <FormField
@@ -292,6 +295,7 @@ export function PartiesView({ query, result }: PartiesViewProps) {
                 required
                 defaultValue={String(editParty.price)}
                 disabled={pending}
+                placeholder="e.g. 1500.00"
               />
             </FormField>
             {formError && editParty ? (

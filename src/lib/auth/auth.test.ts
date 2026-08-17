@@ -36,6 +36,16 @@ describe("login errors", () => {
   it("does not expose whether an email exists", () => {
     expect(mapLoginFailure()).toBe(GENERIC_LOGIN_ERROR);
   });
+
+  it("keeps the submitted email when login fails", () => {
+    const action = readFileSync(path.join(process.cwd(), "src/app/actions/auth.ts"), "utf8");
+    const form = readFileSync(path.join(process.cwd(), "src/app/(auth)/auth/login/login-form.tsx"), "utf8");
+    expect(action).toMatch(/email: string/);
+    expect(action).toMatch(/loginFailure\(mapLoginFailure\(\), email\)/);
+    expect(form).toMatch(/event\.preventDefault\(\)/);
+    expect(form).toMatch(/value=\{email\}/);
+    expect(form).toMatch(/error=\{state\.error \?\? undefined\}/);
+  });
 });
 
 describe("client bundle isolation", () => {

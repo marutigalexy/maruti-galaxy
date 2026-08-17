@@ -6,7 +6,6 @@ import { requireActiveAdmin } from "@/lib/permissions/require-active-admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type {
   JobWorkReportInput,
-  PartyLedgerInput,
   ProfitLossInput,
   SalaryReportInput,
 } from "@/lib/validation/reports";
@@ -55,30 +54,10 @@ export type SalaryReportRow = {
   difference: number;
 };
 
-export type PartyLedgerRow = {
-  id: string;
-  date: string;
-  kind: "Invoice" | "Allocation" | "Income" | "Expense";
-  reference: string;
-  amount: number;
-  remarks: string | null;
-};
-
 export type ProfitLossReport = EntrySummary;
 
 function uniqueIds(ids: Array<string | null | undefined>): string[] {
   return [...new Set(ids.filter((id): id is string => Boolean(id)))];
-}
-
-function inDateRange(value: string, from?: string, to?: string): boolean {
-  const day = value.slice(0, 10);
-  if (from && day < from) {
-    return false;
-  }
-  if (to && day > to) {
-    return false;
-  }
-  return true;
 }
 
 export async function getJobWorkReport(
@@ -299,116 +278,3 @@ export async function getProfitLossReport(input: ProfitLossInput): Promise<Profi
   return listed.summary;
 }
 
-export async function getPartyLedger(input: PartyLedgerInput): Promise<Paginated<PartyLedgerRow>> {
-  await requireActiveAdmin();
-  if (!input.party_id) {
-    return paginated([], 0, input.page, input.pageSize);
-  }
-
-  const supabase = await createSupabaseServerClient();
-  const { data: jobs, error: jobError } = await supabase
-    .from("job_works")
-    .select("id")
-    .eq("party_id", input.party_id);
-  if (jobError) {
-    throw new AppError("INTERNAL", "Unable to load party ledger.");
-  }
-
-  const jobIds = uniqueIds((jobs ?? []).map((row) => row.id));
-  const events: PartyLedgerRow[] = [];
-
-  if (jobIds.length > 0) {
-    const { data: invoices, error: invoiceError } = await supabase
-      .from("invoices")
-      .select("id, invoice_number, invoice_date, amount, job_work_id")
-      .in("job_work_id", jobIds);
-    if (invoiceError) {
-      throw new AppError("INTERNAL", "Unable to load party ledger.");
-    }
-    for (const invoice of invoices ?? []) {
-      events.push({
-        id: `invoice:${invoice.id}`,
-        date: invoice.invoice_date,
-        kind: "Invoice",
-        reference: invoice.invoice_number,
-        amount: asMoneyNumber(invoice.amount),
-        remarks: null,
-      });
-    }
-
-    const invoiceIds = uniqueIds((invoices ?? []).map((row) => row.id));
-    if (invoiceIds.length > 0) {
-      const { data: allocations, error: allocationError } = await supabase
-        .from("entry_invoice_allocations")
-        .select("id, invoice_id, entry_id, amount, created_at")
-        .in("invoice_id", invoiceIds);
-      if (allocationError) {
-        throw new AppError("INTERNAL", "Unable to load party ledger.");
-      }
-      const entryIds = uniqueIds((allocations ?? []).map((row) => row.entry_id));
-      const entryDates = new Map<string, string>();
-      if (entryIds.length > 0) {
-        const { data: entries, error: entryError } = await supabase
-          .from("entries")
-          .select("id, entry_date")
-          .in("id", entryIds);
-        if (entryError) {
-          throw new AppError("INTERNAL", "Unable to load party ledger.");
-        }
-        for (const entry of entries ?? []) {
-          entryDates.set(entry.id, entry.entry_date);
-        }
-      }
-      const invoiceNumbers = new Map((invoices ?? []).map((row) => [row.id, row.invoice_number]));
-      for (const allocation of allocations ?? []) {
-        events.push({
-          id: `allocation:${allocation.id}`,
-          date: entryDates.get(allocation.entry_id) ?? allocation.created_at.slice(0, 10),
-          kind: "Allocation",
-          reference: invoiceNumbers.get(allocation.invoice_id) ?? "—",
-          amount: asMoneyNumber(allocation.amount),
-          remarks: "Income allocated to invoice",
-        });
-      }
-    }
-  }
-
-  const { data: partyEntries, error: partyEntryError } = await supabase
-    .from("entries")
-    .select("id, entry_type, entry_date, amount, remarks")
-    .eq("party_id", input.party_id);
-  if (partyEntryError) {
-    throw new AppError("INTERNAL", "Unable to load party ledger.");
-  }
-  for (const entry of partyEntries ?? []) {
-    events.push({
-      id: `entry:${entry.id}`,
-      date: entry.entry_date,
-      kind: entry.entry_type,
-      reference: entry.entry_type,
-      amount: asMoneyNumber(entry.amount),
-      remarks: entry.remarks,
-    });
-  }
-
-  const filtered = events
-    .filter((event) => inDateRange(event.date, input.date_from, input.date_to))
-    .sort((left, right) => {
-      if (left.date === right.date) {
-        return left.id.localeCompare(right.id);
-      }
-      return left.date.localeCompare(right.date);
-    });
-
-  const offset = paginationOffset(input.page, input.pageSize);
-  return paginated(
-    filtered.slice(offset, offset + input.pageSize),
-    filtered.length,
-    input.page,
-    input.pageSize,
-  );
-}
-
-export async function getEntryLedger(input: ListEntriesInput): Promise<ListedEntries> {
-  return listEntries(input);
-}

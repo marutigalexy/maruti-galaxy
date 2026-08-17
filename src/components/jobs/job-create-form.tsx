@@ -119,7 +119,7 @@ export function JobCreateForm({ parties, onCancel }: JobCreateFormProps) {
         </Select>
       </FormField>
       <FormField label="Than" htmlFor="job-than" required>
-        <Input id="job-than" name="than" inputMode="decimal" required disabled={pending} />
+        <Input id="job-than" name="than" inputMode="decimal" required disabled={pending} placeholder="e.g. 10.50" />
       </FormField>
       <FormField label="Price" htmlFor="job-price">
         <Input
@@ -128,6 +128,7 @@ export function JobCreateForm({ parties, onCancel }: JobCreateFormProps) {
           inputMode="decimal"
           required
           disabled={pending}
+          placeholder="e.g. 1500.00"
           value={price}
           onChange={(event) => {
             setPriceEdited(true);
@@ -136,10 +137,10 @@ export function JobCreateForm({ parties, onCancel }: JobCreateFormProps) {
         />
       </FormField>
       <FormField label="Kapan Number" htmlFor="job-kapan" required>
-        <Input id="job-kapan" name="kapan_number" required disabled={pending} />
+        <Input id="job-kapan" name="kapan_number" required disabled={pending} placeholder="e.g. KAPAN-2418" />
       </FormField>
       <FormField label="Weight" htmlFor="job-weight">
-        <Input id="job-weight" name="weight" inputMode="decimal" required disabled={pending} />
+        <Input id="job-weight" name="weight" inputMode="decimal" required disabled={pending} placeholder="e.g. 2.250" />
       </FormField>
       <FormField label="Status" htmlFor="job-status" required>
         <Select id="job-status" name="status" required disabled={pending} defaultValue="Pending">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 
 import { loginAction, type LoginState } from "@/app/actions/auth";
@@ -9,7 +9,7 @@ import { FormField } from "@/components/ui/form-field";
 import { EyeIcon, EyeOffIcon, MailIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 
-const initialState: LoginState = { error: null };
+const initialState: LoginState = { error: null, email: "" };
 
 type LoginFormProps = {
   nextPath: string;
@@ -17,10 +17,27 @@ type LoginFormProps = {
 
 export function LoginForm({ nextPath }: LoginFormProps) {
   const [state, formAction, pending] = useActionState(loginAction, initialState);
+  const [email, setEmail] = useState(state.email);
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+  useEffect(() => {
+    if (state.email) {
+      setEmail(state.email);
+    }
+  }, [state.email]);
+
   return (
-    <form action={formAction} className="login-form" noValidate>
+    <form
+      className="login-form"
+      noValidate
+      action={formAction}
+      onSubmit={(event) => {
+        event.preventDefault();
+        const formData = new FormData(event.currentTarget);
+        formAction(formData);
+      }}
+    >
       <input type="hidden" name="next" value={nextPath} />
 
       <FormField label="Email Address" htmlFor="email" required>
@@ -34,15 +51,27 @@ export function LoginForm({ nextPath }: LoginFormProps) {
             required
             disabled={pending}
             aria-required="true"
+            placeholder="name@company.com"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
             style={{ paddingLeft: "40px" }}
           />
-          <div style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--color-placeholder)", pointerEvents: "none" }}>
+          <div
+            style={{
+              position: "absolute",
+              left: "12px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: "var(--color-placeholder)",
+              pointerEvents: "none",
+            }}
+          >
             <MailIcon width={18} height={18} />
           </div>
         </div>
       </FormField>
 
-      <FormField label="Password" htmlFor="password" required>
+      <FormField label="Password" htmlFor="password" required error={state.error ?? undefined}>
         <div className="password-input-wrap">
           <Input
             id="password"
@@ -52,6 +81,11 @@ export function LoginForm({ nextPath }: LoginFormProps) {
             required
             disabled={pending}
             aria-required="true"
+            placeholder="Enter your password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            aria-invalid={state.error ? true : undefined}
+            aria-describedby={state.error ? "password-error" : undefined}
             style={{ paddingRight: "40px" }}
           />
           <button
@@ -65,11 +99,13 @@ export function LoginForm({ nextPath }: LoginFormProps) {
         </div>
       </FormField>
 
-      {state.error ? (
-        <p className="ui-field-error" role="alert">
-          {state.error}
-        </p>
-      ) : null}
+      <div className="login-options">
+        <label className="ui-checkbox">
+          <input type="checkbox" name="remember" />
+          <span>Remember me</span>
+        </label>
+        <Link href="#">Forgot password?</Link>
+      </div>
 
       <Button type="submit" disabled={pending} variant="primary">
         {pending ? "Signing in…" : "Sign In"}

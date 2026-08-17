@@ -205,9 +205,6 @@ export function EntriesView({
 
   return (
     <>
-      <p className="ui-page-lede">
-        Income and expense ledger. Net Amount is Total Income minus Total Expense for the filtered set.
-      </p>
       <FilterBar
         action={
           <>
@@ -442,7 +439,7 @@ export function EntriesView({
             }}
           >
             <FormField label="Entry Type" htmlFor="create-entry-type" required>
-              <Input id="create-entry-type" value={createType} readOnly disabled />
+              <Input id="create-entry-type" value={createType} readOnly disabled placeholder="Income or Expense" />
             </FormField>
             <FormField label="Account" htmlFor="create-account" required>
               <Select id="create-account" name="account_id" required disabled={pending}>
@@ -498,10 +495,10 @@ export function EntriesView({
               />
             </FormField>
             <FormField label="Amount" htmlFor="create-amount" required>
-              <Input id="create-amount" name="amount" inputMode="decimal" required disabled={pending} />
+              <Input id="create-amount" name="amount" inputMode="decimal" required disabled={pending} placeholder="e.g. 1000.00" />
             </FormField>
             <FormField label="Remarks" htmlFor="create-remarks">
-              <Textarea id="create-remarks" name="remarks" disabled={pending} />
+              <Textarea id="create-remarks" name="remarks" disabled={pending} placeholder="Optional note" />
             </FormField>
             {formError && createType ? (
               <p className="ui-field-error" role="alert">
@@ -653,10 +650,11 @@ export function EntriesView({
                 defaultValue={String(editEntry.amount)}
                 disabled={pending || editEntry.allocated > 0}
                 readOnly={editEntry.allocated > 0}
+                placeholder="e.g. 1000.00"
               />
             </FormField>
             <FormField label="Remarks" htmlFor="edit-remarks">
-              <Textarea id="edit-remarks" name="remarks" defaultValue={editEntry.remarks ?? ""} disabled={pending} />
+              <Textarea id="edit-remarks" name="remarks" defaultValue={editEntry.remarks ?? ""} disabled={pending} placeholder="Optional note" />
             </FormField>
             {formError && editEntry ? (
               <p className="ui-field-error" role="alert">
@@ -730,6 +728,7 @@ export function EntriesView({
                     inputMode="decimal"
                     value={row.amount}
                     disabled={pending}
+                    placeholder="e.g. 500.00"
                     onChange={(event) => {
                       const next = [...allocRows];
                       next[index] = { ...row, amount: event.target.value };

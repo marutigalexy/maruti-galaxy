@@ -69,10 +69,10 @@ export function JobEditForm({ job, onCancel }: JobEditFormProps) {
       onChange={() => setDirty(true)}
     >
       <FormField label="Party" htmlFor="edit-job-party">
-        <Input id="edit-job-party" value={job.party_name} disabled readOnly />
+        <Input id="edit-job-party" value={job.party_name} disabled readOnly placeholder="Party name" />
       </FormField>
       <FormField label="Lot Number" htmlFor="edit-job-lot">
-        <Input id="edit-job-lot" value={job.lot_number} disabled readOnly />
+        <Input id="edit-job-lot" value={job.lot_number} disabled readOnly placeholder="Lot number" />
       </FormField>
       <FormField label="Job Type" htmlFor="edit-job-type" required>
         <Select id="edit-job-type" name="job_type" required disabled={pending} defaultValue={job.job_type}>
@@ -88,6 +88,7 @@ export function JobEditForm({ job, onCancel }: JobEditFormProps) {
           inputMode="decimal"
           required
           disabled={pending}
+          placeholder="e.g. 10.50"
           value={than}
           onChange={(event) => setThan(event.target.value)}
         />
@@ -99,6 +100,7 @@ export function JobEditForm({ job, onCancel }: JobEditFormProps) {
           inputMode="decimal"
           required
           disabled={pending}
+          placeholder="e.g. 1500.00"
           value={price}
           onChange={(event) => setPrice(event.target.value)}
         />
@@ -110,6 +112,7 @@ export function JobEditForm({ job, onCancel }: JobEditFormProps) {
           required
           disabled={pending}
           defaultValue={job.kapan_number}
+          placeholder="e.g. KAPAN-2418"
         />
       </FormField>
       <FormField label="Weight" htmlFor="edit-job-weight">
@@ -120,6 +123,7 @@ export function JobEditForm({ job, onCancel }: JobEditFormProps) {
           required
           disabled={pending}
           defaultValue={String(job.weight)}
+          placeholder="e.g. 2.250"
         />
       </FormField>
       <FormField label="Status" htmlFor="edit-job-status" required>

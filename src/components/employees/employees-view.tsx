@@ -208,17 +208,17 @@ export function EmployeesView({ query, result }: EmployeesViewProps) {
           }}
         >
           <FormField label="Name" htmlFor="create-employee-name" required>
-            <Input id="create-employee-name" name="name" required disabled={pending} />
+            <Input id="create-employee-name" name="name" required disabled={pending} placeholder="e.g. Rahul Sharma" />
           </FormField>
           <FormField label="Mobile Number" htmlFor="create-employee-mobile" required>
-            <Input id="create-employee-mobile" name="mobile_number" required disabled={pending} />
+            <Input id="create-employee-mobile" name="mobile_number" required disabled={pending} placeholder="e.g. 9876543210" />
           </FormField>
           <FormField
             label="Commission"
             htmlFor="create-commission"
             required
           >
-            <Input id="create-commission" name="commission" inputMode="decimal" required disabled={pending} />
+            <Input id="create-commission" name="commission" inputMode="decimal" required disabled={pending} placeholder="e.g. 50.00" />
           </FormField>
           <Checkbox id="create-employee-active" name="is_active" label="Active" defaultChecked disabled={pending} />
           {formError && createOpen ? (
@@ -269,6 +269,7 @@ export function EmployeesView({ query, result }: EmployeesViewProps) {
                 required
                 defaultValue={editEmployee.name}
                 disabled={pending}
+                placeholder="e.g. Rahul Sharma"
               />
             </FormField>
             <FormField label="Mobile Number" htmlFor="edit-employee-mobile" required>
@@ -278,6 +279,7 @@ export function EmployeesView({ query, result }: EmployeesViewProps) {
                 required
                 defaultValue={editEmployee.mobile_number}
                 disabled={pending}
+                placeholder="e.g. 9876543210"
               />
             </FormField>
             <FormField
@@ -293,6 +295,7 @@ export function EmployeesView({ query, result }: EmployeesViewProps) {
                 required
                 defaultValue={String(editEmployee.commission)}
                 disabled={pending}
+                placeholder="e.g. 50.00"
               />
             </FormField>
             {formError && editEmployee ? (

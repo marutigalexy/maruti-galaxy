@@ -9,7 +9,6 @@ import { NAV_ITEMS } from "@/lib/navigation/nav";
 import { parseOrThrow } from "@/lib/validation";
 import {
   jobWorkReportSchema,
-  partyLedgerSchema,
   profitLossSchema,
   salaryReportSchema,
 } from "@/lib/validation/reports";
@@ -32,15 +31,11 @@ describe("report schemas", () => {
     expect(parsed).not.toHaveProperty("cogs");
   });
 
-  it("parses salary and party ledger filters", () => {
+  it("parses salary filters", () => {
     expect(parseOrThrow(salaryReportSchema, { employee_id: UUID })).toMatchObject({
       employee_id: UUID,
       page: 1,
       pageSize: 20,
-    });
-    expect(parseOrThrow(partyLedgerSchema, { party_id: UUID, page: "2" })).toMatchObject({
-      party_id: UUID,
-      page: 2,
     });
   });
 });
@@ -105,10 +100,9 @@ describe("report and dashboard security", () => {
     expect(reports).toMatch(/getEntryReport[\s\S]*return listEntries/);
     expect(reports).toMatch(/getOutstandingReport[\s\S]*return listInvoices/);
     expect(reports).toMatch(/getProfitLossReport[\s\S]*listEntries/);
-    expect(reports).toMatch(/getEntryLedger[\s\S]*return listEntries/);
     expect(reports).toMatch(/entry_type", "Expense"/);
     expect(reports).not.toMatch(/createSupabaseAdminClient/);
-    expect(reports.match(/await requireActiveAdmin\(\)/g)?.length).toBeGreaterThanOrEqual(3);
+    expect(reports.match(/await requireActiveAdmin\(\)/g)?.length).toBeGreaterThanOrEqual(2);
     expect(dashboard).toMatch(/rpc\("dashboard_kpis"/);
     expect(dashboard).toMatch(/from\("v_account_balances"\)/);
     expect(dashboard).toMatch(/\.limit\(8\)/);
@@ -128,7 +122,6 @@ describe("report and dashboard security", () => {
     expect(jobView).toMatch(/Lot Number/);
     expect(jobView).toMatch(/Done Than/);
     expect(jobView).toMatch(/Sub Jobs/);
-    expect(ledgerView).toMatch(/running balance is not shown/);
     expect(ledgerView).not.toMatch(/Running Balance/);
     expect(plView).toMatch(/Income − Expenses/);
     expect(plView).not.toMatch(/COGS/);
@@ -147,8 +140,6 @@ describe("report and dashboard security", () => {
       "/reports/outstanding",
       "/reports/salary",
       "/reports/profit-loss",
-      "/reports/party-ledger",
-      "/reports/entry-ledger",
     ]);
     expect(readFileSync(path.join(process.cwd(), "src/app/(dashboard)/reports/layout.tsx"), "utf8")).toMatch(
       /ModuleTabs/,

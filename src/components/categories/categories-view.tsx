@@ -213,7 +213,7 @@ export function CategoriesView({ query, result }: CategoriesViewProps) {
           }}
         >
           <FormField label="Category Name" htmlFor="create-category-name" required>
-            <Input id="create-category-name" name="name" required disabled={pending} />
+            <Input id="create-category-name" name="name" required disabled={pending} placeholder="e.g. Job Income" />
           </FormField>
           <FormField label="Type" htmlFor="create-category-type" required>
             <Select id="create-category-type" name="type" required disabled={pending} defaultValue="Income">
@@ -269,6 +269,7 @@ export function CategoriesView({ query, result }: CategoriesViewProps) {
                 required
                 defaultValue={editCategory.name}
                 disabled={pending}
+                placeholder="e.g. Job Income"
               />
             </FormField>
             <FormField

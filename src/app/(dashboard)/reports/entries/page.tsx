@@ -63,7 +63,6 @@ export default async function EntryReportPage({ searchParams }: EntryReportPageP
 
   return (
     <EntryReportView
-      variant="report"
       query={query}
       result={result}
       accounts={accounts}

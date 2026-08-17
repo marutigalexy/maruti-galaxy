@@ -85,11 +85,9 @@ export {
 } from "./entries";
 
 export {
-  entryLedgerSchema,
   entryReportSchema,
   jobWorkReportSchema,
   outstandingReportSchema,
-  partyLedgerSchema,
   profitLossSchema,
   salaryReportSchema,
 } from "./reports";

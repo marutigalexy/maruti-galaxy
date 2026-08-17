@@ -227,10 +227,10 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
           }}
         >
           <FormField label="Name" htmlFor="create-name" required>
-            <Input id="create-name" name="name" required disabled={pending} autoComplete="name" />
+            <Input id="create-name" name="name" required disabled={pending} autoComplete="name" placeholder="e.g. Priya Mehta" />
           </FormField>
           <FormField label="Email" htmlFor="create-email" required>
-            <Input id="create-email" name="email" type="email" required disabled={pending} autoComplete="off" />
+            <Input id="create-email" name="email" type="email" required disabled={pending} autoComplete="off" placeholder="name@company.com" />
           </FormField>
           <FormField label="Password" htmlFor="create-password" required>
             <Input
@@ -240,6 +240,7 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
               required
               disabled={pending}
               autoComplete="new-password"
+              placeholder="At least 6 characters"
             />
           </FormField>
           <FormField label="Confirm Password" htmlFor="create-confirm" required>
@@ -250,9 +251,9 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
               required
               disabled={pending}
               autoComplete="new-password"
+              placeholder="Re-enter password"
             />
           </FormField>
-          <p className="ui-field-help">Role: Admin</p>
           <Checkbox id="create-active" name="is_active" label="Active" defaultChecked disabled={pending} />
           {formError && createOpen ? (
             <p className="ui-field-error" role="alert">
@@ -295,7 +296,7 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
             }}
           >
             <FormField label="Name" htmlFor="edit-name" required>
-              <Input id="edit-name" name="name" required defaultValue={editUser.name} disabled={pending} />
+              <Input id="edit-name" name="name" required defaultValue={editUser.name} disabled={pending} placeholder="e.g. Priya Mehta" />
             </FormField>
             <FormField label="Email" htmlFor="edit-email" required>
               <Input
@@ -305,9 +306,9 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
                 required
                 defaultValue={editUser.email}
                 disabled={pending}
+                placeholder="name@company.com"
               />
             </FormField>
-            <p className="ui-field-help">Role: Admin</p>
             {formError && editUser ? (
               <p className="ui-field-error" role="alert">
                 {formError}
@@ -349,7 +350,6 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
               );
             }}
           >
-            <p className="ui-dialog-body">Set a new password for {passwordUser.name}. The current password is never shown.</p>
             <FormField label="New Password" htmlFor="pw-password" required>
               <Input
                 id="pw-password"
@@ -358,6 +358,7 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
                 required
                 disabled={pending}
                 autoComplete="new-password"
+                placeholder="At least 6 characters"
               />
             </FormField>
             <FormField label="Confirm Password" htmlFor="pw-confirm" required>
@@ -368,6 +369,7 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
                 required
                 disabled={pending}
                 autoComplete="new-password"
+                placeholder="Re-enter password"
               />
             </FormField>
             {formError && passwordUser ? (

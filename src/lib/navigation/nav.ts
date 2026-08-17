@@ -33,8 +33,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
       { href: "/reports/outstanding", label: "Outstanding Reports" },
       { href: "/reports/salary", label: "Salary Reports" },
       { href: "/reports/profit-loss", label: "Profit & Loss" },
-      { href: "/reports/party-ledger", label: "Party-wise ledger" },
-      { href: "/reports/entry-ledger", label: "Entry-wise ledger" },
     ],
   },
   { href: "/users", label: "Users" },

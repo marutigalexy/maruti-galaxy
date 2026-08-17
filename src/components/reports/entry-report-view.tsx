@@ -20,7 +20,6 @@ import type { EntryListRecord, ListedEntries } from "@/services/entries/entries-
 import type { PartyOption } from "@/services/parties/parties-service";
 
 type EntryReportViewProps = {
-  variant: "report" | "ledger";
   query: ListEntriesInput;
   result: ListedEntries;
   accounts: AccountOption[];
@@ -43,7 +42,6 @@ function exportHref(query: ListEntriesInput): string {
 }
 
 export function EntryReportView({
-  variant,
   query,
   result,
   accounts,
@@ -52,9 +50,8 @@ export function EntryReportView({
   employees,
 }: EntryReportViewProps) {
   const router = useRouter();
-  const pathname = variant === "ledger" ? "/reports/entry-ledger" : "/reports/entries";
   const pushQuery = (next: ListEntriesInput) => {
-    router.push(queryHref(pathname, next));
+    router.push(queryHref("/reports/entries", next));
   };
   const filtered =
     Boolean(query.search) ||
@@ -69,17 +66,13 @@ export function EntryReportView({
   return (
     <>
       <p className="ui-page-lede">
-        {variant === "ledger"
-          ? "Chronological entries from the same ledger. A running balance is not shown here because it would mix accounts; use account detail for that."
-          : "Payment and entry rows from the accounting ledger. Export uses these same filters."}
+        Payment and entry rows from the accounting ledger. Export uses these same filters.
       </p>
       <FilterBar
         action={
-          variant === "report" ? (
-            <a className="ui-button ui-button-secondary" href={exportHref(query)}>
-              Export
-            </a>
-          ) : undefined
+          <a className="ui-button ui-button-secondary" href={exportHref(query)}>
+            Export
+          </a>
         }
         onReset={() =>
           pushQuery({
@@ -185,30 +178,28 @@ export function EntryReportView({
           />
         </FormField>
       </FilterBar>
-      {variant === "report" ? (
-        <dl className="ui-summary-grid">
-          <div className="ui-detail-item">
-            <dt>Total Income</dt>
-            <dd className="ui-amount-income">{formatInr(result.summary.total_income)}</dd>
-          </div>
-          <div className="ui-detail-item">
-            <dt>Total Expense</dt>
-            <dd className="ui-amount-expense">{formatInr(result.summary.total_expense)}</dd>
-          </div>
-          <div className="ui-detail-item">
-            <dt>Net Amount</dt>
-            <dd className={result.summary.net < 0 ? "ui-amount-expense" : "ui-amount-income"}>
-              {formatInr(result.summary.net)}
-            </dd>
-          </div>
-          <div className="ui-detail-item">
-            <dt>Total Entry Count</dt>
-            <dd>{result.summary.count}</dd>
-          </div>
-        </dl>
-      ) : null}
+      <dl className="ui-summary-grid">
+        <div className="ui-detail-item">
+          <dt>Total Income</dt>
+          <dd className="ui-amount-income">{formatInr(result.summary.total_income)}</dd>
+        </div>
+        <div className="ui-detail-item">
+          <dt>Total Expense</dt>
+          <dd className="ui-amount-expense">{formatInr(result.summary.total_expense)}</dd>
+        </div>
+        <div className="ui-detail-item">
+          <dt>Net Amount</dt>
+          <dd className={result.summary.net < 0 ? "ui-amount-expense" : "ui-amount-income"}>
+            {formatInr(result.summary.net)}
+          </dd>
+        </div>
+        <div className="ui-detail-item">
+          <dt>Total Entry Count</dt>
+          <dd>{result.summary.count}</dd>
+        </div>
+      </dl>
       <DataTable
-        caption={variant === "ledger" ? "Entry ledger" : "Entry report"}
+        caption="Entry report"
         columns={[
           { key: "date", header: "Date", render: (row: EntryListRecord) => formatDisplayDate(row.entry_date) },
           {

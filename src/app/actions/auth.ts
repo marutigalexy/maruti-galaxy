@@ -22,7 +22,12 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type LoginState = {
   error: string | null;
+  email: string;
 };
+
+function loginFailure(error: string, email: string): LoginState {
+  return { error, email };
+}
 
 export async function loginAction(
   _prev: LoginState,
@@ -35,19 +40,19 @@ export async function loginAction(
   const next = String(formData.get("next") ?? "");
 
   if (!email || !password) {
-    return { error: GENERIC_LOGIN_ERROR };
+    return loginFailure(GENERIC_LOGIN_ERROR, email);
   }
 
   const ip = clientIpFromHeaders(await headers());
   if (!consumeLoginRateLimit(ip).allowed) {
-    return { error: RATE_LIMIT_MESSAGE };
+    return loginFailure(RATE_LIMIT_MESSAGE, email);
   }
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    return { error: mapLoginFailure() };
+    return loginFailure(mapLoginFailure(), email);
   }
 
   try {
@@ -56,14 +61,14 @@ export async function loginAction(
     await supabase.auth.signOut();
 
     if (isAppError(caught) && caught.message === INACTIVE_ACCOUNT_ERROR) {
-      return { error: INACTIVE_ACCOUNT_ERROR };
+      return loginFailure(INACTIVE_ACCOUNT_ERROR, email);
     }
 
     if (isAppError(caught) && caught.code === "FORBIDDEN") {
-      return { error: UNAUTHORIZED_ACCOUNT_ERROR };
+      return loginFailure(UNAUTHORIZED_ACCOUNT_ERROR, email);
     }
 
-    return { error: GENERIC_LOGIN_ERROR };
+    return loginFailure(GENERIC_LOGIN_ERROR, email);
   }
 
   revalidateAuthSession();

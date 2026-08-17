@@ -86,29 +86,8 @@ export const profitLossSchema = withDateOrder(
     })),
 );
 
-export const partyLedgerSchema = withDateOrder(
-  z
-    .object({
-      page: pageSchema,
-      pageSize: pageSizeSchema,
-      party_id: z.preprocess(emptyToUndefined, uuidSchema.optional()),
-      ...dateRangeFields,
-    })
-    .transform((value) => ({
-      page: value.page,
-      pageSize: clampPageSize(value.pageSize),
-      party_id: value.party_id,
-      date_from: value.date_from,
-      date_to: value.date_to,
-    })),
-);
-
-export const entryLedgerSchema = listEntriesSchema;
-
 export type JobWorkReportInput = z.output<typeof jobWorkReportSchema>;
 export type EntryReportInput = z.output<typeof entryReportSchema>;
 export type OutstandingReportInput = z.output<typeof outstandingReportSchema>;
 export type SalaryReportInput = z.output<typeof salaryReportSchema>;
 export type ProfitLossInput = z.output<typeof profitLossSchema>;
-export type PartyLedgerInput = z.output<typeof partyLedgerSchema>;
-export type EntryLedgerInput = z.output<typeof entryLedgerSchema>;

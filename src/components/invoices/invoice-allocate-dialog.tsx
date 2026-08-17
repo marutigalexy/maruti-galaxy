@@ -118,6 +118,7 @@ export function InvoiceAllocateDialog({ invoiceId, outstanding }: InvoiceAllocat
                   inputMode="decimal"
                   value={row.amount}
                   disabled={pending}
+                  placeholder="e.g. 500.00"
                   onChange={(event) => {
                     const next = [...rows];
                     next[index] = { ...row, amount: event.target.value };
