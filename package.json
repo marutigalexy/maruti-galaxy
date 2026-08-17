@@ -1,0 +1,45 @@
+{
+  "name": "maruti-galaxy",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "next typegen && tsc --noEmit",
+    "secret-scan": "node scripts/secret-scan.mjs",
+    "bundle-scan": "node scripts/bundle-scan.mjs",
+    "audit": "npm audit --audit-level=high",
+    "db:verify": "bash scripts/db-verify.sh",
+    "db:perf": "bash scripts/db-perf.sh",
+    "ops:preflight": "node scripts/prod-preflight.mjs",
+    "bootstrap:admin": "node scripts/bootstrap-admin.mjs",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "qa:regression": "npm run ci && npm run db:verify && npm run db:perf -- --reuse && npm run test:e2e",
+    "ci": "npm run lint && npm run typecheck && npm run test && npm run secret-scan && npm run ops:preflight && npm run audit && npm run build && npm run bundle-scan"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.12.4",
+    "@supabase/supabase-js": "^2.112.3",
+    "next": "16.3.1",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "server-only": "^0.0.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.1",
+    "typescript": "^5",
+    "vitest": "^4.1.10"
+  }
+}

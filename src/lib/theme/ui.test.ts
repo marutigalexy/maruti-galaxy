@@ -1,0 +1,172 @@
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import path from "node:path";
+
+import { describe, expect, it } from "vitest";
+
+import { paginationControls } from "@/lib/api/pagination";
+import { formatInr, formatWeightCt } from "@/lib/formatters";
+import {
+  breadcrumbsForPath,
+  isNavActive,
+  isRecordPath,
+  NAV_ITEMS,
+  pageTitleForPath,
+  parentPath,
+} from "@/lib/navigation/nav";
+import { BRAND_COLORS } from "@/lib/theme/tokens";
+import { debounce } from "@/lib/ui/debounce";
+
+function walk(dir: string): string[] {
+  return readdirSync(dir).flatMap((entry) => {
+    const full = path.join(dir, entry);
+    if (statSync(full).isDirectory()) {
+      return walk(full);
+    }
+    return [full];
+  });
+}
+
+describe("design tokens", () => {
+  it("matches the reference UI palette", () => {
+    expect(BRAND_COLORS.deepNavy).toBe("#011938");
+    expect(BRAND_COLORS.darkNavy).toBe("#0F172A");
+    expect(BRAND_COLORS.secondaryNavy).toBe("#083574");
+    expect(BRAND_COLORS.diamondSilver).toBe("#94A3B8");
+    expect(BRAND_COLORS.lightSilver).toBe("#F1F5F9");
+    expect(BRAND_COLORS.pageBackground).toBe("#F8FAFC");
+    expect(BRAND_COLORS.surface).toBe("#FFFFFF");
+    expect(BRAND_COLORS.border).toBe("#E2E8F0");
+    expect(BRAND_COLORS.primaryText).toBe("#1E293B");
+    expect(BRAND_COLORS.secondaryText).toBe("#64748B");
+  });
+
+  it("defines a restrained radius scale and compact navigation icons", () => {
+    const tokenCss = readFileSync(path.join(process.cwd(), "src/styles/tokens.css"), "utf8");
+    const componentCss = readFileSync(path.join(process.cwd(), "src/styles/components.css"), "utf8");
+
+    expect(tokenCss).toContain("--radius-sm:");
+    expect(tokenCss).toContain("--radius-md:");
+    expect(tokenCss).toContain("--radius-lg:");
+    expect(tokenCss).toContain("--icon-size-nav: 20px");
+    expect(componentCss).toMatch(/\.app-nav-icon\s*\{[\s\S]*?width:\s*var\(--icon-size-nav\)/);
+    expect(componentCss).toContain("border-radius: var(--radius-md)");
+  });
+
+  it("keeps hex values in the token files only", () => {
+    const tokenCss = readFileSync(path.join(process.cwd(), "src/styles/tokens.css"), "utf8");
+    expect(tokenCss.toLowerCase()).toContain(BRAND_COLORS.deepNavy.toLowerCase());
+
+    const componentFiles = [
+      ...walk(path.join(process.cwd(), "src/components")),
+      ...walk(path.join(process.cwd(), "src/app")),
+    ].filter((file) => /\.(ts|tsx|css)$/.test(file) && !file.endsWith("tokens.css"));
+
+    for (const file of componentFiles) {
+      const source = readFileSync(file, "utf8");
+      expect(source, file).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+      expect(source, file).not.toMatch(/dangerouslySetInnerHTML/);
+    }
+  });
+});
+
+describe("navigation", () => {
+  it("includes the required sidebar items", () => {
+    const labels = NAV_ITEMS.map((item) => item.label);
+    expect(labels).toEqual([
+      "Dashboard",
+      "Jobs",
+      "Parties",
+      "Employees",
+      "Invoices",
+      "Accounting",
+      "Reports",
+      "Users",
+    ]);
+
+    const accounting = NAV_ITEMS.find((item) => item.label === "Accounting");
+    expect(accounting?.children?.map((child) => child.label)).toEqual([
+      "Entries",
+      "Accounts",
+      "Categories",
+    ]);
+    expect(readFileSync(path.join(process.cwd(), "src/components/layout/sidebar.tsx"), "utf8")).not.toMatch(
+      /app-nav-children/,
+    );
+    expect(readFileSync(path.join(process.cwd(), "src/app/(dashboard)/accounting/layout.tsx"), "utf8")).toMatch(
+      /ModuleTabs/,
+    );
+    expect(readFileSync(path.join(process.cwd(), "src/app/(dashboard)/reports/layout.tsx"), "utf8")).toMatch(
+      /ModuleTabs/,
+    );
+  });
+
+  it("marks nested accounting routes as the accounting section", () => {
+    expect(isNavActive("/accounting/entries", "/accounting")).toBe(true);
+    expect(isNavActive("/dashboard", "/dashboard")).toBe(true);
+    expect(isNavActive("/jobs", "/dashboard")).toBe(false);
+    expect(pageTitleForPath("/accounting/accounts")).toBe("Accounts");
+    expect(breadcrumbsForPath("/accounting/entries").map((item) => item.label)).toEqual([
+      "Accounting",
+      "Entries",
+    ]);
+    expect(
+      breadcrumbsForPath("/parties/11111111-1111-4111-8111-111111111111").map((item) => item.label),
+    ).toEqual(["Parties", "Detail"]);
+    expect(
+      breadcrumbsForPath("/jobs/new").map((item) => item.label),
+    ).toEqual(["Jobs", "New"]);
+    expect(
+      breadcrumbsForPath("/jobs/11111111-1111-4111-8111-111111111111/edit").map((item) => item.label),
+    ).toEqual(["Jobs", "Detail", "Edit"]);
+    expect(
+      breadcrumbsForPath("/invoices/11111111-1111-4111-8111-111111111111/print").map(
+        (item) => item.label,
+      ),
+    ).toEqual(["Invoices", "Detail", "Print"]);
+  });
+
+  it("treats record routes as detail paths with a parent back target", () => {
+    expect(isRecordPath("/jobs")).toBe(false);
+    expect(isRecordPath("/jobs/new")).toBe(true);
+    expect(isRecordPath("/jobs/11111111-1111-4111-8111-111111111111")).toBe(true);
+    expect(isRecordPath("/jobs/11111111-1111-4111-8111-111111111111/edit")).toBe(true);
+    expect(isRecordPath("/reports/outstanding")).toBe(false);
+    expect(parentPath("/jobs/new")).toBe("/jobs");
+    expect(parentPath("/jobs/11111111-1111-4111-8111-111111111111/edit")).toBe(
+      "/jobs/11111111-1111-4111-8111-111111111111",
+    );
+  });
+});
+
+describe("formatters", () => {
+  it("formats INR and carat weight", () => {
+    expect(formatInr("1234.5")).toContain("1,234.50");
+    expect(formatWeightCt("12.500")).toBe("12.500 ct");
+  });
+});
+
+describe("pagination controls", () => {
+  it("disables previous on the first page and next on the last page", () => {
+    const first = paginationControls(1, 20, 25);
+    expect(first.prevDisabled).toBe(true);
+    expect(first.nextDisabled).toBe(false);
+
+    const last = paginationControls(2, 20, 25);
+    expect(last.prevDisabled).toBe(false);
+    expect(last.nextDisabled).toBe(true);
+  });
+});
+
+describe("search debounce", () => {
+  it("delays emission", async () => {
+    const calls: string[] = [];
+    const emit = debounce((value: string) => {
+      calls.push(value);
+    }, 20);
+    emit("J");
+    emit("J0");
+    emit("J01");
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    expect(calls).toEqual(["J01"]);
+  });
+});

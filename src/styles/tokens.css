@@ -1,0 +1,85 @@
+:root {
+  --color-deep-navy: #011938;
+  --color-dark-navy: #0f172a;
+  --color-secondary-navy: #083574;
+  --color-action-hover: #0c4a9e;
+  --color-accent-blue: #3b82f6;
+  --color-diamond-silver: #94a3b8;
+  --color-light-silver: #f1f5f9;
+  --color-page-background: #f8fafc;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f8fafc;
+  --color-surface-hover: #f1f5f9;
+  --color-border: #e2e8f0;
+  --color-border-subtle: #eef2f6;
+  --color-primary-text: #1e293b;
+  --color-secondary-text: #64748b;
+  --color-placeholder: #94a3b8;
+  --color-success: #15803d;
+  --color-warning: #d97706;
+  --color-danger: #dc2626;
+  --color-danger-hover: #b91c1c;
+  --color-on-navy: #ffffff;
+  --color-scrim: rgb(15 23 42 / 0.45);
+  --color-nav-text: #94a3b8;
+  --color-nav-text-muted: #94a3b8;
+  --color-nav-hover: rgb(255 255 255 / 0.05);
+  --color-nav-active: rgb(59 130 246 / 0.1);
+  --color-nav-divider: rgb(255 255 255 / 0.05);
+  --color-success-soft: #dcfce7;
+  --color-warning-soft: #fef9c3;
+  --color-danger-soft: #fee2e2;
+  --color-info-soft: #eff6ff;
+  --color-focus-glow: rgb(8 53 116 / 0.12);
+  --color-edit-soft: #eff6ff;
+
+  --space-4: 4px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-10: 10px;
+  --space-12: 12px;
+  --space-14: 14px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-22: 22px;
+  --space-24: 24px;
+  --space-32: 32px;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 14px;
+  --radius-2xl: 16px;
+  --radius-pill: 9999px;
+
+  --shadow-sm: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 14px 45px rgb(15 23 42 / 0.16);
+  --shadow-lg: 0 24px 48px -12px rgb(15 23 42 / 0.22);
+  --shadow-topbar: 0 1px 0 rgb(15 23 42 / 0.06), 0 12px 32px -12px rgb(15 23 42 / 0.08);
+
+  --font-size-xs: 0.75rem;
+  --font-size-small: 0.8125rem;
+  --font-size-body: 0.875rem;
+  --font-size-section: 0.9375rem;
+  --font-size-title: 1.375rem;
+  --font-size-display: 2rem;
+  --line-height: 1.5;
+  --line-height-tight: 1.3;
+  --font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --letter-spacing-label: 0.05em;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --control-height: 38px;
+  --control-height-sm: 32px;
+  --icon-size-nav: 20px;
+  --icon-size-sm: 16px;
+  --sidebar-width: 232px;
+  --sidebar-width-collapsed: 68px;
+  --topbar-height: 72px;
+  --nav-item-height: 50px;
+  --focus-ring: 2px solid var(--color-secondary-navy);
+  --transition-fast: 0.2s ease;
+  --transition-sidebar: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}

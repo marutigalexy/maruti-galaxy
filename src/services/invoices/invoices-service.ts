@@ -1,0 +1,365 @@
+import { escapeIlike } from "@/lib/api/ilike";
+import { asMoneyNumber } from "@/lib/api/numbers";
+import { paginated, paginationOffset, type Paginated } from "@/lib/api/pagination";
+import { AppError } from "@/lib/api/result";
+import { selectColumns } from "@/lib/api/select";
+import { requireActiveAdmin } from "@/lib/permissions/require-active-admin";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { ListInvoicesInput } from "@/lib/validation/invoices";
+import type { Database } from "@/types/database";
+
+type InvoiceStatus = Database["public"]["Enums"]["invoice_status"];
+type JobType = Database["public"]["Enums"]["job_type"];
+
+const OUTSTANDING_COLUMNS = selectColumns([
+  "invoice_id",
+  "invoice_number",
+  "job_work_id",
+  "invoice_date",
+  "amount",
+  "allocated",
+  "outstanding",
+  "derived_status",
+  "stored_status",
+]);
+
+const JOB_COLUMNS = selectColumns([
+  "id",
+  "lot_number",
+  "party_id",
+  "job_type",
+  "than",
+  "price",
+  "kapan_number",
+  "weight",
+]);
+
+const ALLOCATION_COLUMNS = selectColumns(["id", "entry_id", "amount", "created_at"]);
+const ENTRY_COLUMNS = selectColumns(["id", "entry_date", "amount", "remarks"]);
+
+export type InvoiceListRecord = {
+  id: string;
+  invoice_number: string;
+  invoice_date: string;
+  job_work_id: string;
+  lot_number: string;
+  party_id: string;
+  party_name: string;
+  amount: number;
+  allocated: number;
+  outstanding: number;
+  status: InvoiceStatus;
+};
+
+export type InvoiceOutstanding = {
+  allocated: number;
+  outstanding: number;
+  status: InvoiceStatus;
+};
+
+export type InvoiceAllocationRow = {
+  id: string;
+  entry_id: string;
+  entry_date: string;
+  entry_amount: number;
+  allocated_amount: number;
+  remarks: string | null;
+  created_at: string;
+};
+
+export type InvoiceDetail = {
+  id: string;
+  invoice_number: string;
+  invoice_date: string;
+  amount: number;
+  status: InvoiceStatus;
+  job_work_id: string;
+  lot_number: string;
+  kapan_number: string;
+  weight: number;
+  than: number;
+  price: number;
+  job_type: JobType;
+  party_id: string;
+  party_name: string;
+  allocated: number;
+  outstanding: number;
+  allocations: InvoiceAllocationRow[];
+};
+
+function uniqueIds(ids: Array<string | null | undefined>): string[] {
+  return [...new Set(ids.filter((id): id is string => Boolean(id)))];
+}
+
+function emptyPage(input: ListInvoicesInput): Paginated<InvoiceListRecord> {
+  return paginated([], 0, input.page, input.pageSize);
+}
+
+function toStatus(value: InvoiceStatus | string | null | undefined): InvoiceStatus {
+  if (value === "Paid" || value === "Partially Paid" || value === "Unpaid") {
+    return value;
+  }
+  return "Unpaid";
+}
+
+async function invoiceIdsForSearch(search: string): Promise<string[]> {
+  const supabase = await createSupabaseServerClient();
+  const pattern = `%${escapeIlike(search)}%`;
+
+  const [{ data: numbers, error: numberError }, { data: lots, error: lotError }] = await Promise.all([
+    supabase.from("v_invoice_outstanding").select("invoice_id").ilike("invoice_number", pattern),
+    supabase.from("job_works").select("id").ilike("lot_number", pattern),
+  ]);
+
+  if (numberError || lotError) {
+    throw new AppError("INTERNAL", "Unable to load invoices.");
+  }
+
+  const lotJobIds = uniqueIds((lots ?? []).map((row) => row.id));
+  let lotInvoiceIds: string[] = [];
+  if (lotJobIds.length > 0) {
+    const { data: byLot, error: byLotError } = await supabase
+      .from("invoices")
+      .select("id")
+      .in("job_work_id", lotJobIds);
+    if (byLotError) {
+      throw new AppError("INTERNAL", "Unable to load invoices.");
+    }
+    lotInvoiceIds = uniqueIds((byLot ?? []).map((row) => row.id));
+  }
+
+  return uniqueIds([
+    ...(numbers ?? []).map((row) => row.invoice_id),
+    ...lotInvoiceIds,
+  ]);
+}
+
+async function jobIdsForParty(partyId: string): Promise<string[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.from("job_works").select("id").eq("party_id", partyId);
+  if (error) {
+    throw new AppError("INTERNAL", "Unable to load invoices.");
+  }
+  return uniqueIds((data ?? []).map((row) => row.id));
+}
+
+export async function listInvoices(input: ListInvoicesInput): Promise<Paginated<InvoiceListRecord>> {
+  await requireActiveAdmin();
+  const supabase = await createSupabaseServerClient();
+  const offset = paginationOffset(input.page, input.pageSize);
+  let allowedIds: string[] | null = null;
+
+  if (input.search.trim() !== "") {
+    allowedIds = await invoiceIdsForSearch(input.search.trim());
+    if (allowedIds.length === 0) {
+      return emptyPage(input);
+    }
+  }
+
+  let query = supabase
+    .from("v_invoice_outstanding")
+    .select(OUTSTANDING_COLUMNS, { count: "exact" })
+    .order("invoice_date", { ascending: false })
+    .order("invoice_number", { ascending: false })
+    .range(offset, offset + input.pageSize - 1);
+
+  if (allowedIds) {
+    query = query.in("invoice_id", allowedIds);
+  }
+
+  if (input.status !== "all") {
+    query = query.eq("derived_status", input.status);
+  }
+
+  if (input.date_from) {
+    query = query.gte("invoice_date", input.date_from);
+  }
+
+  if (input.date_to) {
+    query = query.lte("invoice_date", input.date_to);
+  }
+
+  if (input.party_id) {
+    const jobIds = await jobIdsForParty(input.party_id);
+    if (jobIds.length === 0) {
+      return emptyPage(input);
+    }
+    query = query.in("job_work_id", jobIds);
+  }
+
+  const { data, error, count } = await query;
+  if (error) {
+    throw new AppError("INTERNAL", "Unable to load invoices.");
+  }
+
+  const rows = (data ?? []).filter((row) => row.invoice_id && row.job_work_id);
+  const jobIds = uniqueIds(rows.map((row) => row.job_work_id));
+  const jobs = new Map<string, { lot_number: string; party_id: string }>();
+  const partyNames = new Map<string, string>();
+
+  if (jobIds.length > 0) {
+    const { data: jobRows, error: jobError } = await supabase
+      .from("job_works")
+      .select("id, lot_number, party_id")
+      .in("id", jobIds);
+    if (jobError) {
+      throw new AppError("INTERNAL", "Unable to load invoices.");
+    }
+    for (const job of jobRows ?? []) {
+      jobs.set(job.id, { lot_number: job.lot_number, party_id: job.party_id });
+    }
+    const partyIds = uniqueIds((jobRows ?? []).map((row) => row.party_id));
+    if (partyIds.length > 0) {
+      const { data: parties, error: partyError } = await supabase
+        .from("parties")
+        .select("id, company_name")
+        .in("id", partyIds);
+      if (partyError) {
+        throw new AppError("INTERNAL", "Unable to load invoices.");
+      }
+      for (const party of parties ?? []) {
+        partyNames.set(party.id, party.company_name);
+      }
+    }
+  }
+
+  return paginated(
+    rows.map((row) => {
+      const job = jobs.get(row.job_work_id ?? "");
+      return {
+        id: row.invoice_id as string,
+        invoice_number: row.invoice_number ?? "",
+        invoice_date: row.invoice_date ?? "",
+        job_work_id: row.job_work_id as string,
+        lot_number: job?.lot_number ?? "—",
+        party_id: job?.party_id ?? "",
+        party_name: job ? (partyNames.get(job.party_id) ?? "—") : "—",
+        amount: asMoneyNumber(row.amount),
+        allocated: asMoneyNumber(row.allocated),
+        outstanding: asMoneyNumber(row.outstanding),
+        status: toStatus(row.derived_status ?? row.stored_status),
+      };
+    }),
+    count ?? 0,
+    input.page,
+    input.pageSize,
+  );
+}
+
+export async function getInvoiceOutstanding(id: string): Promise<InvoiceOutstanding> {
+  await requireActiveAdmin();
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("v_invoice_outstanding")
+    .select(OUTSTANDING_COLUMNS)
+    .eq("invoice_id", id)
+    .maybeSingle();
+
+  if (error) {
+    throw new AppError("INTERNAL", "Unable to load invoice outstanding.");
+  }
+
+  if (!data?.invoice_id) {
+    throw new AppError("NOT_FOUND", "Invoice was not found.");
+  }
+
+  return {
+    allocated: asMoneyNumber(data.allocated),
+    outstanding: asMoneyNumber(data.outstanding),
+    status: toStatus(data.derived_status ?? data.stored_status),
+  };
+}
+
+export async function getInvoice(id: string): Promise<InvoiceDetail> {
+  await requireActiveAdmin();
+  const supabase = await createSupabaseServerClient();
+
+  const { data: invoice, error: invoiceError } = await supabase
+    .from("invoices")
+    .select("id, invoice_number, invoice_date, amount, status, job_work_id")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (invoiceError) {
+    throw new AppError("INTERNAL", "Unable to load invoice.");
+  }
+
+  if (!invoice) {
+    throw new AppError("NOT_FOUND", "Invoice was not found.");
+  }
+
+  const [{ data: job, error: jobError }, outstanding, { data: allocationRows, error: allocationError }] =
+    await Promise.all([
+      supabase.from("job_works").select(JOB_COLUMNS).eq("id", invoice.job_work_id).maybeSingle(),
+      getInvoiceOutstanding(id),
+      supabase
+        .from("entry_invoice_allocations")
+        .select(ALLOCATION_COLUMNS)
+        .eq("invoice_id", id)
+        .order("created_at", { ascending: true }),
+    ]);
+
+  if (jobError || !job) {
+    throw new AppError("INTERNAL", "Unable to load invoice.");
+  }
+
+  if (allocationError) {
+    throw new AppError("INTERNAL", "Unable to load invoice allocations.");
+  }
+
+  const { data: party } = await supabase
+    .from("parties")
+    .select("company_name")
+    .eq("id", job.party_id)
+    .maybeSingle();
+
+  const entryIds = uniqueIds((allocationRows ?? []).map((row) => row.entry_id));
+  const entries = new Map<string, { entry_date: string; amount: number; remarks: string | null }>();
+  if (entryIds.length > 0) {
+    const { data: entryRows, error: entryError } = await supabase
+      .from("entries")
+      .select(ENTRY_COLUMNS)
+      .in("id", entryIds);
+    if (entryError) {
+      throw new AppError("INTERNAL", "Unable to load invoice allocations.");
+    }
+    for (const entry of entryRows ?? []) {
+      entries.set(entry.id, {
+        entry_date: entry.entry_date,
+        amount: asMoneyNumber(entry.amount),
+        remarks: entry.remarks,
+      });
+    }
+  }
+
+  return {
+    id: invoice.id,
+    invoice_number: invoice.invoice_number,
+    invoice_date: invoice.invoice_date,
+    amount: asMoneyNumber(invoice.amount),
+    status: outstanding.status,
+    job_work_id: invoice.job_work_id,
+    lot_number: job.lot_number,
+    kapan_number: job.kapan_number,
+    weight: asMoneyNumber(job.weight),
+    than: asMoneyNumber(job.than),
+    price: asMoneyNumber(job.price),
+    job_type: job.job_type,
+    party_id: job.party_id,
+    party_name: party?.company_name ?? "—",
+    allocated: outstanding.allocated,
+    outstanding: outstanding.outstanding,
+    allocations: (allocationRows ?? []).map((row) => {
+      const entry = entries.get(row.entry_id);
+      return {
+        id: row.id,
+        entry_id: row.entry_id,
+        entry_date: entry?.entry_date ?? "",
+        entry_amount: entry?.amount ?? 0,
+        allocated_amount: asMoneyNumber(row.amount),
+        remarks: entry?.remarks ?? null,
+        created_at: row.created_at,
+      };
+    }),
+  };
+}
