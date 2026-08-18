@@ -14,6 +14,7 @@ export const MutationPaths = {
     "/accounting/categories",
     "/jobs",
     "/parties",
+    "/employees",
     "/dashboard",
     "/reports",
   ],

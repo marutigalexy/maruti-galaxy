@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { updateEmployeeAction } from "@/app/actions/employees";
+import { EmployeePaymentDialog } from "@/components/employees/employee-payment-dialog";
 import { TopbarActions, TopbarStatus, useRecordTitle } from "@/components/layout/page-chrome";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -16,14 +17,18 @@ import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useToast } from "@/components/ui/toast";
 import { formatDisplayDate, formatInr, formatThan } from "@/lib/formatters";
+import type { AccountOption } from "@/services/accounts/accounts-service";
+import type { CategoryOption } from "@/services/categories/categories-service";
 import type { EmployeeRecord, EmployeeSummary } from "@/services/employees/employees-service";
 
 type EmployeeDetailViewProps = {
   employee: EmployeeRecord;
   summary: EmployeeSummary;
+  accounts: AccountOption[];
+  categories: CategoryOption[];
 };
 
-export function EmployeeDetailView({ employee, summary }: EmployeeDetailViewProps) {
+export function EmployeeDetailView({ employee, summary, accounts, categories }: EmployeeDetailViewProps) {
   const router = useRouter();
   const toast = useToast();
   const [pending, startTransition] = useTransition();
@@ -45,6 +50,12 @@ export function EmployeeDetailView({ employee, summary }: EmployeeDetailViewProp
         <StatusBadge tone={employee.is_active ? "active" : "inactive"} />
       </TopbarStatus>
       <TopbarActions>
+        <EmployeePaymentDialog
+          employee={employee}
+          summary={summary}
+          accounts={accounts}
+          categories={categories}
+        />
         <IconButton tone="edit" label="Edit employee" onClick={() => setEditOpen(true)}>
           <EditIcon width={16} height={16} />
         </IconButton>

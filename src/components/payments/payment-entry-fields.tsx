@@ -13,6 +13,7 @@ type PaymentEntryFieldsProps = {
   categories: CategoryOption[];
   amount: string;
   onAmountChange: (value: string) => void;
+  categoryType?: CategoryOption["type"];
 };
 
 export function todayIso(): string {
@@ -29,9 +30,12 @@ export function PaymentEntryFields({
   categories,
   amount,
   onAmountChange,
+  categoryType = "Income",
 }: PaymentEntryFieldsProps) {
   const activeAccounts = accounts.filter((account) => account.is_active);
-  const incomeCategories = categories.filter((category) => category.type === "Income" && category.is_active);
+  const matchingCategories = categories.filter(
+    (category) => category.type === categoryType && category.is_active,
+  );
 
   return (
     <>
@@ -48,7 +52,7 @@ export function PaymentEntryFields({
       <FormField label="Category" htmlFor={`${idPrefix}-category`} required>
         <Select id={`${idPrefix}-category`} name="category_id" required disabled={pending}>
           <option value="">Select category</option>
-          {incomeCategories.map((category) => (
+          {matchingCategories.map((category) => (
             <option key={category.id} value={category.id}>
               {category.name}
             </option>

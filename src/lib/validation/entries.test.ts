@@ -8,6 +8,7 @@ import { parseOrThrow } from "@/lib/validation";
 import {
   allocateEntrySchema,
   allocateInvoiceSchema,
+  createEmployeePaymentSchema,
   createEntrySchema,
   createInvoicePaymentSchema,
   createPartyPaymentSchema,
@@ -113,6 +114,22 @@ describe("entry schemas", () => {
       amount: "500.00",
     });
     expect(partyPayment).not.toHaveProperty("invoice_id");
+
+    const employeePayment = parseOrThrow(createEmployeePaymentSchema, {
+      employee_id: UUID,
+      account_id: UUID,
+      category_id: UUID_B,
+      entry_date: "2026-08-15",
+      amount: "120.00",
+      invoice_id: UUID_B,
+      entry_type: "Income",
+    });
+    expect(employeePayment).toMatchObject({
+      employee_id: UUID,
+      amount: "120.00",
+    });
+    expect(employeePayment).not.toHaveProperty("invoice_id");
+    expect(employeePayment).not.toHaveProperty("entry_type");
   });
 
   it("keeps update ids and optional party/employee", () => {
@@ -167,6 +184,10 @@ describe("entry and allocation security", () => {
     path.join(process.cwd(), "src/components/parties/party-payment-dialog.tsx"),
     "utf8",
   );
+  const employeeDialog = readFileSync(
+    path.join(process.cwd(), "src/components/employees/employee-payment-dialog.tsx"),
+    "utf8",
+  );
   const accounts = readFileSync(
     path.join(process.cwd(), "src/services/accounts/accounts-service.ts"),
     "utf8",
@@ -183,6 +204,9 @@ describe("entry and allocation security", () => {
     expect(actions).toMatch(/parseOrThrow\(allocateInvoiceSchema/);
     expect(actions).toMatch(/parseOrThrow\(createInvoicePaymentSchema/);
     expect(actions).toMatch(/parseOrThrow\(createPartyPaymentSchema/);
+    expect(actions).toMatch(/parseOrThrow\(createEmployeePaymentSchema/);
+    expect(service).toMatch(/createEmployeePayment/);
+    expect(service).toMatch(/entry_type: "Expense"/);
     expect(allocations).toMatch(/planInvoiceAllocation/);
     expect(allocations).toMatch(/planFifoAllocations/);
   });
@@ -213,12 +237,15 @@ describe("entry and allocation security", () => {
   });
 
   it("auto-allocates job payments to the current invoice and party payments FIFO", () => {
-    expect(invoiceDialog).toMatch(/>Payment</);
+    expect(invoiceDialog).toMatch(/Add Payment/);
     expect(invoiceDialog).toMatch(/Invoice Total/);
     expect(invoiceDialog).toMatch(/Remaining/);
     expect(invoiceDialog).not.toMatch(/Select invoice/);
     expect(partyDialog).toMatch(/FIFO/);
     expect(partyDialog).toMatch(/Allocation preview/);
+    expect(employeeDialog).toMatch(/Add Payment/);
+    expect(employeeDialog).toMatch(/categoryType="Expense"/);
+    expect(employeeDialog).toMatch(/remaining salary/);
   });
 
   it("keeps account balances derived after entry CUD", () => {

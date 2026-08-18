@@ -9,6 +9,7 @@ import { parseOrThrow } from "@/lib/validation";
 import {
   allocateEntrySchema,
   allocateInvoiceSchema,
+  createEmployeePaymentSchema,
   createEntrySchema,
   createInvoicePaymentSchema,
   createPartyPaymentSchema,
@@ -28,6 +29,7 @@ import {
 } from "@/services/allocations/allocations-service";
 import {
   createEntry,
+  createEmployeePayment,
   deleteEntry,
   getEntry,
   listEntries,
@@ -43,6 +45,7 @@ function revalidateEntries() {
   revalidatePath("/accounting/accounts", "layout");
   revalidatePath("/jobs", "layout");
   revalidatePath("/parties", "layout");
+  revalidatePath("/employees", "layout");
 }
 
 export async function listEntriesAction(input: unknown): Promise<ActionResult<ListedEntries>> {
@@ -129,6 +132,15 @@ export async function createPartyPaymentAction(input: unknown): Promise<ActionRe
   return runAction(async () => {
     const parsed = parseOrThrow(createPartyPaymentSchema, input);
     const entry = await createPartyPayment(parsed);
+    revalidateEntries();
+    return entry;
+  });
+}
+
+export async function createEmployeePaymentAction(input: unknown): Promise<ActionResult<EntryDetail>> {
+  return runAction(async () => {
+    const parsed = parseOrThrow(createEmployeePaymentSchema, input);
+    const entry = await createEmployeePayment(parsed);
     revalidateEntries();
     return entry;
   });

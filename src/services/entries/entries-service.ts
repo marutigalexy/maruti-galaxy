@@ -8,10 +8,12 @@ import { requireActiveAdmin } from "@/lib/permissions/require-active-admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   EXPORT_ENTRIES_MAX_ROWS,
+  type CreateEmployeePaymentInput,
   type CreateEntryInput,
   type ListEntriesInput,
   type UpdateEntryInput,
 } from "@/lib/validation/entries";
+import { getEmployee } from "@/services/employees/employees-service";
 import type { Database } from "@/types/database";
 
 type EntryType = Database["public"]["Enums"]["entry_type"];
@@ -352,6 +354,21 @@ export async function createEntry(input: CreateEntryInput): Promise<EntryDetail>
   }
 
   return getEntry(data.id);
+}
+
+export async function createEmployeePayment(input: CreateEmployeePaymentInput): Promise<EntryDetail> {
+  await requireActiveAdmin();
+  await getEmployee(input.employee_id);
+  return createEntry({
+    entry_type: "Expense",
+    account_id: input.account_id,
+    category_id: input.category_id,
+    party_id: null,
+    employee_id: input.employee_id,
+    entry_date: input.entry_date,
+    amount: input.amount,
+    remarks: input.remarks,
+  });
 }
 
 export async function updateEntry(input: UpdateEntryInput): Promise<EntryDetail> {

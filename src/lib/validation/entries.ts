@@ -180,6 +180,20 @@ export const createPartyPaymentSchema = z
     remarks: value.remarks,
   }));
 
+export const createEmployeePaymentSchema = z
+  .object({
+    employee_id: uuidSchema,
+    ...paymentFields,
+  })
+  .transform((value) => ({
+    employee_id: value.employee_id,
+    account_id: value.account_id,
+    category_id: value.category_id,
+    entry_date: value.entry_date,
+    amount: value.amount,
+    remarks: value.remarks,
+  }));
+
 export type CreateEntryInput = z.output<typeof createEntrySchema>;
 export type UpdateEntryInput = z.output<typeof updateEntrySchema>;
 export type ListEntriesInput = z.output<typeof listEntriesSchema>;
@@ -187,3 +201,4 @@ export type AllocateEntryInput = z.output<typeof allocateEntrySchema>;
 export type AllocateInvoiceInput = z.output<typeof allocateInvoiceSchema>;
 export type CreateInvoicePaymentInput = z.output<typeof createInvoicePaymentSchema>;
 export type CreatePartyPaymentInput = z.output<typeof createPartyPaymentSchema>;
+export type CreateEmployeePaymentInput = z.output<typeof createEmployeePaymentSchema>;
