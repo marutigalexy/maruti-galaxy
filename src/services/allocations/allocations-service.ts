@@ -1,11 +1,22 @@
 import { asMoneyNumber } from "@/lib/api/numbers";
 import { AppError } from "@/lib/api/result";
 import { selectColumns } from "@/lib/api/select";
+import {
+  planFifoAllocations,
+  planInvoiceAllocation,
+  type AllocatableInvoice,
+} from "@/lib/allocations/plan";
 import { requireActiveAdmin } from "@/lib/permissions/require-active-admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { AllocateEntryInput, AllocateInvoiceInput } from "@/lib/validation/entries";
-import { getEntry, type EntryDetail } from "@/services/entries/entries-service";
+import type {
+  AllocateEntryInput,
+  AllocateInvoiceInput,
+  CreateInvoicePaymentInput,
+  CreatePartyPaymentInput,
+} from "@/lib/validation/entries";
+import { createEntry, getEntry, type EntryDetail } from "@/services/entries/entries-service";
 import { getInvoice, type InvoiceDetail } from "@/services/invoices/invoices-service";
+import { getParty } from "@/services/parties/parties-service";
 
 const OUTSTANDING_COLUMNS = selectColumns([
   "invoice_id",
@@ -40,22 +51,19 @@ function uniqueIds(ids: Array<string | null | undefined>): string[] {
   return [...new Set(ids.filter((id): id is string => Boolean(id)))];
 }
 
-export async function listOutstandingInvoices(): Promise<OutstandingInvoiceOption[]> {
-  await requireActiveAdmin();
+type OutstandingRow = {
+  invoice_id: string | null;
+  invoice_number: string | null;
+  job_work_id: string | null;
+  invoice_date: string | null;
+  amount: number | string | null;
+  outstanding: number | string | null;
+};
+
+async function hydrateOutstandingInvoices(rows: OutstandingRow[]): Promise<OutstandingInvoiceOption[]> {
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("v_invoice_outstanding")
-    .select(OUTSTANDING_COLUMNS)
-    .gt("outstanding", 0)
-    .order("invoice_date", { ascending: false })
-    .limit(100);
-
-  if (error) {
-    throw new AppError("INTERNAL", "Unable to load invoices.");
-  }
-
-  const rows = (data ?? []).filter((row) => row.invoice_id && row.job_work_id);
-  const jobIds = uniqueIds(rows.map((row) => row.job_work_id));
+  const validRows = rows.filter((row) => row.invoice_id && row.job_work_id);
+  const jobIds = uniqueIds(validRows.map((row) => row.job_work_id));
   const jobs = new Map<string, { lot_number: string; party_id: string }>();
   const partyNames = new Map<string, string>();
 
@@ -85,7 +93,7 @@ export async function listOutstandingInvoices(): Promise<OutstandingInvoiceOptio
     }
   }
 
-  return rows.map((row) => {
+  return validRows.map((row) => {
     const job = jobs.get(row.job_work_id ?? "");
     return {
       id: row.invoice_id as string,
@@ -97,6 +105,77 @@ export async function listOutstandingInvoices(): Promise<OutstandingInvoiceOptio
       outstanding: asMoneyNumber(row.outstanding),
     };
   });
+}
+
+function toAllocatableInvoice(invoice: OutstandingInvoiceOption): AllocatableInvoice {
+  return {
+    id: invoice.id,
+    invoice_number: invoice.invoice_number,
+    invoice_date: invoice.invoice_date,
+    lot_number: invoice.lot_number,
+    outstanding: invoice.outstanding,
+  };
+}
+
+async function allocatePlannedItems(entryId: string, items: Array<{ invoice_id: string; amount: number }>) {
+  const chunkSize = 50;
+  let result: EntryDetail | null = null;
+  for (let index = 0; index < items.length; index += chunkSize) {
+    result = await allocateEntryToInvoices({
+      entry_id: entryId,
+      items: items.slice(index, index + chunkSize).map((item) => ({
+        invoice_id: item.invoice_id,
+        amount: item.amount.toFixed(2),
+      })),
+    });
+  }
+  return result;
+}
+
+export async function listOutstandingInvoices(): Promise<OutstandingInvoiceOption[]> {
+  await requireActiveAdmin();
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("v_invoice_outstanding")
+    .select(OUTSTANDING_COLUMNS)
+    .gt("outstanding", 0)
+    .order("invoice_date", { ascending: false })
+    .limit(100);
+
+  if (error) {
+    throw new AppError("INTERNAL", "Unable to load invoices.");
+  }
+
+  return hydrateOutstandingInvoices(data ?? []);
+}
+
+export async function listPartyOutstandingInvoices(partyId: string): Promise<OutstandingInvoiceOption[]> {
+  await requireActiveAdmin();
+  const supabase = await createSupabaseServerClient();
+  const { data: jobs, error: jobError } = await supabase.from("job_works").select("id").eq("party_id", partyId);
+
+  if (jobError) {
+    throw new AppError("INTERNAL", "Unable to load invoices.");
+  }
+
+  const jobIds = uniqueIds((jobs ?? []).map((row) => row.id));
+  if (jobIds.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("v_invoice_outstanding")
+    .select(OUTSTANDING_COLUMNS)
+    .in("job_work_id", jobIds)
+    .gt("outstanding", 0)
+    .order("invoice_date", { ascending: true })
+    .order("invoice_number", { ascending: true });
+
+  if (error) {
+    throw new AppError("INTERNAL", "Unable to load invoices.");
+  }
+
+  return hydrateOutstandingInvoices(data ?? []);
 }
 
 export async function listAllocatableIncomeEntries(): Promise<AllocatableIncomeEntry[]> {
@@ -194,4 +273,62 @@ export async function allocateInvoicesFromEntries(input: AllocateInvoiceInput): 
   }
 
   return getInvoice(input.invoice_id);
+}
+
+export async function createInvoicePayment(input: CreateInvoicePaymentInput): Promise<EntryDetail> {
+  await requireActiveAdmin();
+  const invoice = await getInvoice(input.invoice_id);
+  const paymentAmount = asMoneyNumber(input.amount);
+  const { allocated } = planInvoiceAllocation(invoice.outstanding, paymentAmount);
+
+  const entry = await createEntry({
+    entry_type: "Income",
+    account_id: input.account_id,
+    category_id: input.category_id,
+    party_id: invoice.party_id,
+    employee_id: null,
+    entry_date: input.entry_date,
+    amount: input.amount,
+    remarks: input.remarks,
+  });
+
+  if (allocated <= 0) {
+    return entry;
+  }
+
+  const allocatedEntry = await allocatePlannedItems(entry.id, [
+    { invoice_id: invoice.id, amount: allocated },
+  ]);
+  return allocatedEntry ?? entry;
+}
+
+export async function createPartyPayment(input: CreatePartyPaymentInput): Promise<EntryDetail> {
+  await requireActiveAdmin();
+  await getParty(input.party_id);
+  const invoices = await listPartyOutstandingInvoices(input.party_id);
+  const plan = planFifoAllocations(
+    invoices.map(toAllocatableInvoice),
+    asMoneyNumber(input.amount),
+  );
+
+  const entry = await createEntry({
+    entry_type: "Income",
+    account_id: input.account_id,
+    category_id: input.category_id,
+    party_id: input.party_id,
+    employee_id: null,
+    entry_date: input.entry_date,
+    amount: input.amount,
+    remarks: input.remarks,
+  });
+
+  if (plan.items.length === 0) {
+    return entry;
+  }
+
+  const allocatedEntry = await allocatePlannedItems(
+    entry.id,
+    plan.items.map((item) => ({ invoice_id: item.id, amount: item.amount })),
+  );
+  return allocatedEntry ?? entry;
 }

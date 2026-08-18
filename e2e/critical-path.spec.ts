@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { createFromDialog, e2eAdmin, selectOptionContaining, signIn } from "./helpers";
+import { createFromDialog, e2eAdmin, chooseOption, selectOptionContaining, signIn } from "./helpers";
 
 const admin = e2eAdmin();
 
@@ -49,12 +49,12 @@ test.describe("QA-001 critical path", () => {
     await page.goto("/accounting/categories");
     await createFromDialog(page, "Add Category", "Add Category", async () => {
       await page.getByLabel("Category Name").fill(incomeCategory);
-      await page.getByLabel("Type").selectOption("Income");
+      await chooseOption(page, "Type", "Income");
     });
     await expect(page.getByRole("cell", { name: incomeCategory })).toBeVisible();
     await createFromDialog(page, "Add Category", "Add Category", async () => {
       await page.getByLabel("Category Name").fill(expenseCategory);
-      await page.getByLabel("Type").selectOption("Expense");
+      await chooseOption(page, "Type", "Expense");
     });
     await expect(page.getByRole("cell", { name: expenseCategory })).toBeVisible();
 
@@ -62,16 +62,17 @@ test.describe("QA-001 critical path", () => {
     await page.getByRole("button", { name: "Add Job" }).click();
     const jobDialog = page.getByRole("dialog", { name: "Add Job" });
     await expect(jobDialog).toBeVisible();
-    await jobDialog.getByLabel("Party").selectOption({ label: partyName });
+    await chooseOption(jobDialog, "Party", { label: partyName });
     await jobDialog.getByLabel("Than").fill("10");
     await jobDialog.getByLabel("Price").fill("100");
     await jobDialog.getByLabel("Kapan Number").fill(`E2E-${stamp}`);
     await jobDialog.getByLabel("Weight").fill("1.000");
     await jobDialog.getByRole("button", { name: "Create Job" }).click();
     await page.waitForURL(/\/jobs\/[0-9a-f-]{36}/i);
+    const jobUrl = page.url();
     const lot = (await page.getByRole("heading", { level: 1 }).innerText()).trim();
     expect(lot).toMatch(/^J\d+$/);
-    await expect(page.getByRole("link", { name: /INV-\d+/ })).toBeVisible();
+    await expect(page.getByText(/INV-\d+/)).toBeVisible();
     await expect(page.getByText("₹1,000.00").first()).toBeVisible();
 
     await page.getByRole("button", { name: "Add Sub Job" }).click();
@@ -81,7 +82,7 @@ test.describe("QA-001 critical path", () => {
     await expect(page.getByRole("heading", { name: `${lot}-A` })).toBeVisible();
 
     await page.getByRole("button", { name: "Add Work" }).click();
-    await page.getByLabel("Employee").selectOption({ label: employeeName });
+    await chooseOption(page, "Employee", { label: employeeName });
     await page.getByLabel("Done Than").fill("10");
     await page.getByRole("dialog").getByRole("button", { name: "Add Work" }).click();
     await expect(page.getByText("Completed").first()).toBeVisible();
@@ -90,9 +91,9 @@ test.describe("QA-001 critical path", () => {
     await page.getByRole("button", { name: "Add Income" }).click();
     const incomeDialog = page.getByRole("dialog", { name: "Add Income" });
     await expect(incomeDialog).toBeVisible();
-    await incomeDialog.getByLabel("Account").selectOption({ label: accountName });
+    await chooseOption(incomeDialog, "Account", { label: accountName });
     await selectOptionContaining(incomeDialog, "Category", incomeCategory);
-    await incomeDialog.getByLabel("Party").selectOption({ label: partyName });
+    await chooseOption(incomeDialog, "Party", { label: partyName });
     await incomeDialog.getByLabel("Amount").fill("1000");
     await incomeDialog.getByRole("button", { name: "Create" }).click();
     await expect(incomeDialog).toHaveCount(0);
@@ -108,16 +109,15 @@ test.describe("QA-001 critical path", () => {
     await page.getByRole("button", { name: "Add Expense" }).click();
     const expenseDialog = page.getByRole("dialog", { name: "Add Expense" });
     await expect(expenseDialog).toBeVisible();
-    await expenseDialog.getByLabel("Account").selectOption({ label: accountName });
+    await chooseOption(expenseDialog, "Account", { label: accountName });
     await selectOptionContaining(expenseDialog, "Category", expenseCategory);
-    await expenseDialog.getByLabel("Employee").selectOption({ label: employeeName });
+    await chooseOption(expenseDialog, "Employee", { label: employeeName });
     await expenseDialog.getByLabel("Amount").fill("50");
     await expenseDialog.getByRole("button", { name: "Create" }).click();
     await expect(expenseDialog).toHaveCount(0);
 
-    await page.goto("/invoices");
-    await page.getByLabel("Search").fill(lot);
-    await expect(page.getByRole("row", { name: new RegExp(lot) })).toContainText("Paid");
+    await page.goto(jobUrl);
+    await expect(page.getByText("Paid").first()).toBeVisible();
 
     await page.goto("/dashboard");
     await expect(page.getByText("Total Jobs")).toBeVisible();

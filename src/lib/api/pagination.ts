@@ -1,6 +1,6 @@
 export const DEFAULT_PAGE_SIZE = 20;
-export const MAX_PAGE_SIZE = 100;
-export const ALLOWED_PAGE_SIZES = [10, 20, 50, 100] as const;
+export const MAX_PAGE_SIZE = 50;
+export const ALLOWED_PAGE_SIZES = [10, 20, 50] as const;
 
 export type PageSize = (typeof ALLOWED_PAGE_SIZES)[number];
 

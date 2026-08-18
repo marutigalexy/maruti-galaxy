@@ -14,7 +14,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/jobs", label: "Jobs" },
   { href: "/parties", label: "Parties" },
   { href: "/employees", label: "Employees" },
-  { href: "/invoices", label: "Invoices" },
   {
     href: "/accounting",
     label: "Accounting",

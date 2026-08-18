@@ -53,20 +53,11 @@ export function DeleteIcon(props: IconProps) {
   );
 }
 
-export function ActivateIcon(props: IconProps) {
+export function PowerIcon(props: IconProps) {
   return (
     <Svg {...props}>
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-      <path d="m9 11 3 3L22 4" />
-    </Svg>
-  );
-}
-
-export function DeactivateIcon(props: IconProps) {
-  return (
-    <Svg {...props}>
-      <circle cx="12" cy="12" r="10" />
-      <path d="m4.9 4.9 14.2 14.2" />
+      <path d="M12 2v10" />
+      <path d="M18.4 6.6a9 9 0 1 1-12.77.04" />
     </Svg>
   );
 }
@@ -115,6 +106,23 @@ export function ChevronDownIcon(props: IconProps) {
   return (
     <Svg {...props}>
       <path d="m6 9 6 6 6-6" />
+    </Svg>
+  );
+}
+
+export function CheckIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M5 12.5 9.5 17 19 7" />
+    </Svg>
+  );
+}
+
+export function ArrowLeftIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M19 12H5" />
+      <path d="m12 19-7-7 7-7" />
     </Svg>
   );
 }

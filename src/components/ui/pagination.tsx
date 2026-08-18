@@ -53,6 +53,7 @@ export function Pagination({
             disabled={controls.prevDisabled}
             onClick={() => onPageChange(controls.page - 1)}
             aria-label="Previous page"
+            title="Previous page"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="m15 18-6-6 6-6"/>
@@ -69,6 +70,7 @@ export function Pagination({
             disabled={controls.nextDisabled}
             onClick={() => onPageChange(controls.page + 1)}
             aria-label="Next page"
+            title="Next page"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="m9 18 6-6-6-6"/>

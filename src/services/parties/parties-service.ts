@@ -23,8 +23,26 @@ export const PARTY_LIST_COLUMNS = selectColumns([
   "created_at",
 ]);
 
-const JOB_SUMMARY_COLUMNS = selectColumns(["id", "lot_number", "status", "than", "price", "created_at"]);
-const INVOICE_SUMMARY_COLUMNS = selectColumns(["id", "invoice_number", "amount", "status", "job_work_id"]);
+const JOB_SUMMARY_COLUMNS = selectColumns([
+  "id",
+  "lot_number",
+  "status",
+  "than",
+  "price",
+  "kapan_number",
+  "weight",
+  "created_at",
+]);
+const INVOICE_SUMMARY_COLUMNS = selectColumns([
+  "invoice_id",
+  "invoice_number",
+  "invoice_date",
+  "amount",
+  "allocated",
+  "outstanding",
+  "derived_status",
+  "job_work_id",
+]);
 
 export type PartyRecord = {
   id: string;
@@ -42,13 +60,23 @@ export type PartyJobRow = {
   status: string;
   than: number;
   price: number;
+  kapan_number: string;
+  weight: number;
   created_at: string;
 };
 
 export type PartyInvoiceRow = {
   id: string;
   invoice_number: string;
+  invoice_date: string;
+  lot_number: string;
+  kapan_number: string;
+  weight: number;
+  than: number;
+  price: number;
   amount: number;
+  allocated: number;
+  outstanding: number;
   status: string;
   job_work_id: string;
 };
@@ -178,30 +206,47 @@ export async function getPartySummary(id: string): Promise<PartySummary> {
     status: row.status,
     than: asMoneyNumber(row.than),
     price: asMoneyNumber(row.price),
+    kapan_number: row.kapan_number,
+    weight: asMoneyNumber(row.weight),
     created_at: row.created_at,
   }));
 
   const jobIds = jobRows.map((row) => row.id);
+  const jobById = new Map(jobRows.map((row) => [row.id, row]));
   let invoices: PartyInvoiceRow[] = [];
 
   if (jobIds.length > 0) {
     const { data: invoiceRows, error: invoiceError } = await supabase
-      .from("invoices")
+      .from("v_invoice_outstanding")
       .select(INVOICE_SUMMARY_COLUMNS)
       .in("job_work_id", jobIds)
+      .order("invoice_date", { ascending: true })
       .order("invoice_number", { ascending: true });
 
     if (invoiceError) {
       throw new AppError("INTERNAL", "Unable to load party invoices.");
     }
 
-    invoices = (invoiceRows ?? []).map((row) => ({
-      id: row.id,
-      invoice_number: row.invoice_number,
-      amount: asMoneyNumber(row.amount),
-      status: row.status,
-      job_work_id: row.job_work_id,
-    }));
+    invoices = (invoiceRows ?? [])
+      .filter((row) => row.invoice_id && row.job_work_id)
+      .map((row) => {
+        const job = jobById.get(row.job_work_id ?? "");
+        return {
+          id: row.invoice_id as string,
+          invoice_number: row.invoice_number ?? "",
+          invoice_date: row.invoice_date ?? "",
+          lot_number: job?.lot_number ?? "—",
+          kapan_number: job?.kapan_number ?? "",
+          weight: job?.weight ?? 0,
+          than: job?.than ?? 0,
+          price: job?.price ?? 0,
+          amount: asMoneyNumber(row.amount),
+          allocated: asMoneyNumber(row.allocated),
+          outstanding: asMoneyNumber(row.outstanding),
+          status: row.derived_status ?? "Unpaid",
+          job_work_id: row.job_work_id as string,
+        };
+      });
   }
 
   const { data: outstandingRow, error: outstandingError } = await supabase

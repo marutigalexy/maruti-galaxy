@@ -74,11 +74,11 @@ export function SalaryReportView({ query, result, employees }: SalaryReportViewP
         caption="Salary report"
         columns={[
           { key: "name", header: "Employee", render: (row) => row.name },
-          { key: "earned", header: "Earned", numeric: true, render: (row) => formatInr(row.earned) },
-          { key: "paid", header: "Paid", numeric: true, render: (row) => formatInr(row.paid) },
+          { key: "earned", header: "Total Earnings", numeric: true, render: (row) => formatInr(row.earned) },
+          { key: "paid", header: "Paid Amount", numeric: true, render: (row) => formatInr(row.paid) },
           {
             key: "difference",
-            header: "Difference",
+            header: "Remaining Amount",
             numeric: true,
             render: (row) => formatInr(row.difference),
           },

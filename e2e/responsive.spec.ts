@@ -30,7 +30,7 @@ test.describe("QA-002 responsive screens", () => {
     }
     await signIn(page, admin.email, admin.password);
     await page.setViewportSize({ width: 820, height: 1180 });
-    await page.goto("/invoices");
+    await page.goto("/jobs");
     await expect(page.getByRole("button", { name: "Open navigation" })).toBeVisible();
     await expect(page.getByRole("search", { name: "Filters" })).toBeVisible();
   });

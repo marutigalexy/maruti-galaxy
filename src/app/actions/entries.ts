@@ -10,6 +10,8 @@ import {
   allocateEntrySchema,
   allocateInvoiceSchema,
   createEntrySchema,
+  createInvoicePaymentSchema,
+  createPartyPaymentSchema,
   entryIdSchema,
   listEntriesSchema,
   updateEntrySchema,
@@ -17,6 +19,8 @@ import {
 import {
   allocateEntryToInvoices,
   allocateInvoicesFromEntries,
+  createInvoicePayment,
+  createPartyPayment,
   listAllocatableIncomeEntries,
   listOutstandingInvoices,
   type AllocatableIncomeEntry,
@@ -37,7 +41,8 @@ function revalidateEntries() {
   revalidatePaths(MutationPaths.accounting);
   revalidatePath("/accounting/entries");
   revalidatePath("/accounting/accounts", "layout");
-  revalidatePath("/invoices", "layout");
+  revalidatePath("/jobs", "layout");
+  revalidatePath("/parties", "layout");
 }
 
 export async function listEntriesAction(input: unknown): Promise<ActionResult<ListedEntries>> {
@@ -109,4 +114,22 @@ export async function listAllocatableIncomeEntriesAction(): Promise<
   ActionResult<AllocatableIncomeEntry[]>
 > {
   return runAction(async () => listAllocatableIncomeEntries());
+}
+
+export async function createInvoicePaymentAction(input: unknown): Promise<ActionResult<EntryDetail>> {
+  return runAction(async () => {
+    const parsed = parseOrThrow(createInvoicePaymentSchema, input);
+    const entry = await createInvoicePayment(parsed);
+    revalidateEntries();
+    return entry;
+  });
+}
+
+export async function createPartyPaymentAction(input: unknown): Promise<ActionResult<EntryDetail>> {
+  return runAction(async () => {
+    const parsed = parseOrThrow(createPartyPaymentSchema, input);
+    const entry = await createPartyPayment(parsed);
+    revalidateEntries();
+    return entry;
+  });
 }

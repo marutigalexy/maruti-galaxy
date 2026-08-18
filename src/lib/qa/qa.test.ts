@@ -85,7 +85,6 @@ describe("QA-003 accessibility pass", () => {
       "Jobs",
       "Parties",
       "Employees",
-      "Invoices",
       "Accounting",
       "Reports",
       "Users",

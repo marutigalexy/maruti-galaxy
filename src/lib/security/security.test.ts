@@ -120,10 +120,6 @@ describe("IDOR: lot and invoice numbers are not authorization", () => {
     path.join(process.cwd(), "src/app/(dashboard)/jobs/[jobId]/page.tsx"),
     "utf8",
   );
-  const invoicePage = readFileSync(
-    path.join(process.cwd(), "src/app/(dashboard)/invoices/[invoiceId]/page.tsx"),
-    "utf8",
-  );
   const printPage = readFileSync(
     path.join(process.cwd(), "src/app/(print)/invoices/[invoiceId]/print/page.tsx"),
     "utf8",
@@ -136,10 +132,9 @@ describe("IDOR: lot and invoice numbers are not authorization", () => {
     expect(invoiceService).toMatch(/export async function getInvoice\([\s\S]*?\.eq\("id", id\)/);
     expect(invoiceService).not.toMatch(/export async function getInvoice\([\s\S]*?\.eq\("invoice_number"/);
     expect(jobPage).toMatch(/parseOrThrow\(uuidSchema, jobId\)/);
-    expect(invoicePage).toMatch(/parseOrThrow\(uuidSchema, invoiceId\)/);
+    expect(jobPage).toMatch(/getInvoice/);
     expect(printPage).toMatch(/parseOrThrow\(uuidSchema, invoiceId\)/);
     expect(jobPage).toMatch(/requireActiveAdmin/);
-    expect(invoicePage).toMatch(/requireActiveAdmin/);
     expect(proxy).toMatch(/loginRedirectPath/);
   });
 

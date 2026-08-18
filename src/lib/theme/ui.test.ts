@@ -77,7 +77,6 @@ describe("navigation", () => {
       "Jobs",
       "Parties",
       "Employees",
-      "Invoices",
       "Accounting",
       "Reports",
       "Users",
@@ -118,11 +117,6 @@ describe("navigation", () => {
     expect(
       breadcrumbsForPath("/jobs/11111111-1111-4111-8111-111111111111/edit").map((item) => item.label),
     ).toEqual(["Jobs", "Detail", "Edit"]);
-    expect(
-      breadcrumbsForPath("/invoices/11111111-1111-4111-8111-111111111111/print").map(
-        (item) => item.label,
-      ),
-    ).toEqual(["Invoices", "Detail", "Print"]);
   });
 
   it("treats record routes as detail paths with a parent back target", () => {
@@ -168,5 +162,33 @@ describe("search debounce", () => {
     emit("J01");
     await new Promise((resolve) => setTimeout(resolve, 40));
     expect(calls).toEqual(["J01"]);
+  });
+});
+
+describe("select menus", () => {
+  it("uses a custom listbox with a selected checkmark", () => {
+    const select = readFileSync(path.join(process.cwd(), "src/components/ui/select.tsx"), "utf8");
+    expect(select).toMatch(/role="listbox"/);
+    expect(select).toMatch(/CheckIcon/);
+    expect(select).toMatch(/ui-select-menu/);
+    expect(select).toMatch(/window\.showPopover|showPopover/);
+  });
+});
+
+describe("detail chrome", () => {
+  it("uses a power icon for active state and a back arrow in the topbar", () => {
+    const icons = readFileSync(path.join(process.cwd(), "src/components/ui/icons.tsx"), "utf8");
+    const topbar = readFileSync(path.join(process.cwd(), "src/components/layout/topbar.tsx"), "utf8");
+    const chrome = readFileSync(path.join(process.cwd(), "src/components/layout/page-chrome.tsx"), "utf8");
+    const css = readFileSync(path.join(process.cwd(), "src/styles/components.css"), "utf8");
+
+    expect(icons).toMatch(/export function PowerIcon/);
+    expect(icons).toMatch(/export function ArrowLeftIcon/);
+    expect(topbar).toMatch(/ArrowLeftIcon/);
+    expect(topbar).toMatch(/app-topbar-status/);
+    expect(topbar).toMatch(/app-topbar-description/);
+    expect(chrome).toMatch(/export function TopbarStatus/);
+    expect(css).toMatch(/\.ui-icon-button-activate\s*\{[\s\S]*?color:\s*var\(--color-success\)/);
+    expect(css).toMatch(/\.ui-icon-button-deactivate\s*\{[\s\S]*?color:\s*var\(--color-danger\)/);
   });
 });

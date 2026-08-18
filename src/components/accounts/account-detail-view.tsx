@@ -1,16 +1,24 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 
+import { updateAccountAction } from "@/app/actions/accounts";
+import { TopbarActions, TopbarStatus, useRecordTitle } from "@/components/layout/page-chrome";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { DatePicker } from "@/components/ui/date-picker";
+import { Dialog } from "@/components/ui/dialog";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { FormField } from "@/components/ui/form-field";
-import { PageHeader } from "@/components/ui/page-header";
+import { IconButton } from "@/components/ui/icon-button";
+import { EditIcon } from "@/components/ui/icons";
+import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
 import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { useToast } from "@/components/ui/toast";
 import type { Paginated } from "@/lib/api/pagination";
 import { formatDisplayDate, formatInr } from "@/lib/formatters";
 import type { ListEntriesInput } from "@/lib/validation/entries";
@@ -51,6 +59,11 @@ function accountEntriesHref(accountId: string, query: ListEntriesInput): string 
 
 export function AccountDetailView({ account, query, entries, categories }: AccountDetailViewProps) {
   const router = useRouter();
+  const toast = useToast();
+  const [pending, startTransition] = useTransition();
+  const [editOpen, setEditOpen] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  useRecordTitle(account.name);
   const pushQuery = (next: ListEntriesInput) => {
     router.push(accountEntriesHref(account.id, next));
   };
@@ -62,47 +75,53 @@ export function AccountDetailView({ account, query, entries, categories }: Accou
 
   return (
     <>
-      <PageHeader
-        title={account.name}
-        description="Derived account balances. Current balance is Opening + Total In − Total Out."
-      />
-      <p className="ui-field-help">
-        <Link href="/accounting/accounts">Back to Accounts</Link>
-      </p>
-      <dl className="ui-detail-grid">
-        <div className="ui-detail-item">
-          <dt>Account Name</dt>
-          <dd>{account.name}</dd>
-        </div>
-        <div className="ui-detail-item">
-          <dt>Opening Balance</dt>
-          <dd>{formatInr(account.opening_balance)}</dd>
-        </div>
-        <div className="ui-detail-item">
-          <dt>Total In</dt>
-          <dd>{formatInr(account.total_in)}</dd>
-        </div>
-        <div className="ui-detail-item">
-          <dt>Total Out</dt>
-          <dd>{formatInr(account.total_out)}</dd>
-        </div>
-        <div className="ui-detail-item">
-          <dt>Current Balance</dt>
-          <dd>{formatInr(account.current_balance)}</dd>
-        </div>
-        <div className="ui-detail-item">
-          <dt>Total Entry Count</dt>
-          <dd>{account.entry_count}</dd>
-        </div>
-        <div className="ui-detail-item">
-          <dt>Status</dt>
-          <dd>
-            <StatusBadge tone={account.is_active ? "active" : "inactive"} />
-          </dd>
-        </div>
-      </dl>
-      <section className="ui-section">
-        <h2 className="ui-section-title">Related Entries</h2>
+      <TopbarStatus>
+        <StatusBadge tone={account.is_active ? "active" : "inactive"} />
+      </TopbarStatus>
+      <TopbarActions>
+        <IconButton tone="edit" label="Edit account" onClick={() => setEditOpen(true)}>
+          <EditIcon width={16} height={16} />
+        </IconButton>
+      </TopbarActions>
+      <div className="ui-detail-stack">
+        <Card title="Account">
+          <dl className="ui-property-list">
+            <div className="ui-detail-item">
+              <dt>Account Name</dt>
+              <dd>{account.name}</dd>
+            </div>
+            <div className="ui-detail-item">
+              <dt>Opening Balance</dt>
+              <dd>{formatInr(account.opening_balance)}</dd>
+            </div>
+            <div className="ui-detail-item">
+              <dt>Total In</dt>
+              <dd>{formatInr(account.total_in)}</dd>
+            </div>
+            <div className="ui-detail-item">
+              <dt>Total Out</dt>
+              <dd>{formatInr(account.total_out)}</dd>
+            </div>
+            <div className="ui-detail-item">
+              <dt>Current Balance</dt>
+              <dd>{formatInr(account.current_balance)}</dd>
+            </div>
+            <div className="ui-detail-item">
+              <dt>Total Entry Count</dt>
+              <dd>{account.entry_count}</dd>
+            </div>
+            <div className="ui-detail-item">
+              <dt>Status</dt>
+              <dd>
+                <StatusBadge tone={account.is_active ? "active" : "inactive"} />
+              </dd>
+            </div>
+          </dl>
+          <p className="ui-field-help">
+            Derived account balances. Current balance is Opening + Total In − Total Out.
+          </p>
+        </Card>
+        <Card title="Related Entries">
         <FilterBar
           onReset={() =>
             pushQuery({
@@ -196,7 +215,87 @@ export function AccountDetailView({ account, query, entries, categories }: Accou
           onPageChange={(page) => pushQuery({ ...query, page })}
           onPageSizeChange={(pageSize) => pushQuery({ ...query, page: 1, pageSize })}
         />
-      </section>
+        </Card>
+      </div>
+      <Dialog
+        open={editOpen}
+        title="Edit Account"
+        onClose={() => setEditOpen(false)}
+        disableClose={pending}
+        footer={null}
+      >
+        <form
+          className="ui-dialog-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const form = new FormData(event.currentTarget);
+            setFormError(null);
+            startTransition(async () => {
+              const outcome = await updateAccountAction({
+                id: account.id,
+                name: String(form.get("name") ?? ""),
+                opening_balance: String(form.get("opening_balance") ?? ""),
+              });
+              if (!outcome.ok) {
+                setFormError(outcome.error.message);
+                toast.error(outcome.error.message);
+                return;
+              }
+              setEditOpen(false);
+              toast.success("Account updated successfully.");
+              router.refresh();
+            });
+          }}
+        >
+          <FormField label="Account Name" htmlFor="detail-edit-account-name" required>
+            <Input
+              id="detail-edit-account-name"
+              name="name"
+              required
+              defaultValue={account.name}
+              disabled={pending}
+              placeholder="e.g. HDFC Current"
+            />
+          </FormField>
+          <FormField
+            label="Opening Balance"
+            htmlFor="detail-edit-opening"
+            required
+            help={
+              account.entry_count > 0
+                ? "Opening balance cannot be changed after entries exist."
+                : undefined
+            }
+          >
+            <Input
+              id="detail-edit-opening"
+              name={account.entry_count > 0 ? undefined : "opening_balance"}
+              inputMode="decimal"
+              required={account.entry_count === 0}
+              defaultValue={String(account.opening_balance)}
+              disabled={pending || account.entry_count > 0}
+              readOnly={account.entry_count > 0}
+              placeholder="e.g. 0.00"
+            />
+            {account.entry_count > 0 ? (
+              <input type="hidden" name="opening_balance" value={String(account.opening_balance)} />
+            ) : null}
+          </FormField>
+          {formError ? (
+            <p className="ui-field-error" role="alert">
+              {formError}
+            </p>
+          ) : null}
+          <div className="ui-dialog-actions">
+            <Button variant="secondary" disabled={pending} onClick={() => setEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={pending}>
+              {pending ? "Saving…" : "Save"}
+            </Button>
+          </div>
+        </form>
+      </Dialog>
     </>
   );
 }

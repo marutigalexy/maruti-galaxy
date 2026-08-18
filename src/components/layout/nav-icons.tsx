@@ -75,18 +75,6 @@ export function EmployeesIcon() {
   );
 }
 
-export function InvoicesIcon() {
-  return (
-    <Icon title="Invoices">
-      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
-      <path d="M14 2v4a2 2 0 0 0 2 2h4" />
-      <path d="M16 13H8" />
-      <path d="M16 17H8" />
-      <path d="M10 9H8" />
-    </Icon>
-  );
-}
-
 export function AccountingIcon() {
   return (
     <Icon title="Accounting">
@@ -157,7 +145,6 @@ export function iconForHref(href: string) {
   if (href.startsWith("/jobs")) return <JobsIcon />;
   if (href.startsWith("/parties")) return <PartiesIcon />;
   if (href.startsWith("/employees")) return <EmployeesIcon />;
-  if (href.startsWith("/invoices")) return <InvoicesIcon />;
   if (href.startsWith("/accounting")) return <AccountingIcon />;
   if (href.startsWith("/reports")) return <ReportsIcon />;
   if (href.startsWith("/users")) return <UsersIcon />;

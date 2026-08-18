@@ -46,6 +46,8 @@ export type EmployeeWorkRow = {
 export type EmployeeSummary = {
   total_done_than: number;
   total_earning: number;
+  total_paid: number;
+  remaining_amount: number;
   work: EmployeeWorkRow[];
 };
 
@@ -178,19 +180,31 @@ export async function getEmployeeSummary(id: string): Promise<EmployeeSummary> {
     }
   }
 
-  const { data: earnings, error: earningsError } = await supabase
-    .from("v_employee_earnings")
-    .select("total_done_than, total_earning")
-    .eq("employee_id", id)
-    .maybeSingle();
+  const [{ data: earnings, error: earningsError }, { data: payRows, error: payError }] = await Promise.all([
+    supabase
+      .from("v_employee_earnings")
+      .select("total_done_than, total_earning")
+      .eq("employee_id", id)
+      .maybeSingle(),
+    supabase.from("entries").select("amount").eq("entry_type", "Expense").eq("employee_id", id),
+  ]);
 
   if (earningsError) {
     throw new AppError("INTERNAL", "Unable to load employee earnings.");
   }
 
+  if (payError) {
+    throw new AppError("INTERNAL", "Unable to load employee payments.");
+  }
+
+  const totalEarning = asMoneyNumber(earnings?.total_earning);
+  const totalPaid = (payRows ?? []).reduce((sum, row) => sum + asMoneyNumber(row.amount), 0);
+
   return {
     total_done_than: asMoneyNumber(earnings?.total_done_than),
-    total_earning: asMoneyNumber(earnings?.total_earning),
+    total_earning: totalEarning,
+    total_paid: totalPaid,
+    remaining_amount: Math.round((totalEarning - totalPaid) * 100) / 100,
     work: (workRows ?? []).map((row) => {
       const display = displayBySubJob.get(row.sub_job_id);
       return {

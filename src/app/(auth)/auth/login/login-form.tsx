@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { startTransition, useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 
 import { loginAction, type LoginState } from "@/app/actions/auth";
@@ -35,7 +35,9 @@ export function LoginForm({ nextPath }: LoginFormProps) {
       onSubmit={(event) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
-        formAction(formData);
+        startTransition(() => {
+          formAction(formData);
+        });
       }}
     >
       <input type="hidden" name="next" value={nextPath} />
@@ -93,6 +95,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
             className="password-toggle"
             onClick={() => setShowPassword(!showPassword)}
             aria-label={showPassword ? "Hide password" : "Show password"}
+            title={showPassword ? "Hide password" : "Show password"}
           >
             {showPassword ? <EyeOffIcon width={18} height={18} /> : <EyeIcon width={18} height={18} />}
           </button>

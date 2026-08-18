@@ -11,14 +11,13 @@ import {
 } from "@/app/actions/parties";
 import { Button } from "@/components/ui/button";
 import { AddButton } from "@/components/ui/add-button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { FormField } from "@/components/ui/form-field";
 import { IconButton } from "@/components/ui/icon-button";
-import { ActivateIcon, DeactivateIcon, DeleteIcon, EditIcon } from "@/components/ui/icons";
+import { DeleteIcon, EditIcon, PowerIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput } from "@/components/ui/search-input";
@@ -112,7 +111,7 @@ export function PartiesView({ query, result }: PartiesViewProps) {
           { key: "company", header: "Company Name", render: (row) => row.company_name },
           { key: "contact", header: "Contact Person", render: (row) => row.contact_person_name ?? "—" },
           { key: "mobile", header: "Mobile", render: (row) => row.mobile_number },
-          { key: "price", header: "Price (INR)", numeric: true, render: (row) => formatInr(row.price) },
+          { key: "price", header: "Price", numeric: true, render: (row) => formatInr(row.price) },
           {
             key: "status",
             header: "Status",
@@ -135,7 +134,7 @@ export function PartiesView({ query, result }: PartiesViewProps) {
                 </IconButton>
                 {row.is_active ? (
                   <IconButton tone="deactivate" label="Deactivate party" onClick={() => setDeactivateParty(row)}>
-                    <DeactivateIcon width={16} height={16} />
+                    <PowerIcon width={16} height={16} />
                   </IconButton>
                 ) : (
                   <IconButton
@@ -148,7 +147,7 @@ export function PartiesView({ query, result }: PartiesViewProps) {
                       )
                     }
                   >
-                    <ActivateIcon width={16} height={16} />
+                    <PowerIcon width={16} height={16} />
                   </IconButton>
                 )}
                 <IconButton tone="delete" label="Delete party" onClick={() => setDeleteParty(row)}>
@@ -192,7 +191,7 @@ export function PartiesView({ query, result }: PartiesViewProps) {
                   contact_person_name: String(form.get("contact_person_name") ?? ""),
                   mobile_number: String(form.get("mobile_number") ?? ""),
                   price: String(form.get("price") ?? ""),
-                  is_active: form.get("is_active") === "on",
+                  is_active: true,
                 }),
               "Party created successfully.",
             );
@@ -210,7 +209,6 @@ export function PartiesView({ query, result }: PartiesViewProps) {
           <FormField label="Price" htmlFor="create-price" required>
             <Input id="create-price" name="price" inputMode="decimal" required disabled={pending} placeholder="e.g. 1500.00" />
           </FormField>
-          <Checkbox id="create-party-active" name="is_active" label="Active" defaultChecked disabled={pending} />
           {formError && createOpen ? (
             <p className="ui-field-error" role="alert">
               {formError}
@@ -286,7 +284,6 @@ export function PartiesView({ query, result }: PartiesViewProps) {
               label="Price"
               htmlFor="edit-price"
               required
-              help="Changing this default does not update existing job prices."
             >
               <Input
                 id="edit-price"

@@ -30,6 +30,9 @@
   --color-warning-soft: #fef9c3;
   --color-danger-soft: #fee2e2;
   --color-info-soft: #eff6ff;
+  --color-invoice-rule: #000000;
+  --color-invoice-band: #c8dce1;
+  --color-invoice-total: #ebebeb;
   --color-focus-glow: rgb(8 53 116 / 0.12);
   --color-edit-soft: #eff6ff;
 

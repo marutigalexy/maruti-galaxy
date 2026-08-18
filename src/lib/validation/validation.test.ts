@@ -78,7 +78,7 @@ describe("paginationSchema", () => {
   });
 
   it("accepts the allowed UI page sizes", () => {
-    for (const pageSize of [10, 20, 50, 100]) {
+    for (const pageSize of [10, 20, 50]) {
       expect(parseOrThrow(paginationSchema, { pageSize })).toEqual({ page: 1, pageSize });
     }
   });

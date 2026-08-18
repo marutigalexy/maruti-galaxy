@@ -23,7 +23,7 @@ afterEach(() => {
 });
 
 describe("clampPageSize", () => {
-  it("defaults invalid sizes and caps at 100", () => {
+  it("defaults invalid sizes and caps at 50", () => {
     expect(clampPageSize(0)).toBe(DEFAULT_PAGE_SIZE);
     expect(clampPageSize(-5)).toBe(DEFAULT_PAGE_SIZE);
     expect(clampPageSize(1000)).toBe(MAX_PAGE_SIZE);
@@ -31,8 +31,8 @@ describe("clampPageSize", () => {
   });
 
   it("matches the UI allow-list and security max", () => {
-    expect(ALLOWED_PAGE_SIZES).toEqual([10, 20, 50, 100]);
-    expect(MAX_PAGE_SIZE).toBe(100);
+    expect(ALLOWED_PAGE_SIZES).toEqual([10, 20, 50]);
+    expect(MAX_PAGE_SIZE).toBe(50);
     expect(DEFAULT_PAGE_SIZE).toBe(20);
   });
 

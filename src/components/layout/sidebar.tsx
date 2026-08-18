@@ -13,7 +13,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { logoutAction } from "@/app/actions/auth";
 import { isNavActive, NAV_ITEMS, type NavItem } from "@/lib/navigation/nav";
 
-const NAV_SPLIT_BEFORE = new Set(["/invoices", "/reports", "/users"]);
+const NAV_SPLIT_BEFORE = new Set(["/accounting", "/reports", "/users"]);
 
 type SidebarProps = {
   collapsed: boolean;
@@ -164,7 +164,6 @@ export function Sidebar({
             </span>
             <span className="app-sidebar-logout-action">
               <LogOutIcon width={16} height={16} aria-hidden="true" />
-              <span>Log out</span>
             </span>
           </button>
         ) : null}

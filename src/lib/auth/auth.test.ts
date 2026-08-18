@@ -43,6 +43,7 @@ describe("login errors", () => {
     expect(action).toMatch(/email: string/);
     expect(action).toMatch(/loginFailure\(mapLoginFailure\(\), email\)/);
     expect(form).toMatch(/event\.preventDefault\(\)/);
+    expect(form).toMatch(/startTransition/);
     expect(form).toMatch(/value=\{email\}/);
     expect(form).toMatch(/error=\{state\.error \?\? undefined\}/);
   });

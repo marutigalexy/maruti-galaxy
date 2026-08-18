@@ -18,19 +18,27 @@ export async function signIn(page: Page, email: string, password: string) {
   await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
 }
 
+export async function chooseOption(
+  root: Page | Locator,
+  label: string,
+  option: string | { label: string },
+) {
+  const name = typeof option === "string" ? option : option.label;
+  await root.getByLabel(label).click();
+  const page = "goto" in root ? root : root.page();
+  await page.getByRole("option", { name, exact: true }).click();
+}
+
 export async function selectOptionContaining(
   root: Page | Locator,
   label: string,
   text: string,
 ) {
-  const locator = root.getByLabel(label);
-  const value = await locator.evaluate((node, needle) => {
-    const select = node as HTMLSelectElement;
-    const match = [...select.options].find((option) => option.textContent?.includes(needle));
-    return match?.value ?? "";
-  }, text);
-  expect(value).not.toBe("");
-  await locator.selectOption(value);
+  await root.getByLabel(label).click();
+  const page = "goto" in root ? root : root.page();
+  const option = page.getByRole("option").filter({ hasText: text }).first();
+  await expect(option).toBeVisible();
+  await option.click();
 }
 
 export async function createFromDialog(

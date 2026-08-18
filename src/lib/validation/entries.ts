@@ -144,8 +144,46 @@ export const allocateInvoiceSchema = z
     { message: "Each entry can appear only once." },
   );
 
+const paymentFields = {
+  account_id: uuidSchema,
+  category_id: uuidSchema,
+  entry_date: isoDateSchema,
+  amount: moneyPositiveSchema,
+  remarks: z.preprocess(emptyToNull, remarksSchema.nullable()),
+};
+
+export const createInvoicePaymentSchema = z
+  .object({
+    invoice_id: uuidSchema,
+    ...paymentFields,
+  })
+  .transform((value) => ({
+    invoice_id: value.invoice_id,
+    account_id: value.account_id,
+    category_id: value.category_id,
+    entry_date: value.entry_date,
+    amount: value.amount,
+    remarks: value.remarks,
+  }));
+
+export const createPartyPaymentSchema = z
+  .object({
+    party_id: uuidSchema,
+    ...paymentFields,
+  })
+  .transform((value) => ({
+    party_id: value.party_id,
+    account_id: value.account_id,
+    category_id: value.category_id,
+    entry_date: value.entry_date,
+    amount: value.amount,
+    remarks: value.remarks,
+  }));
+
 export type CreateEntryInput = z.output<typeof createEntrySchema>;
 export type UpdateEntryInput = z.output<typeof updateEntrySchema>;
 export type ListEntriesInput = z.output<typeof listEntriesSchema>;
 export type AllocateEntryInput = z.output<typeof allocateEntrySchema>;
 export type AllocateInvoiceInput = z.output<typeof allocateInvoiceSchema>;
+export type CreateInvoicePaymentInput = z.output<typeof createInvoicePaymentSchema>;
+export type CreatePartyPaymentInput = z.output<typeof createPartyPaymentSchema>;

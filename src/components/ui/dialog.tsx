@@ -34,7 +34,7 @@ export function Dialog({
     if (open && !dialog.open) {
       dialog.showModal();
       const focusTarget = dialog.querySelector<HTMLElement>(
-        "input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]):not(.ui-dialog-close)",
+        "input:not([disabled]):not(.ui-select-native), textarea:not([disabled]), .ui-select-trigger:not([disabled]), button:not([disabled]):not(.ui-dialog-close)",
       );
       focusTarget?.focus();
     }
@@ -62,6 +62,7 @@ export function Dialog({
           variant="ghost"
           className="ui-dialog-close"
           aria-label="Close"
+          title="Close"
           disabled={disableClose}
           onClick={onClose}
         >

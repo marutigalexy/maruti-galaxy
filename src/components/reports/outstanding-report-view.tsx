@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { DataTable } from "@/components/ui/data-table";
@@ -113,7 +114,7 @@ export function OutstandingReportView({ query, result, parties }: OutstandingRep
         columns={[
           { key: "party", header: "Party", render: (row) => row.party_name },
           { key: "number", header: "Invoice Number", render: (row) => row.invoice_number },
-          { key: "lot", header: "Lot Number", render: (row) => row.lot_number },
+          { key: "lot", header: "Lot Number", render: (row) => <Link href={`/jobs/${row.job_work_id}`}>{row.lot_number}</Link> },
           { key: "amount", header: "Invoice Amount", numeric: true, render: (row) => formatInr(row.amount) },
           { key: "allocated", header: "Allocated", numeric: true, render: (row) => formatInr(row.allocated) },
           {

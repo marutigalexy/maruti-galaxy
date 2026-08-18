@@ -11,14 +11,13 @@ import {
 } from "@/app/actions/users";
 import { Button } from "@/components/ui/button";
 import { AddButton } from "@/components/ui/add-button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { FormField } from "@/components/ui/form-field";
 import { IconButton } from "@/components/ui/icon-button";
-import { ActivateIcon, DeactivateIcon, EditIcon, KeyIcon } from "@/components/ui/icons";
+import { EditIcon, KeyIcon, PowerIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput } from "@/components/ui/search-input";
@@ -165,7 +164,7 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
                     disabled={row.id === currentUserId}
                     onClick={() => setDeactivateUser(row)}
                   >
-                    <DeactivateIcon width={16} height={16} />
+                    <PowerIcon width={16} height={16} />
                   </IconButton>
                 ) : (
                   <IconButton
@@ -178,7 +177,7 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
                       )
                     }
                   >
-                    <ActivateIcon width={16} height={16} />
+                    <PowerIcon width={16} height={16} />
                   </IconButton>
                 )}
               </TableActions>
@@ -220,7 +219,7 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
                   email: String(form.get("email") ?? ""),
                   password: String(form.get("password") ?? ""),
                   confirmPassword: String(form.get("confirmPassword") ?? ""),
-                  is_active: form.get("is_active") === "on",
+                  is_active: true,
                 }),
               "User created successfully.",
             );
@@ -254,7 +253,6 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
               placeholder="Re-enter password"
             />
           </FormField>
-          <Checkbox id="create-active" name="is_active" label="Active" defaultChecked disabled={pending} />
           {formError && createOpen ? (
             <p className="ui-field-error" role="alert">
               {formError}

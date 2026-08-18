@@ -2,6 +2,8 @@ import { PartyDetailView } from "@/components/parties/party-detail-view";
 import { ErrorState } from "@/components/ui/error-state";
 import { requireActiveAdmin } from "@/lib/permissions/require-active-admin";
 import { parseOrThrow, uuidSchema } from "@/lib/validation";
+import { listAccountOptions } from "@/services/accounts/accounts-service";
+import { listCategoryOptions } from "@/services/categories/categories-service";
 import { getParty, getPartySummary } from "@/services/parties/parties-service";
 
 type PartyDetailPageProps = {
@@ -14,9 +16,16 @@ export default async function PartyDetailPage({ params }: PartyDetailPageProps) 
 
   let party;
   let summary;
+  let accounts;
+  let categories;
   try {
     parseOrThrow(uuidSchema, partyId);
-    [party, summary] = await Promise.all([getParty(partyId), getPartySummary(partyId)]);
+    [party, summary, accounts, categories] = await Promise.all([
+      getParty(partyId),
+      getPartySummary(partyId),
+      listAccountOptions(),
+      listCategoryOptions(),
+    ]);
   } catch {
     return (
       <ErrorState
@@ -26,5 +35,5 @@ export default async function PartyDetailPage({ params }: PartyDetailPageProps) 
     );
   }
 
-  return <PartyDetailView party={party} summary={summary} />;
+  return <PartyDetailView party={party} summary={summary} accounts={accounts} categories={categories} />;
 }

@@ -11,14 +11,13 @@ import {
 } from "@/app/actions/employees";
 import { Button } from "@/components/ui/button";
 import { AddButton } from "@/components/ui/add-button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { FormField } from "@/components/ui/form-field";
 import { IconButton } from "@/components/ui/icon-button";
-import { ActivateIcon, DeactivateIcon, DeleteIcon, EditIcon } from "@/components/ui/icons";
+import { DeleteIcon, EditIcon, PowerIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput } from "@/components/ui/search-input";
@@ -143,7 +142,7 @@ export function EmployeesView({ query, result }: EmployeesViewProps) {
                 </IconButton>
                 {row.is_active ? (
                   <IconButton tone="deactivate" label="Deactivate employee" onClick={() => setDeactivateEmployee(row)}>
-                    <DeactivateIcon width={16} height={16} />
+                    <PowerIcon width={16} height={16} />
                   </IconButton>
                 ) : (
                   <IconButton
@@ -156,7 +155,7 @@ export function EmployeesView({ query, result }: EmployeesViewProps) {
                       )
                     }
                   >
-                    <ActivateIcon width={16} height={16} />
+                    <PowerIcon width={16} height={16} />
                   </IconButton>
                 )}
                 <IconButton tone="delete" label="Delete employee" onClick={() => setDeleteEmployee(row)}>
@@ -201,7 +200,7 @@ export function EmployeesView({ query, result }: EmployeesViewProps) {
                   name: String(form.get("name") ?? ""),
                   mobile_number: String(form.get("mobile_number") ?? ""),
                   commission: String(form.get("commission") ?? ""),
-                  is_active: form.get("is_active") === "on",
+                  is_active: true,
                 }),
               "Employee created successfully.",
             );
@@ -220,7 +219,6 @@ export function EmployeesView({ query, result }: EmployeesViewProps) {
           >
             <Input id="create-commission" name="commission" inputMode="decimal" required disabled={pending} placeholder="e.g. 50.00" />
           </FormField>
-          <Checkbox id="create-employee-active" name="is_active" label="Active" defaultChecked disabled={pending} />
           {formError && createOpen ? (
             <p className="ui-field-error" role="alert">
               {formError}
@@ -286,7 +284,6 @@ export function EmployeesView({ query, result }: EmployeesViewProps) {
               label="Commission"
               htmlFor="edit-commission"
               required
-              help="Historical work keeps the commission recorded at the time."
             >
               <Input
                 id="edit-commission"

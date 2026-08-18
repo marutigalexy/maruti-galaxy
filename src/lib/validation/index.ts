@@ -79,6 +79,8 @@ export {
   allocateEntrySchema,
   allocateInvoiceSchema,
   createEntrySchema,
+  createInvoicePaymentSchema,
+  createPartyPaymentSchema,
   entryIdSchema,
   listEntriesSchema,
   updateEntrySchema,

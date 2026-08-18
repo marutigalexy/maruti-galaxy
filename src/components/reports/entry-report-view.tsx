@@ -65,9 +65,6 @@ export function EntryReportView({
 
   return (
     <>
-      <p className="ui-page-lede">
-        Payment and entry rows from the accounting ledger. Export uses these same filters.
-      </p>
       <FilterBar
         action={
           <a className="ui-button ui-button-secondary" href={exportHref(query)}>

@@ -66,6 +66,7 @@ export function ConfirmDialog({
           variant="ghost"
           className="ui-dialog-close"
           aria-label="Close"
+          title="Close"
           disabled={pending}
           onClick={onCancel}
         >

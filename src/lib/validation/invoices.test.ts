@@ -60,7 +60,11 @@ describe("invoice read security", () => {
   );
   const actions = readFileSync(path.join(process.cwd(), "src/app/actions/invoices.ts"), "utf8");
   const listView = readFileSync(
-    path.join(process.cwd(), "src/components/invoices/invoices-view.tsx"),
+    path.join(process.cwd(), "src/components/jobs/jobs-view.tsx"),
+    "utf8",
+  );
+  const jobDetail = readFileSync(
+    path.join(process.cwd(), "src/components/jobs/job-detail-view.tsx"),
     "utf8",
   );
   const detail = readFileSync(
@@ -77,6 +81,19 @@ describe("invoice read security", () => {
   );
   const printLayout = readFileSync(
     path.join(process.cwd(), "src/app/(print)/layout.tsx"),
+    "utf8",
+  );
+  const billView = readFileSync(
+    path.join(process.cwd(), "src/components/invoices/invoice-bill-view.tsx"),
+    "utf8",
+  );
+  const billCopy = readFileSync(path.join(process.cwd(), "src/lib/invoices/bill.ts"), "utf8");
+  const partyPrintView = readFileSync(
+    path.join(process.cwd(), "src/components/parties/party-outstanding-print-view.tsx"),
+    "utf8",
+  );
+  const partyPrintButton = readFileSync(
+    path.join(process.cwd(), "src/components/parties/party-outstanding-print-button.tsx"),
     "utf8",
   );
   const migration = readFileSync(
@@ -113,7 +130,7 @@ describe("invoice read security", () => {
   });
 
   it("does not invent tax fields or DESCRIPTION copy", () => {
-    const ui = `${listView}\n${detail}\n${printView}`;
+    const ui = `${listView}\n${detail}\n${printView}\n${billView}`;
     expect(ui).not.toMatch(/Due Date/);
     expect(ui).not.toMatch(/Discount/);
     expect(ui).not.toMatch(/Tax Amount/);
@@ -122,10 +139,14 @@ describe("invoice read security", () => {
     expect(ui).not.toMatch(/Payment method/);
     expect(ui).not.toMatch(/Transaction reference/);
     expect(detail).toMatch(/<dt>DESCRIPTION<\/dt>/);
-    expect(printView).toMatch(/<dt>DESCRIPTION<\/dt>/);
     expect(detail).toMatch(/<dd>—<\/dd>/);
-    expect(printView).toMatch(/<dd>—<\/dd>/);
-    expect(detail).toMatch(/<dt>Job Type<\/dt>/);
+    expect(billView).toMatch(/KAPAN DESCRIPTION/);
+    expect(billView).toMatch(/kapan_number/);
+    expect(billView).toMatch(/invoice-bill-spacer/);
+    expect(billView).toMatch(/INVOICE_BILL\.minTableRows/);
+    expect(billView).not.toMatch(/invoice-bill-empty/);
+    expect(billView).not.toMatch(/paddedBillRowCount/);
+    expect(jobDetail).toMatch(/<dt>Job Type<\/dt>/);
     expect(`${listView}\n${detail}`).not.toMatch(/>Allocate</);
   });
 
@@ -133,8 +154,16 @@ describe("invoice read security", () => {
     expect(printLayout).not.toMatch(/AppShell/);
     expect(printLayout).toMatch(/getCurrentUserAction/);
     expect(printButton).toMatch(/window\.print/);
-    expect(printView).toMatch(/BrandLogo/);
-    expect(listView).not.toMatch(/\/invoices\/\$\{row\.id\}\/print/);
-    expect(detail).not.toMatch(/\/invoices\/\$\{invoice\.id\}\/print/);
+    expect(printView).toMatch(/InvoiceBillView/);
+    expect(billCopy).toMatch(/MARUTI GALEXY/);
+    expect(billView).toMatch(/Auth\. Signatory/);
+    expect(listView).toMatch(/InvoicePrintButton/);
+    expect(jobDetail).toMatch(/InvoicePrintButton/);
+    expect(listView).not.toMatch(/\/invoices\/.*\/print/);
+    expect(jobDetail).not.toMatch(/\/invoices\/.*\/print/);
+    expect(detail).not.toMatch(/\/invoices\/.*\/print/);
+    expect(partyPrintButton).toMatch(/window\.print/);
+    expect(partyPrintView).toMatch(/InvoiceBillView/);
+    expect(partyPrintView).toMatch(/outstanding > 0/);
   });
 });

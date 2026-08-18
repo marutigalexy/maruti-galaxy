@@ -337,6 +337,7 @@ export function EntriesView({
           <dd>{result.summary.count}</dd>
         </div>
       </dl>
+      <p className="ui-field-help">Net Amount is Total Income minus Total Expense.</p>
 
       <DataTable
         caption="Entries"

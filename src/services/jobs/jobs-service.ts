@@ -67,6 +67,7 @@ export type JobListRecord = {
   weight: number;
   status: JobStatus;
   remaining_than: number;
+  invoice_id: string | null;
   created_at: string;
 };
 
@@ -233,6 +234,7 @@ export async function listJobs(input: ListJobsInput): Promise<Paginated<JobListR
   const jobIds = rows.map((row) => row.id);
   const partyNames = new Map<string, string>();
   const allocated = new Map<string, number>();
+  const invoiceIds = new Map<string, string>();
 
   if (partyIds.length > 0) {
     const { data: parties, error: partyError } = await supabase
@@ -262,6 +264,19 @@ export async function listJobs(input: ListJobsInput): Promise<Paginated<JobListR
     for (const sub of subRows ?? []) {
       allocated.set(sub.job_id, (allocated.get(sub.job_id) ?? 0) + asMoneyNumber(sub.than));
     }
+
+    const { data: invoiceRows, error: invoiceError } = await supabase
+      .from("invoices")
+      .select("id, job_work_id")
+      .in("job_work_id", jobIds);
+
+    if (invoiceError) {
+      throw new AppError("INTERNAL", "Unable to load jobs.");
+    }
+
+    for (const invoice of invoiceRows ?? []) {
+      invoiceIds.set(invoice.job_work_id, invoice.id);
+    }
   }
 
   return paginated(
@@ -280,6 +295,7 @@ export async function listJobs(input: ListJobsInput): Promise<Paginated<JobListR
         weight: asMoneyNumber(row.weight),
         status: row.status,
         remaining_than: than - used,
+        invoice_id: invoiceIds.get(row.id) ?? null,
         created_at: row.created_at,
       };
     }),

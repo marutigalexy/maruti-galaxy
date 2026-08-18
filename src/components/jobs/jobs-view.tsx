@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { getJobAction } from "@/app/actions/jobs";
 import { JobCreateForm } from "@/components/jobs/job-create-form";
 import { JobEditForm } from "@/components/jobs/job-edit-form";
+import { InvoicePrintButton } from "@/components/invoices/invoice-print-button";
 import { AddButton } from "@/components/ui/add-button";
 import { DataTable } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
@@ -222,6 +223,7 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
             header: "Actions",
             render: (row) => (
               <TableActions>
+                {row.invoice_id ? <InvoicePrintButton variant="icon" invoiceId={row.invoice_id} /> : null}
                 <IconButton
                   tone="edit"
                   label="Edit job"

@@ -8,6 +8,7 @@ export type DataTableColumn<T> = {
   key: string;
   header: string;
   numeric?: boolean;
+  align?: "center";
   render?: (row: T) => ReactNode;
 };
 
@@ -48,6 +49,16 @@ export function DataTable<T>({
     return <EmptyState title={emptyTitle} description={emptyDescription} />;
   }
 
+  function columnClass(column: DataTableColumn<T>) {
+    if (column.numeric) {
+      return "is-numeric";
+    }
+    if (column.align === "center" || column.key === "status") {
+      return "is-center";
+    }
+    return undefined;
+  }
+
   function handleRowKeyDown(event: KeyboardEvent<HTMLTableRowElement>, row: T) {
     if (!onRowClick) {
       return;
@@ -65,7 +76,7 @@ export function DataTable<T>({
         <thead>
           <tr>
             {columns.map((column) => (
-              <th key={column.key} scope="col" className={column.numeric ? "is-numeric" : undefined}>
+              <th key={column.key} scope="col" className={columnClass(column)}>
                 {column.header}
               </th>
             ))}
@@ -81,7 +92,7 @@ export function DataTable<T>({
               onKeyDown={onRowClick ? (event) => handleRowKeyDown(event, row) : undefined}
             >
               {columns.map((column) => (
-                <td key={column.key} className={column.numeric ? "is-numeric" : undefined}>
+                <td key={column.key} className={columnClass(column)}>
                   {column.render ? column.render(row) : null}
                 </td>
               ))}
