@@ -145,6 +145,7 @@ export function JobCreateForm({ parties, onCancel }: JobCreateFormProps) {
           required
           disabled={pending}
           placeholder="e.g. 1500.00"
+          className="ui-price"
           value={price}
           onChange={(event) => {
             setPriceEdited(true);

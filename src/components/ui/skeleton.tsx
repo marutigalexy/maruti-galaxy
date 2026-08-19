@@ -32,14 +32,18 @@ type TableSkeletonProps = {
   framed?: boolean;
 };
 
-function tableColumnClass(column: TableSkeletonColumn) {
+function tableColumnClass(column: TableSkeletonColumn, isHeader = false) {
+  const classes: string[] = [];
   if (column.numeric) {
-    return "is-numeric";
+    classes.push("is-numeric");
   }
   if (column.align === "center" || column.key === "status" || column.key === "type") {
-    return "is-center";
+    classes.push("is-center");
   }
-  return undefined;
+  if (!isHeader && column.key === "price") {
+    classes.push("ui-price");
+  }
+  return classes.length > 0 ? classes.join(" ") : undefined;
 }
 
 export function TableSkeleton({
@@ -60,7 +64,7 @@ export function TableSkeleton({
         <thead>
           <tr>
             {cols.map((column) => (
-              <th key={column.key} scope="col" className={tableColumnClass(column)}>
+              <th key={column.key} scope="col" className={tableColumnClass(column, true)}>
                 {column.header ?? <SkeletonLine />}
               </th>
             ))}

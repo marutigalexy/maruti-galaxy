@@ -52,7 +52,7 @@ describe("design tokens", () => {
     expect(componentCss).toContain("border-radius: var(--radius-md)");
     expect(componentCss).toMatch(/\.ui-badge-sarin/);
     expect(componentCss).toMatch(/\.ui-badge-dropping/);
-    expect(componentCss).toMatch(/\.ui-badge-galaxy/);
+    expect(componentCss).toMatch(/\.ui-price/);
   });
 
   it("keeps hex values in the token files only", () => {

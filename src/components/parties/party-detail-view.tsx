@@ -112,7 +112,7 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
             {kpis.map((kpi) => (
               <article key={kpi.label} className="ui-kpi-card">
                 <p className="ui-kpi-label">{kpi.label}</p>
-                <p className="ui-kpi-value">{kpi.value}</p>
+                <p className={kpi.label === "Default Price" ? "ui-kpi-value ui-price" : "ui-kpi-value"}>{kpi.value}</p>
               </article>
             ))}
           </div>
@@ -283,6 +283,7 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
               defaultValue={String(party.price)}
               disabled={pending}
               placeholder="e.g. 1500.00"
+              className="ui-price"
             />
           </FormField>
           {formError ? (

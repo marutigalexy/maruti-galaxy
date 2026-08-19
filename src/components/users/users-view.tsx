@@ -289,7 +289,7 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
                   updateUserProfileAction({
                     id: editUser.id,
                     name: String(form.get("name") ?? ""),
-                    email: String(form.get("email") ?? ""),
+                    email: editUser.email,
                   }),
                 "User updated successfully.",
               );
@@ -298,14 +298,13 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
             <FormField label="Name" htmlFor="edit-name" required>
               <Input id="edit-name" name="name" required defaultValue={editUser.name} disabled={pending} placeholder="e.g. Priya Mehta" />
             </FormField>
-            <FormField label="Email" htmlFor="edit-email" required>
+            <FormField label="Email" htmlFor="edit-email">
               <Input
                 id="edit-email"
-                name="email"
                 type="email"
-                required
-                defaultValue={editUser.email}
-                disabled={pending}
+                value={editUser.email}
+                disabled
+                readOnly
                 placeholder="name@company.com"
               />
             </FormField>

@@ -488,6 +488,13 @@ a {
   text-align: center;
 }
 
+.ui-price,
+.ui-table td.ui-price,
+.ui-detail-item dd.ui-price,
+.ui-input.ui-price {
+  font-weight: var(--font-weight-bold);
+}
+
 .ui-table-actions,
 .ui-inline-actions,
 .ui-pagination-controls {

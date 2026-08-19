@@ -39,14 +39,18 @@ export function DataTable<T>({
   onRowClick,
   footer,
 }: DataTableProps<T>) {
-  function columnClass(column: DataTableColumn<T>) {
+  function columnClass(column: DataTableColumn<T>, isHeader = false) {
+    const classes: string[] = [];
     if (column.numeric) {
-      return "is-numeric";
+      classes.push("is-numeric");
     }
     if (column.align === "center" || column.key === "status" || column.key === "type") {
-      return "is-center";
+      classes.push("is-center");
     }
-    return undefined;
+    if (!isHeader && column.key === "price") {
+      classes.push("ui-price");
+    }
+    return classes.length > 0 ? classes.join(" ") : undefined;
   }
 
   function handleRowKeyDown(event: KeyboardEvent<HTMLTableRowElement>, row: T) {
@@ -80,7 +84,7 @@ export function DataTable<T>({
         <thead>
           <tr>
             {columns.map((column) => (
-              <th key={column.key} scope="col" className={columnClass(column)}>
+              <th key={column.key} scope="col" className={columnClass(column, true)}>
                 {column.header}
               </th>
             ))}

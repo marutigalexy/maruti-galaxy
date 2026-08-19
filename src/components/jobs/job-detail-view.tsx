@@ -173,6 +173,10 @@ export function JobDetailView({ job, invoice, employees, accounts, categories }:
                     <JobTypeBadge type={job.job_type} />
                   </dd>
                 </div>
+                <div className="ui-detail-item">
+                  <dt>Sub Jobs</dt>
+                  <dd>{job.sub_jobs.length}</dd>
+                </div>
               </dl>
             </section>
             <section className="ui-job-details-column">
@@ -196,7 +200,7 @@ export function JobDetailView({ job, invoice, employees, accounts, categories }:
                 </div>
                 <div className="ui-detail-item">
                   <dt>Unit Price</dt>
-                  <dd>{formatInr(job.price)}</dd>
+                  <dd className="ui-price">{formatInr(job.price)}</dd>
                 </div>
               </dl>
             </section>

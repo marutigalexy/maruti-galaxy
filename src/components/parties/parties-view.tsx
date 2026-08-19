@@ -212,7 +212,7 @@ export function PartiesView({ query, result }: PartiesViewProps) {
             <Input id="create-mobile" name="mobile_number" required disabled={pending} placeholder="e.g. 9876543210" />
           </FormField>
           <FormField label="Price" htmlFor="create-price" required>
-            <Input id="create-price" name="price" inputMode="decimal" required disabled={pending} placeholder="e.g. 1500.00" />
+            <Input id="create-price" name="price" inputMode="decimal" required disabled={pending} placeholder="e.g. 1500.00" className="ui-price" />
           </FormField>
           {formError && createOpen ? (
             <p className="ui-field-error" role="alert">
@@ -298,6 +298,7 @@ export function PartiesView({ query, result }: PartiesViewProps) {
                 defaultValue={String(editParty.price)}
                 disabled={pending}
                 placeholder="e.g. 1500.00"
+                className="ui-price"
               />
             </FormField>
             {formError && editParty ? (
