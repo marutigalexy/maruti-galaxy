@@ -20,6 +20,7 @@ import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TableActions } from "@/components/ui/table-actions";
 import { useToast } from "@/components/ui/toast";
+import { useQueryPush } from "@/hooks/use-query-push";
 import type { Paginated } from "@/lib/api/pagination";
 import { formatInr, formatThan, formatWeightCt } from "@/lib/formatters";
 import type { ListJobsInput } from "@/lib/validation/jobs";
@@ -73,18 +74,22 @@ function statusTone(status: JobListRecord["status"]) {
 
 export function JobsView({ query, result, parties, employees }: JobsViewProps) {
   const router = useRouter();
+  const { pending: queryPending, push } = useQueryPush();
   const toast = useToast();
   const [createOpen, setCreateOpen] = useState(false);
   const [editJob, setEditJob] = useState<JobDetail | null>(null);
+  const [editJobId, setEditJobId] = useState<string | null>(null);
   const [editPending, startEdit] = useTransition();
 
   const pushQuery = (next: ListJobsInput) => {
-    router.push(jobsHref(next));
+    push(jobsHref(next));
   };
 
   function openEdit(jobId: string) {
     startEdit(async () => {
+      setEditJobId(jobId);
       const outcome = await getJobAction({ id: jobId });
+      setEditJobId(null);
       if (!outcome.ok) {
         toast.error(outcome.error?.message ?? "Unable to load job.");
         return;
@@ -227,6 +232,7 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
                 <IconButton
                   tone="edit"
                   label="Edit job"
+                  loading={editPending && editJobId === row.id}
                   disabled={editPending}
                   onClick={() => openEdit(row.id)}
                 >
@@ -238,6 +244,7 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
         ]}
         rows={result.records}
         rowKey={(row) => row.id}
+        loading={queryPending}
         onRowClick={(row) => router.push(`/jobs/${row.id}`)}
         emptyTitle={filteredEmpty ? "No jobs match the selected filters." : "No jobs found."}
       />
@@ -245,6 +252,7 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
         page={result.page}
         pageSize={result.pageSize}
         totalCount={result.totalCount}
+        disabled={queryPending}
         onPageChange={(page) => pushQuery({ ...query, page })}
         onPageSizeChange={(pageSize) => pushQuery({ ...query, page: 1, pageSize })}
       />

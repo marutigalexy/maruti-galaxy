@@ -22,7 +22,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
 import { FormField } from "@/components/ui/form-field";
 import { IconButton } from "@/components/ui/icon-button";
-import { DeleteIcon, EditIcon } from "@/components/ui/icons";
+import { DeleteIcon, EditIcon, EyeIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -247,128 +247,141 @@ export function JobDetailView({ job, invoice, employees, accounts, categories }:
           {job.sub_jobs.length === 0 ? (
             <p className="ui-field-help">No sub-jobs yet.</p>
           ) : (
-            job.sub_jobs.map((sub) => (
-              <article key={sub.id} className="ui-subjob-card">
-                <div className="ui-section-header">
-                  <h3 className="ui-subjob-title">{sub.display_no}</h3>
-                  <div className="ui-inline-actions">
-                    <StatusBadge tone={statusTone(sub.status)} />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        setExpandedId(expandedId === sub.id ? null : sub.id)
-                      }
-                    >
-                      {expandedId === sub.id ? "Hide work" : "Show work"}
-                    </Button>
-                    <IconButton
-                      tone="edit"
-                      label={`Edit ${sub.display_no}`}
-                      onClick={() => {
-                        setFormError(null);
-                        setEditSub(sub);
-                      }}
-                    >
-                      <EditIcon width={16} height={16} />
-                    </IconButton>
-                    <AddButton
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => {
-                        setFormError(null);
-                        setWorkEmployeeId("");
-                        setWorkDoneThan("");
-                        setWorkSub(sub);
-                      }}
-                    >
-                      Add Work
-                    </AddButton>
-                  </div>
-                </div>
-                <dl className="ui-property-list">
-                  <div className="ui-detail-item">
-                    <dt>Than</dt>
-                    <dd>{formatThan(sub.than)}</dd>
-                  </div>
-                  <div className="ui-detail-item">
-                    <dt>Done Than</dt>
-                    <dd>{formatThan(sub.done_than)}</dd>
-                  </div>
-                  <div className="ui-detail-item">
-                    <dt>Remaining Than</dt>
-                    <dd>{formatThan(sub.remaining_than)}</dd>
-                  </div>
-                  <div className="ui-detail-item">
-                    <dt>Weight</dt>
-                    <dd>{formatWeightCt(sub.weight)}</dd>
-                  </div>
-                </dl>
-                {expandedId === sub.id ? (
-                  <DataTable
-                    caption={`${sub.display_no} work`}
-                    columns={[
-                      {
-                        key: "employee",
-                        header: "Employee",
-                        render: (row) => row.employee_name,
-                      },
-                      {
-                        key: "than",
-                        header: "Done Than",
-                        numeric: true,
-                        render: (row) => String(row.done_than),
-                      },
-                      {
-                        key: "commission",
-                        header: "Commission (snapshot)",
-                        numeric: true,
-                        render: (row) => formatInr(row.commission),
-                      },
-                      {
-                        key: "earning",
-                        header: "Earning",
-                        numeric: true,
-                        render: (row) => formatInr(row.earning),
-                      },
-                      {
-                        key: "date",
-                        header: "Date",
-                        render: (row) => formatDisplayDate(row.created_at),
-                      },
-                      {
-                        key: "actions",
-                        header: "Actions",
-                        render: (row) => (
-                          <TableActions>
-                            <IconButton
-                              tone="edit"
-                              label="Edit work"
-                              onClick={() => {
-                                setFormError(null);
-                                setEditWork(row);
-                              }}
-                            >
-                              <EditIcon width={16} height={16} />
-                            </IconButton>
-                            <IconButton
-                              tone="delete"
-                              label="Delete work"
-                              onClick={() => setDeleteWork(row)}
-                            >
-                              <DeleteIcon width={16} height={16} />
-                            </IconButton>
-                          </TableActions>
-                        ),
-                      },
-                    ]}
-                    rows={sub.work}
-                    rowKey={(row) => row.id}
-                    emptyTitle="No employee work has been recorded for this sub-job yet."
-                  />
-                ) : null}
-              </article>
-            ))
+            <div className="ui-subjob-list">
+              {job.sub_jobs.map((sub) => {
+                const workExpanded = expandedId === sub.id;
+                const workPanelId = `subjob-work-${sub.id}`;
+
+                return (
+                  <article key={sub.id} className="ui-subjob-card">
+                    <div className="ui-subjob-header">
+                      <div className="ui-subjob-heading">
+                        <h3 className="ui-subjob-title">{sub.display_no}</h3>
+                        <StatusBadge tone={statusTone(sub.status)} />
+                      </div>
+                      <div className="ui-inline-actions">
+                        <IconButton
+                          label={workExpanded ? "Hide work" : "Show work"}
+                          aria-expanded={workExpanded}
+                          aria-controls={workExpanded ? workPanelId : undefined}
+                          onClick={() =>
+                            setExpandedId(workExpanded ? null : sub.id)
+                          }
+                        >
+                          <EyeIcon width={16} height={16} />
+                        </IconButton>
+                        <IconButton
+                          tone="edit"
+                          label={`Edit ${sub.display_no}`}
+                          onClick={() => {
+                            setFormError(null);
+                            setEditSub(sub);
+                          }}
+                        >
+                          <EditIcon width={16} height={16} />
+                        </IconButton>
+                        <AddButton
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => {
+                            setFormError(null);
+                            setWorkEmployeeId("");
+                            setWorkDoneThan("");
+                            setWorkSub(sub);
+                          }}
+                        >
+                          Add Work
+                        </AddButton>
+                      </div>
+                    </div>
+                    <dl className="ui-summary-grid">
+                      <div className="ui-detail-item">
+                        <dt>Total</dt>
+                        <dd>{formatThan(sub.than)}</dd>
+                      </div>
+                      <div className="ui-detail-item">
+                        <dt>Done</dt>
+                        <dd>{formatThan(sub.done_than)}</dd>
+                      </div>
+                      <div className="ui-detail-item">
+                        <dt>Remaining Than</dt>
+                        <dd>{formatThan(sub.remaining_than)}</dd>
+                      </div>
+                      <div className="ui-detail-item">
+                        <dt>Weight</dt>
+                        <dd>{formatWeightCt(sub.weight)}</dd>
+                      </div>
+                    </dl>
+                    {workExpanded ? (
+                      <div id={workPanelId}>
+                        <DataTable
+                          caption={`${sub.display_no} work`}
+                          columns={[
+                            {
+                              key: "date",
+                              header: "Date",
+                              render: (row) =>
+                                formatDisplayDate(row.created_at),
+                            },
+                            {
+                              key: "employee",
+                              header: "Employee",
+                              render: (row) => row.employee_name,
+                            },
+                            {
+                              key: "than",
+                              header: "Done Than",
+                              numeric: true,
+                              render: (row) => String(row.done_than),
+                            },
+                            {
+                              key: "commission",
+                              header: "Commission",
+                              numeric: true,
+                              render: (row) => formatInr(row.commission),
+                            },
+                            {
+                              key: "earning",
+                              header: "Earning",
+                              numeric: true,
+                              render: (row) => formatInr(row.earning),
+                            },
+                            {
+                              key: "actions",
+                              header: "Actions",
+                              render: (row) => (
+                                <TableActions>
+                                  <IconButton
+                                    tone="edit"
+                                    label="Edit work"
+                                    onClick={() => {
+                                      setFormError(null);
+                                      setEditWork(row);
+                                    }}
+                                  >
+                                    <EditIcon width={16} height={16} />
+                                  </IconButton>
+                                  <IconButton
+                                    tone="delete"
+                                    label="Delete work"
+                                    onClick={() => setDeleteWork(row)}
+                                  >
+                                    <DeleteIcon width={16} height={16} />
+                                  </IconButton>
+                                </TableActions>
+                              ),
+                            },
+                          ]}
+                          rows={sub.work}
+                          rowKey={(row) => row.id}
+                          emptyTitle="No employee work has been recorded for this sub-job yet."
+                        />
+                      </div>
+                    ) : null}
+                  </article>
+                );
+              })}
+            </div>
           )}
         </Card>
       </div>
@@ -408,10 +421,6 @@ export function JobDetailView({ job, invoice, employees, accounts, categories }:
             );
           }}
         >
-          <p className="ui-field-help">
-            Remaining Main Job Than: {formatThan(job.remaining_than)}. Sub-job
-            number is assigned on save.
-          </p>
           <FormField label="Than" htmlFor="create-sub-than" required>
             <Input
               id="create-sub-than"
@@ -458,8 +467,8 @@ export function JobDetailView({ job, invoice, employees, accounts, categories }:
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Saving…" : "Create"}
+            <Button type="submit" loading={pending}>
+              Create
             </Button>
           </div>
         </form>
@@ -538,8 +547,8 @@ export function JobDetailView({ job, invoice, employees, accounts, categories }:
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={pending}>
-                {pending ? "Saving…" : "Save"}
+              <Button type="submit" loading={pending}>
+                Save
               </Button>
             </div>
           </form>
@@ -624,8 +633,8 @@ export function JobDetailView({ job, invoice, employees, accounts, categories }:
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={pending}>
-                {pending ? "Saving…" : "Add Work"}
+              <Button type="submit" loading={pending}>
+                Add Work
               </Button>
             </div>
           </form>
@@ -684,8 +693,8 @@ export function JobDetailView({ job, invoice, employees, accounts, categories }:
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={pending}>
-                {pending ? "Saving…" : "Save"}
+              <Button type="submit" loading={pending}>
+                Save
               </Button>
             </div>
           </form>

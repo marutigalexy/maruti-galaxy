@@ -142,8 +142,8 @@ export function JobEditForm({ job, onCancel }: JobEditFormProps) {
         <Button variant="secondary" disabled={pending} onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit" disabled={pending}>
-          {pending ? "Saving…" : "Update"}
+        <Button type="submit" loading={pending}>
+          Update
         </Button>
       </div>
     </form>
