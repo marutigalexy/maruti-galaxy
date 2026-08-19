@@ -332,7 +332,7 @@ export function JobDetailView({ job, invoice, employees, accounts, categories }:
                               key: "than",
                               header: "Done Than",
                               numeric: true,
-                              render: (row) => String(row.done_than),
+                              render: (row) => formatThan(row.done_than),
                             },
                             {
                               key: "commission",

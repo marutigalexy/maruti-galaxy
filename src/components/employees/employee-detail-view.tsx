@@ -85,7 +85,7 @@ export function EmployeeDetailView({ employee, summary, accounts, categories }: 
                 header: "Date",
                 render: (row) => formatDisplayDate(row.created_at),
               },
-              { key: "than", header: "Done Than", numeric: true, render: (row) => String(row.done_than) },
+              { key: "than", header: "Done Than", numeric: true, render: (row) => formatThan(row.done_than) },
               {
                 key: "commission",
                 header: "Commission",

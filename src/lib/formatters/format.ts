@@ -13,7 +13,12 @@ export function formatInr(amount: string | number): string {
 }
 
 export function formatThan(value: string | number): string {
-  return `${value} Than`;
+  const amount = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(amount)) {
+    return "0";
+  }
+
+  return String(amount);
 }
 
 export function formatWeightCt(value: string | number): string {

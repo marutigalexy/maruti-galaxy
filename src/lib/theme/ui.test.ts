@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { paginationControls} from "@/lib/api/pagination";
-import { formatInr, formatWeightCt } from "@/lib/formatters";
+import { formatInr, formatThan, formatWeightCt } from "@/lib/formatters";
 import {
   breadcrumbsForPath,
   isNavActive,
@@ -133,8 +133,11 @@ describe("navigation", () => {
 });
 
 describe("formatters", () => {
-  it("formats INR and carat weight", () => {
+  it("formats INR, than quantity, and carat weight", () => {
     expect(formatInr("1234.5")).toContain("1,234.50");
+    expect(formatThan("10.00")).toBe("10");
+    expect(formatThan(10.5)).toBe("10.5");
+    expect(formatThan("10")).not.toMatch(/Than/);
     expect(formatWeightCt("12.500")).toBe("12.500 ct");
   });
 });
