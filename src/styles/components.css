@@ -573,14 +573,20 @@ a {
 
 .ui-add-button,
 .ui-edit-button,
-.ui-reset-button {
+.ui-reset-button,
+.ui-export-button {
   gap: var(--space-6);
 }
 
 .ui-add-button svg,
 .ui-edit-button svg,
-.ui-reset-button svg {
+.ui-reset-button svg,
+.ui-export-button svg {
   flex-shrink: 0;
+}
+
+.ui-export-button {
+  text-decoration: none;
 }
 
 .ui-pagination {
@@ -711,9 +717,47 @@ a {
 }
 
 .ui-search-wrap {
+  position: relative;
   min-width: min(100%, 200px);
   max-width: 320px;
   flex: 1;
+}
+
+.ui-search {
+  padding-right: 2.25rem;
+}
+
+.ui-search::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.ui-search-clear {
+  position: absolute;
+  top: 50%;
+  right: 0.4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-secondary-text);
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.ui-search-clear:hover {
+  background: var(--color-light-silver);
+  color: var(--color-dark-navy);
+}
+
+.ui-search-clear:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-focus-glow);
 }
 
 .ui-badge {
@@ -911,6 +955,115 @@ a {
   height: 14px;
   border-radius: var(--radius-sm);
   background: var(--color-light-silver);
+  animation: ui-skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+.ui-skeleton-label {
+  width: 4.5rem;
+  height: 12px;
+}
+
+.ui-skeleton-control {
+  width: 100%;
+  height: var(--control-height);
+  border-radius: var(--radius-md);
+}
+
+.ui-skeleton-button {
+  width: 7.5rem;
+}
+
+.ui-skeleton-title {
+  width: 12rem;
+  height: 18px;
+  margin-bottom: var(--space-12);
+}
+
+.ui-skeleton-kpi-label {
+  width: 7rem;
+  height: 12px;
+}
+
+.ui-skeleton-kpi-value {
+  width: 8.5rem;
+  height: 28px;
+}
+
+.ui-skeleton-kpi-help {
+  width: 5rem;
+  height: 10px;
+}
+
+.ui-kpi-card.is-skeleton {
+  pointer-events: none;
+}
+
+.ui-kpi-card.is-skeleton:hover {
+  transform: none;
+  box-shadow: var(--shadow-sm);
+}
+
+.ui-page-loading {
+  display: grid;
+  gap: var(--space-16);
+}
+
+.ui-auth-loading {
+  display: grid;
+  gap: var(--space-16);
+}
+
+.ui-summary-grid .ui-skeleton-label {
+  width: 6rem;
+}
+
+.ui-summary-grid .ui-skeleton-kpi-value {
+  width: 7rem;
+  height: 1.375rem;
+  margin-top: var(--space-4);
+}
+
+.ui-table td .ui-skeleton-line,
+.ui-table th .ui-skeleton-line {
+  width: 70%;
+  max-width: 12rem;
+}
+
+.ui-table .is-numeric .ui-skeleton-line,
+.ui-table .is-center .ui-skeleton-line {
+  width: 4.5rem;
+  margin-left: auto;
+}
+
+.ui-table .is-center .ui-skeleton-line {
+  margin-right: auto;
+}
+
+.ui-spinner {
+  animation: ui-spin 0.7s linear infinite;
+}
+
+@keyframes ui-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes ui-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-skeleton-line,
+  .ui-spinner {
+    animation: none;
+  }
 }
 
 .ui-tooltip {
@@ -2066,22 +2219,57 @@ a {
   border-bottom: 0;
 }
 
+.ui-subjob-list {
+  display: grid;
+  gap: var(--space-16);
+}
+
 .ui-subjob-card {
-  padding: var(--space-16) 0;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.ui-subjob-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  padding: var(--space-16);
+}
+
+.ui-subjob-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.ui-subjob-card .ui-summary-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-bottom: 0;
+}
+
+.ui-subjob-card .ui-summary-grid .ui-detail-item {
+  padding: var(--space-16);
+  text-align: center;
+}
+
+.ui-subjob-card .ui-summary-grid .ui-detail-item:not(:last-child) {
+  margin-right: 0;
+}
+
+.ui-subjob-card .ui-table-wrap,
+.ui-subjob-card .ui-empty {
+  margin: 0;
+  border: 0;
   border-top: 1px solid var(--color-border-subtle);
-}
-
-.ui-subjob-card:first-child {
-  padding-top: 0;
-  border-top: 0;
-}
-
-.ui-subjob-card .ui-property-list {
-  margin-top: var(--space-12);
-}
-
-.ui-subjob-card .ui-table-wrap {
-  margin-top: var(--space-16);
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .ui-subjob {
@@ -2106,7 +2294,7 @@ a {
 .ui-subjob-title {
   margin: 0;
   font-size: var(--font-size-body);
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-bold);
   color: var(--color-dark-navy);
 }
 
@@ -2139,8 +2327,10 @@ a {
 }
 
 .invoice-print-shell:has(.invoice-bill) {
-  min-height: 0;
+  min-height: fit-content;
+  height: auto;
   padding: 0;
+  overflow: visible;
   background: var(--color-surface);
 }
 
@@ -2240,11 +2430,11 @@ a {
   flex-direction: column;
   box-sizing: border-box;
   width: 210mm;
-  height: auto;
-  min-height: 297mm;
+  height: auto !important;
+  min-height: max(297mm, fit-content);
   max-width: 210mm;
   padding: 4.5mm 5.3mm 4.2mm;
-  overflow: visible;
+  overflow: visible !important;
   color: var(--color-invoice-rule);
   background: var(--color-surface);
   font-family: Calibri, Carlito, Arial, Helvetica, sans-serif;
@@ -2298,9 +2488,11 @@ a {
 .invoice-bill-frame {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 0;
+  min-height: auto;
+  overflow: visible;
   border: 1px solid var(--color-invoice-rule);
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .invoice-bill-party {
@@ -2361,10 +2553,13 @@ a {
 .invoice-bill-grid {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 0;
+  height: auto;
+  min-height: auto;
+  overflow: visible;
   border-top: 1px solid var(--color-invoice-rule);
   border-bottom: 1px solid var(--color-invoice-rule);
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .invoice-bill-cols {
@@ -2396,7 +2591,8 @@ a {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 6mm;
+  height: auto;
+  min-height: 6mm;
   border-bottom: 1px solid var(--color-invoice-rule);
 }
 
@@ -2405,6 +2601,9 @@ a {
   align-items: center;
   font-size: 10pt;
   font-weight: 400;
+  height: auto;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .invoice-bill-data > * {
@@ -2452,7 +2651,7 @@ a {
 }
 
 .invoice-bill-spacer {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 24mm;
   align-items: stretch;
 }
@@ -2473,7 +2672,8 @@ a {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 7.4mm;
+  height: auto;
+  min-height: 7.4mm;
   padding: 0 4pt;
 }
 
@@ -2517,8 +2717,12 @@ a {
   grid-template-columns: 1fr 42mm;
   gap: 12pt;
   flex: 0 0 auto;
+  height: auto;
   min-height: 20mm;
   padding: 6pt 8pt 8pt;
+  overflow: visible;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .invoice-bill-bank p,
@@ -2555,6 +2759,15 @@ a {
     background: var(--color-surface);
   }
 
+  .app-shell,
+  .app-shell-main,
+  .app-content {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
   body * {
     visibility: hidden;
   }
@@ -2569,15 +2782,21 @@ a {
   .invoice-print-root,
   .invoice-print-shell {
     position: absolute;
-    inset: 0;
+    top: 0;
+    left: 0;
+    right: auto;
+    bottom: auto;
     width: 210mm;
-    height: auto;
-    min-height: 297mm;
+    height: auto !important;
+    min-height: fit-content;
     margin: 0;
     padding: 0;
-    overflow: visible;
-    clip: auto;
+    overflow: visible !important;
+    clip: auto !important;
+    clip-path: none !important;
     white-space: normal;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   .invoice-print-actions {
@@ -2585,7 +2804,6 @@ a {
   }
 
   .invoice-print-shell {
-    min-height: 297mm;
     padding: 0;
     background: var(--color-surface);
     print-color-adjust: exact;
@@ -2594,15 +2812,33 @@ a {
 
   .invoice-print-sheet {
     max-width: 210mm;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .invoice-bill,
+  .invoice-bill-frame,
+  .invoice-bill-grid,
+  .invoice-bill-cols,
+  .invoice-bill-data,
+  .invoice-bill-footer {
+    height: auto !important;
+    overflow: visible !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   .invoice-bill {
     width: 210mm;
     max-width: 210mm;
-    height: auto;
-    min-height: 297mm;
+    min-height: fit-content;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
+  }
+
+  .invoice-print-table,
+  .invoice-print-table tbody {
+    height: auto;
   }
 
   @page {
@@ -2910,6 +3146,24 @@ a {
     margin-right: 0;
     padding-right: 0;
     padding-bottom: var(--space-12);
+  }
+
+  .ui-subjob-card .ui-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ui-subjob-card .ui-summary-grid .ui-detail-item,
+  .ui-subjob-card .ui-summary-grid .ui-detail-item:not(:last-child) {
+    border-right: 1px solid var(--color-border-subtle);
+    padding: var(--space-12) var(--space-16);
+  }
+
+  .ui-subjob-card .ui-summary-grid .ui-detail-item:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .ui-subjob-card .ui-summary-grid .ui-detail-item:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--color-border-subtle);
   }
 
   .ui-report-item {

@@ -1,14 +1,15 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-
 import { DataTable } from "@/components/ui/data-table";
 import { DatePicker } from "@/components/ui/date-picker";
+import { ExportButton } from "@/components/ui/export-button";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { FormField } from "@/components/ui/form-field";
 import { Pagination } from "@/components/ui/pagination";
+import { SearchInput } from "@/components/ui/search-input";
 import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { useQueryPush } from "@/hooks/use-query-push";
 import { queryHref } from "@/lib/api/query-href";
 import type { Paginated } from "@/lib/api/pagination";
 import { formatDisplayDate, formatInr, formatThan, formatWeightCt } from "@/lib/formatters";
@@ -32,12 +33,24 @@ function statusTone(status: JobWorkReportRow["status"]) {
   return "pending" as const;
 }
 
+function exportHref(query: JobWorkReportInput): string {
+  return queryHref("/api/export/jobs", {
+    search: query.search,
+    status: query.status,
+    job_type: query.job_type,
+    party_id: query.party_id,
+    date_from: query.date_from,
+    date_to: query.date_to,
+  });
+}
+
 export function JobWorkReportView({ query, result, parties }: JobWorkReportViewProps) {
-  const router = useRouter();
+  const { pending: queryPending, push } = useQueryPush();
   const pushQuery = (next: JobWorkReportInput) => {
-    router.push(queryHref("/reports/jobs", next));
+    push(queryHref("/reports/jobs", next));
   };
   const filtered =
+    Boolean(query.search) ||
     query.status !== "all" ||
     query.job_type !== "all" ||
     Boolean(query.party_id) ||
@@ -47,8 +60,10 @@ export function JobWorkReportView({ query, result, parties }: JobWorkReportViewP
   return (
     <>
       <FilterBar
+        action={<ExportButton href={exportHref(query)} />}
         onReset={() =>
           pushQuery({
+            search: "",
             status: "all",
             job_type: "all",
             party_id: undefined,
@@ -59,6 +74,13 @@ export function JobWorkReportView({ query, result, parties }: JobWorkReportViewP
           })
         }
       >
+        <SearchInput
+          id="report-job-lot"
+          label="Lot Number"
+          value={query.search}
+          onValueChange={(search) => pushQuery({ ...query, search, page: 1 })}
+          placeholder="Search lot number"
+        />
         <FormField label="Job Type" htmlFor="report-job-type">
           <Select
             id="report-job-type"
@@ -137,12 +159,14 @@ export function JobWorkReportView({ query, result, parties }: JobWorkReportViewP
         ]}
         rows={result.records}
         rowKey={(row) => row.id}
+        loading={queryPending}
         emptyTitle={filtered ? "No jobs match the selected filters." : "No jobs found."}
       />
       <Pagination
         page={result.page}
         pageSize={result.pageSize}
         totalCount={result.totalCount}
+        disabled={queryPending}
         onPageChange={(page) => pushQuery({ ...query, page })}
         onPageSizeChange={(pageSize) => pushQuery({ ...query, page: 1, pageSize })}
       />

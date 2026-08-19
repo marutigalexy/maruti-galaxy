@@ -36,7 +36,7 @@ describe("OPS-002 production isolation", () => {
   });
 
   it("has no debug API endpoints", () => {
-    expect(existsSync(path.join(process.cwd(), "src/app/api/export/entries/route.ts"))).toBe(true);
+    expect(existsSync(path.join(process.cwd(), "src/app/api/export/[report]/route.ts"))).toBe(true);
     expect(existsSync(path.join(process.cwd(), "src/app/api/debug"))).toBe(false);
     expect(existsSync(path.join(process.cwd(), "src/app/api/health"))).toBe(false);
   });

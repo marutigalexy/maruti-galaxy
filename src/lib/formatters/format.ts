@@ -21,6 +21,18 @@ export function formatWeightCt(value: string | number): string {
   return `${amount} ct`;
 }
 
+export function formatMonthYear(yearMonth: string): string {
+  const date = new Date(`${yearMonth}-01T00:00:00`);
+  if (Number.isNaN(date.getTime())) {
+    return yearMonth;
+  }
+
+  return new Intl.DateTimeFormat("en-IN", {
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
 export function formatDisplayDate(value: string | Date): string {
   const date =
     value instanceof Date

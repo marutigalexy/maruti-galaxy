@@ -12,6 +12,7 @@ type JobWorkReportsPageProps = {
     status?: string;
     job_type?: string;
     party_id?: string;
+    search?: string;
     date_from?: string;
     date_to?: string;
     page?: string;
@@ -31,6 +32,7 @@ export default async function JobWorkReportsPage({ searchParams }: JobWorkReport
       status: params.status ?? "all",
       job_type: params.job_type ?? "all",
       party_id: params.party_id,
+      search: params.search ?? "",
       date_from: params.date_from,
       date_to: params.date_to,
       page: params.page,

@@ -81,14 +81,14 @@ if (existsSync(apiDir)) {
     }
   }
   walk(apiDir);
-  const allowed = new Set(["export/entries/route.ts"]);
+  const allowed = new Set(["export/[report]/route.ts"]);
   for (const route of routes) {
     if (!allowed.has(route)) {
       failures.push(`src/app/api/${route}: unexpected API route (no debug endpoints)`);
     }
   }
-  if (!routes.includes("export/entries/route.ts")) {
-    failures.push("missing GET /api/export/entries");
+  if (!routes.includes("export/[report]/route.ts")) {
+    failures.push("missing GET /api/export/[report]");
   }
 } else {
   failures.push("missing src/app/api");

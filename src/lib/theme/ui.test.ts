@@ -163,6 +163,17 @@ describe("search debounce", () => {
     await new Promise((resolve) => setTimeout(resolve, 40));
     expect(calls).toEqual(["J01"]);
   });
+
+  it("cancels a pending emission", async () => {
+    const calls: string[] = [];
+    const emit = debounce((value: string) => {
+      calls.push(value);
+    }, 20);
+    emit("J01");
+    emit.cancel();
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    expect(calls).toEqual([]);
+  });
 });
 
 describe("select menus", () => {
@@ -172,6 +183,48 @@ describe("select menus", () => {
     expect(select).toMatch(/CheckIcon/);
     expect(select).toMatch(/ui-select-menu/);
     expect(select).toMatch(/window\.showPopover|showPopover/);
+  });
+});
+
+describe("loading states", () => {
+  it("keeps table, KPI, and page skeletons plus button spinners", () => {
+    const table = readFileSync(path.join(process.cwd(), "src/components/ui/data-table.tsx"), "utf8");
+    const skeleton = readFileSync(path.join(process.cwd(), "src/components/ui/skeleton.tsx"), "utf8");
+    const button = readFileSync(path.join(process.cwd(), "src/components/ui/button.tsx"), "utf8");
+    const iconButton = readFileSync(path.join(process.cwd(), "src/components/ui/icon-button.tsx"), "utf8");
+    const css = readFileSync(path.join(process.cwd(), "src/styles/components.css"), "utf8");
+    const queryPush = readFileSync(path.join(process.cwd(), "src/hooks/use-query-push.ts"), "utf8");
+
+    expect(table).toMatch(/if \(error\)/);
+    expect(table).toMatch(/if \(loading\)/);
+    expect(table).toMatch(/TableSkeleton/);
+    expect(table).toMatch(/EmptyState/);
+    expect(table).toMatch(/columns=\{columns\}/);
+    expect(button).toMatch(/loading \? <SpinnerIcon/);
+    expect(button).toMatch(/aria-busy=\{loading/);
+    expect(button).toMatch(/disabled=\{Boolean\(disabled \|\| loading\)\}/);
+    expect(iconButton).toMatch(/loading \? <SpinnerIcon/);
+    expect(skeleton).toMatch(/export function TableSkeleton/);
+    expect(skeleton).toMatch(/export function KpiGridSkeleton/);
+    expect(skeleton).toMatch(/export function ListPageSkeleton/);
+    expect(skeleton).toMatch(/export function ReportPageSkeleton/);
+    expect(skeleton).toMatch(/export function DashboardPageSkeleton/);
+    expect(queryPush).toMatch(/startTransition/);
+    expect(css).toMatch(/@keyframes ui-skeleton-pulse/);
+    expect(css).toMatch(/@keyframes ui-spin/);
+    expect(css).toMatch(/prefers-reduced-motion: reduce/);
+    expect(readFileSync(path.join(process.cwd(), "src/app/(dashboard)/loading.tsx"), "utf8")).toMatch(
+      /ListPageSkeleton/,
+    );
+    expect(readFileSync(path.join(process.cwd(), "src/app/(dashboard)/dashboard/loading.tsx"), "utf8")).toMatch(
+      /DashboardPageSkeleton/,
+    );
+    expect(readFileSync(path.join(process.cwd(), "src/app/(dashboard)/reports/loading.tsx"), "utf8")).toMatch(
+      /ReportPageSkeleton/,
+    );
+    expect(readFileSync(path.join(process.cwd(), "src/app/(auth)/auth/login/loading.tsx"), "utf8")).toMatch(
+      /AuthPageSkeleton/,
+    );
   });
 });
 

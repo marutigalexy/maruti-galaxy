@@ -73,6 +73,25 @@ export function ResetIcon(props: IconProps) {
   );
 }
 
+export function DownloadIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <path d="M7 10l5 5 5-5" />
+      <path d="M12 15V3" />
+    </Svg>
+  );
+}
+
+export function CloseIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
+    </Svg>
+  );
+}
+
 export function PrintIcon(props: IconProps) {
   return (
     <Svg {...props}>
@@ -162,6 +181,14 @@ export function EyeOffIcon(props: IconProps) {
       <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
       <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
       <line x1="2" x2="22" y1="2" y2="22" />
+    </Svg>
+  );
+}
+
+export function SpinnerIcon({ className, ...props }: IconProps) {
+  return (
+    <Svg className={["ui-spinner", className].filter(Boolean).join(" ")} {...props}>
+      <path d="M21 12a9 9 0 1 1-6.22-8.56" />
     </Svg>
   );
 }

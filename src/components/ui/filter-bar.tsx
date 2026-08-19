@@ -15,7 +15,7 @@ export function FilterBar({ children, onReset, action }: FilterBarProps) {
       <div className="ui-filter-bar" role="search" aria-label="Filters">
         {children}
         {onReset ? (
-          <Button variant="ghost" size="sm" className="ui-reset-button" onClick={onReset}>
+          <Button variant="secondary" className="ui-reset-button" onClick={onReset}>
             <ResetIcon width={16} height={16} aria-hidden="true" />
             Reset
           </Button>

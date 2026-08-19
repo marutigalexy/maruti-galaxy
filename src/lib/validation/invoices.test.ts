@@ -87,6 +87,7 @@ describe("invoice read security", () => {
     path.join(process.cwd(), "src/components/invoices/invoice-bill-view.tsx"),
     "utf8",
   );
+  const css = readFileSync(path.join(process.cwd(), "src/styles/components.css"), "utf8");
   const billCopy = readFileSync(path.join(process.cwd(), "src/lib/invoices/bill.ts"), "utf8");
   const partyPrintView = readFileSync(
     path.join(process.cwd(), "src/components/parties/party-outstanding-print-view.tsx"),
@@ -165,5 +166,9 @@ describe("invoice read security", () => {
     expect(partyPrintButton).toMatch(/window\.print/);
     expect(partyPrintView).toMatch(/InvoiceBillView/);
     expect(partyPrintView).toMatch(/outstanding > 0/);
+    expect(css).toMatch(/\.invoice-print-root[\s\S]*overflow:\s*visible\s*!important/);
+    expect(css).toMatch(/\.invoice-bill[\s\S]*height:\s*auto\s*!important/);
+    expect(css).toMatch(/\.invoice-bill-footer[\s\S]*page-break-inside:\s*avoid/);
+    expect(css).toMatch(/bottom:\s*auto;/);
   });
 });

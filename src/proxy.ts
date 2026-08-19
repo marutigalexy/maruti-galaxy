@@ -48,7 +48,7 @@ function isLoginPost(request: NextRequest): boolean {
 }
 
 function isExportRequest(request: NextRequest): boolean {
-  return request.nextUrl.pathname === "/api/export/entries";
+  return request.nextUrl.pathname.startsWith("/api/export/");
 }
 
 export async function proxy(request: NextRequest) {

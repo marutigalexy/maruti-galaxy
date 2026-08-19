@@ -89,6 +89,7 @@ export {
 
 export {
   entryReportSchema,
+  EXPORT_REPORT_MAX_ROWS,
   jobWorkReportSchema,
   outstandingReportSchema,
   profitLossSchema,

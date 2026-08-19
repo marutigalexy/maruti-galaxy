@@ -1,16 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 import { DataTable } from "@/components/ui/data-table";
 import { DatePicker } from "@/components/ui/date-picker";
+import { ExportButton } from "@/components/ui/export-button";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { FormField } from "@/components/ui/form-field";
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput } from "@/components/ui/search-input";
 import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { useQueryPush } from "@/hooks/use-query-push";
 import { queryHref } from "@/lib/api/query-href";
 import type { Paginated } from "@/lib/api/pagination";
 import { formatDisplayDate, formatInr } from "@/lib/formatters";
@@ -34,10 +35,20 @@ function invoiceTone(status: InvoiceListRecord["status"]) {
   return "unpaid" as const;
 }
 
+function exportHref(query: ListInvoicesInput): string {
+  return queryHref("/api/export/outstanding", {
+    search: query.search,
+    status: query.status,
+    party_id: query.party_id,
+    date_from: query.date_from,
+    date_to: query.date_to,
+  });
+}
+
 export function OutstandingReportView({ query, result, parties }: OutstandingReportViewProps) {
-  const router = useRouter();
+  const { pending: queryPending, push } = useQueryPush();
   const pushQuery = (next: ListInvoicesInput) => {
-    router.push(queryHref("/reports/outstanding", next));
+    push(queryHref("/reports/outstanding", next));
   };
   const filtered =
     Boolean(query.search) ||
@@ -49,6 +60,7 @@ export function OutstandingReportView({ query, result, parties }: OutstandingRep
   return (
     <>
       <FilterBar
+        action={<ExportButton href={exportHref(query)} />}
         onReset={() =>
           pushQuery({
             search: "",
@@ -132,12 +144,14 @@ export function OutstandingReportView({ query, result, parties }: OutstandingRep
         ]}
         rows={result.records}
         rowKey={(row) => row.id}
+        loading={queryPending}
         emptyTitle={filtered ? "No invoices match the selected filters." : "No invoices found."}
       />
       <Pagination
         page={result.page}
         pageSize={result.pageSize}
         totalCount={result.totalCount}
+        disabled={queryPending}
         onPageChange={(page) => pushQuery({ ...query, page })}
         onPageSizeChange={(pageSize) => pushQuery({ ...query, page: 1, pageSize })}
       />

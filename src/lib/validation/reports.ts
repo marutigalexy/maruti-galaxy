@@ -11,6 +11,7 @@ import {
   isoDateSchema,
   pageSchema,
   pageSizeSchema,
+  searchSchema,
   uuidSchema,
 } from "@/lib/validation/schemas";
 
@@ -36,11 +37,14 @@ function withDateOrder<T extends z.ZodType>(schema: T) {
   );
 }
 
+export const EXPORT_REPORT_MAX_ROWS = 5000;
+
 export const jobWorkReportSchema = withDateOrder(
   z
     .object({
       page: pageSchema,
       pageSize: pageSizeSchema,
+      search: z.preprocess((value) => value ?? "", searchSchema),
       status: jobStatusFilterSchema.optional().default("all"),
       job_type: jobTypeFilterSchema.optional().default("all"),
       party_id: z.preprocess(emptyToUndefined, uuidSchema.optional()),
@@ -49,6 +53,7 @@ export const jobWorkReportSchema = withDateOrder(
     .transform((value) => ({
       page: value.page,
       pageSize: clampPageSize(value.pageSize),
+      search: value.search,
       status: value.status,
       job_type: value.job_type,
       party_id: value.party_id,

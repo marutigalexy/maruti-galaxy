@@ -6,12 +6,14 @@ import { describe, expect, it } from "vitest";
 import { queryHref } from "@/lib/api/query-href";
 import { currentMonthRange } from "@/lib/dates/month";
 import { NAV_ITEMS } from "@/lib/navigation/nav";
+import { formatMonthYear } from "@/lib/formatters";
 import { parseOrThrow } from "@/lib/validation";
 import {
   jobWorkReportSchema,
   profitLossSchema,
   salaryReportSchema,
 } from "@/lib/validation/reports";
+import { groupProfitLossByMonth } from "@/lib/reports/profit-loss";
 
 const UUID = "11111111-1111-4111-8111-111111111111";
 
@@ -38,6 +40,14 @@ describe("report schemas", () => {
       pageSize: 20,
     });
   });
+
+  it("parses job work lot number search with other filters", () => {
+    expect(parseOrThrow(jobWorkReportSchema, { search: " J01 ", job_type: "Sarin" })).toMatchObject({
+      search: "J01",
+      job_type: "Sarin",
+      status: "all",
+    });
+  });
 });
 
 describe("current month range", () => {
@@ -62,6 +72,30 @@ describe("queryHref", () => {
   });
 });
 
+describe("profit and loss monthly grouping", () => {
+  it("sorts months chronologically and nets income minus expense", () => {
+    const months = groupProfitLossByMonth([
+      { entry_date: "2026-03-12", entry_type: "Income", amount: 100 },
+      { entry_date: "2026-01-02", entry_type: "Expense", amount: 40 },
+      { entry_date: "2026-03-01", entry_type: "Expense", amount: 25 },
+      { entry_date: "2026-01-20", entry_type: "Income", amount: 10 },
+    ]);
+
+    expect(months.map((row) => row.month)).toEqual(["2026-01", "2026-03"]);
+    expect(months[0]).toMatchObject({
+      label: formatMonthYear("2026-01"),
+      total_income: 10,
+      total_expense: 40,
+      net: -30,
+    });
+    expect(months[1]).toMatchObject({
+      total_income: 100,
+      total_expense: 25,
+      net: 75,
+    });
+  });
+});
+
 describe("report and dashboard security", () => {
   const reports = readFileSync(
     path.join(process.cwd(), "src/services/reports/reports-service.ts"),
@@ -81,6 +115,14 @@ describe("report and dashboard security", () => {
   );
   const plView = readFileSync(
     path.join(process.cwd(), "src/components/reports/profit-loss-view.tsx"),
+    "utf8",
+  );
+  const kpiCards = readFileSync(
+    path.join(process.cwd(), "src/components/reports/financial-kpi-cards.tsx"),
+    "utf8",
+  );
+  const exportRoute = readFileSync(
+    path.join(process.cwd(), "src/app/api/export/[report]/route.ts"),
     "utf8",
   );
   const dashView = readFileSync(
@@ -122,10 +164,24 @@ describe("report and dashboard security", () => {
     expect(jobView).toMatch(/Lot Number/);
     expect(jobView).toMatch(/Done Than/);
     expect(jobView).toMatch(/Sub Jobs/);
+    expect(jobView).toMatch(/Search lot number/);
+    expect(jobView).toMatch(/ExportButton/);
     expect(ledgerView).not.toMatch(/Running Balance/);
-    expect(plView).toMatch(/Income − Expenses/);
+    expect(ledgerView).toMatch(/ExportButton/);
+    expect(kpiCards).toMatch(/Income − Expenses/);
+    expect(kpiCards).toMatch(/Total Income/);
+    expect(kpiCards).toMatch(/Total Expense/);
+    expect(kpiCards).toMatch(/Total Entries/);
+    expect(plView).toMatch(/Month/);
+    expect(plView).toMatch(/Net Profit\/Loss/);
+    expect(plView).toMatch(/ExportButton/);
     expect(plView).not.toMatch(/COGS/);
     expect(plView).not.toMatch(/Depreciation/);
+    expect(exportRoute).toMatch(/parseOrThrow\(jobWorkReportSchema/);
+    expect(exportRoute).toMatch(/parseOrThrow\(listInvoicesSchema/);
+    expect(exportRoute).toMatch(/parseOrThrow\(salaryReportSchema/);
+    expect(exportRoute).toMatch(/parseOrThrow\(profitLossSchema/);
+    expect(reports).toMatch(/ilike\("lot_number"/);
     expect(dashView).toMatch(/Total Jobs/);
     expect(dashView).toMatch(/Outstanding Amount/);
     expect(dashView).toMatch(/Recent Jobs/);

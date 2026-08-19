@@ -4,6 +4,7 @@ export {
   formatDisplayDate,
   formatInr,
   formatInrWords,
+  formatMonthYear,
   formatThan,
   formatWeightCt,
 } from "./format";

@@ -1,0 +1,61 @@
+import { KpiGridSkeleton } from "@/components/ui/skeleton";
+import { formatInr } from "@/lib/formatters";
+
+type FinancialKpiCardsProps = {
+  totalIncome: number;
+  totalExpense: number;
+  net: number;
+  totalEntries: number;
+  loading?: boolean;
+};
+
+function netHelp(net: number): string {
+  if (net < 0) {
+    return "Loss · Income − Expenses";
+  }
+  if (net > 0) {
+    return "Profit · Income − Expenses";
+  }
+  return "Break even · Income − Expenses";
+}
+
+export function FinancialKpiCards({
+  totalIncome,
+  totalExpense,
+  net,
+  totalEntries,
+  loading = false,
+}: FinancialKpiCardsProps) {
+  const isLoss = net < 0;
+  const netLabel = isLoss ? "Net Loss" : net > 0 ? "Net Profit" : "Net Profit/Loss";
+
+  return (
+    <section className="ui-section" aria-label="Financial summary">
+      {loading ? (
+        <KpiGridSkeleton count={4} />
+      ) : (
+        <div className="ui-kpi-grid">
+          <article className="ui-kpi-card">
+            <p className="ui-kpi-label">Total Income</p>
+            <p className="ui-kpi-value ui-amount-income">{formatInr(totalIncome)}</p>
+          </article>
+          <article className="ui-kpi-card">
+            <p className="ui-kpi-label">Total Expense</p>
+            <p className="ui-kpi-value ui-amount-expense">{formatInr(totalExpense)}</p>
+          </article>
+          <article className="ui-kpi-card">
+            <p className="ui-kpi-label">{netLabel}</p>
+            <p className={`ui-kpi-value ${isLoss ? "ui-amount-expense" : "ui-amount-income"}`}>
+              {formatInr(net)}
+            </p>
+            <p className="ui-kpi-help">{netHelp(net)}</p>
+          </article>
+          <article className="ui-kpi-card">
+            <p className="ui-kpi-label">Total Entries</p>
+            <p className="ui-kpi-value">{totalEntries}</p>
+          </article>
+        </div>
+      )}
+    </section>
+  );
+}

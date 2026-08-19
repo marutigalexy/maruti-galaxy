@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   // Playwright uses http://127.0.0.1:3000. Next.js 16 treats that as a
   // different origin from localhost and blocks /_next chunks in development,
   // so client-side dialogs never open. This list is ignored in production.
-  allowedDevOrigins: ["127.0.0.1"],
+  allowedDevOrigins: ["127.0.0.1","192.168.1.13"],
   // Server Actions compare Origin to Host by default. Do not add wildcard
   // allowedOrigins; that would bypass CSRF protection.
   async headers() {

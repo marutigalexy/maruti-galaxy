@@ -1,15 +1,16 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-
+import { FinancialKpiCards } from "@/components/reports/financial-kpi-cards";
 import { DataTable } from "@/components/ui/data-table";
 import { DatePicker } from "@/components/ui/date-picker";
+import { ExportButton } from "@/components/ui/export-button";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { FormField } from "@/components/ui/form-field";
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput } from "@/components/ui/search-input";
 import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { useQueryPush } from "@/hooks/use-query-push";
 import { queryHref } from "@/lib/api/query-href";
 import { formatDisplayDate, formatInr } from "@/lib/formatters";
 import type { ListEntriesInput } from "@/lib/validation/entries";
@@ -49,9 +50,9 @@ export function EntryReportView({
   parties,
   employees,
 }: EntryReportViewProps) {
-  const router = useRouter();
+  const { pending: queryPending, push } = useQueryPush();
   const pushQuery = (next: ListEntriesInput) => {
-    router.push(queryHref("/reports/entries", next));
+    push(queryHref("/reports/entries", next));
   };
   const filtered =
     Boolean(query.search) ||
@@ -66,11 +67,7 @@ export function EntryReportView({
   return (
     <>
       <FilterBar
-        action={
-          <a className="ui-button ui-button-secondary" href={exportHref(query)}>
-            Export
-          </a>
-        }
+        action={<ExportButton href={exportHref(query)} />}
         onReset={() =>
           pushQuery({
             search: "",
@@ -175,26 +172,13 @@ export function EntryReportView({
           />
         </FormField>
       </FilterBar>
-      <dl className="ui-summary-grid">
-        <div className="ui-detail-item">
-          <dt>Total Income</dt>
-          <dd className="ui-amount-income">{formatInr(result.summary.total_income)}</dd>
-        </div>
-        <div className="ui-detail-item">
-          <dt>Total Expense</dt>
-          <dd className="ui-amount-expense">{formatInr(result.summary.total_expense)}</dd>
-        </div>
-        <div className="ui-detail-item">
-          <dt>Net Amount</dt>
-          <dd className={result.summary.net < 0 ? "ui-amount-expense" : "ui-amount-income"}>
-            {formatInr(result.summary.net)}
-          </dd>
-        </div>
-        <div className="ui-detail-item">
-          <dt>Total Entry Count</dt>
-          <dd>{result.summary.count}</dd>
-        </div>
-      </dl>
+      <FinancialKpiCards
+        totalIncome={result.summary.total_income}
+        totalExpense={result.summary.total_expense}
+        net={result.summary.net}
+        totalEntries={result.summary.count}
+        loading={queryPending}
+      />
       <DataTable
         caption="Entry report"
         columns={[
@@ -218,12 +202,14 @@ export function EntryReportView({
         ]}
         rows={result.records}
         rowKey={(row) => row.id}
+        loading={queryPending}
         emptyTitle={filtered ? "No entries match the selected filters." : "No entries found."}
       />
       <Pagination
         page={result.page}
         pageSize={result.pageSize}
         totalCount={result.totalCount}
+        disabled={queryPending}
         onPageChange={(page) => pushQuery({ ...query, page })}
         onPageSizeChange={(pageSize) => pushQuery({ ...query, page: 1, pageSize })}
       />

@@ -1,3 +1,4 @@
+import { toCsv } from "@/lib/api/csv";
 import { escapeIlike } from "@/lib/api/ilike";
 import { asMoneyNumber } from "@/lib/api/numbers";
 import { paginated, paginationOffset, type Paginated } from "@/lib/api/pagination";
@@ -6,6 +7,7 @@ import { selectColumns } from "@/lib/api/select";
 import { requireActiveAdmin } from "@/lib/permissions/require-active-admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { ListInvoicesInput } from "@/lib/validation/invoices";
+import { EXPORT_REPORT_MAX_ROWS } from "@/lib/validation/reports";
 import type { Database } from "@/types/database";
 
 type InvoiceStatus = Database["public"]["Enums"]["invoice_status"];
@@ -143,10 +145,13 @@ async function jobIdsForParty(partyId: string): Promise<string[]> {
   return uniqueIds((data ?? []).map((row) => row.id));
 }
 
-export async function listInvoices(input: ListInvoicesInput): Promise<Paginated<InvoiceListRecord>> {
+async function loadInvoices(
+  input: ListInvoicesInput,
+  from: number,
+  to: number,
+): Promise<Paginated<InvoiceListRecord>> {
   await requireActiveAdmin();
   const supabase = await createSupabaseServerClient();
-  const offset = paginationOffset(input.page, input.pageSize);
   let allowedIds: string[] | null = null;
 
   if (input.search.trim() !== "") {
@@ -161,7 +166,7 @@ export async function listInvoices(input: ListInvoicesInput): Promise<Paginated<
     .select(OUTSTANDING_COLUMNS, { count: "exact" })
     .order("invoice_date", { ascending: false })
     .order("invoice_number", { ascending: false })
-    .range(offset, offset + input.pageSize - 1);
+    .range(from, to);
 
   if (allowedIds) {
     query = query.in("invoice_id", allowedIds);
@@ -244,6 +249,46 @@ export async function listInvoices(input: ListInvoicesInput): Promise<Paginated<
     input.page,
     input.pageSize,
   );
+}
+
+export async function listInvoices(input: ListInvoicesInput): Promise<Paginated<InvoiceListRecord>> {
+  const offset = paginationOffset(input.page, input.pageSize);
+  return loadInvoices(input, offset, offset + input.pageSize - 1);
+}
+
+export async function exportInvoicesCsv(input: ListInvoicesInput): Promise<{ csv: string; count: number }> {
+  const result = await loadInvoices(input, 0, EXPORT_REPORT_MAX_ROWS - 1);
+  if (result.totalCount > EXPORT_REPORT_MAX_ROWS) {
+    throw new AppError(
+      "VALIDATION",
+      "Too many invoices to export. Narrow the filters and try again.",
+    );
+  }
+
+  const csv = toCsv(
+    [
+      "Party",
+      "Invoice Number",
+      "Lot Number",
+      "Invoice Amount",
+      "Allocated",
+      "Outstanding",
+      "Status",
+      "Date",
+    ],
+    result.records.map((row) => [
+      row.party_name,
+      row.invoice_number,
+      row.lot_number,
+      row.amount.toFixed(2),
+      row.allocated.toFixed(2),
+      row.outstanding.toFixed(2),
+      row.status,
+      row.invoice_date,
+    ]),
+  );
+
+  return { csv: `\uFEFF${csv}`, count: result.records.length };
 }
 
 export async function getInvoiceOutstanding(id: string): Promise<InvoiceOutstanding> {
