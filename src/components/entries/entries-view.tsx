@@ -24,10 +24,12 @@ import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput } from "@/components/ui/search-input";
 import { Select } from "@/components/ui/select";
+import { SummaryGridSkeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TableActions } from "@/components/ui/table-actions";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
+import { useQueryPush } from "@/hooks/use-query-push";
 import { formatDisplayDate, formatInr } from "@/lib/formatters";
 import type { ListEntriesInput } from "@/lib/validation/entries";
 import type { AccountOption } from "@/services/accounts/accounts-service";
@@ -124,6 +126,7 @@ export function EntriesView({
   employees,
 }: EntriesViewProps) {
   const router = useRouter();
+  const { pending: queryPending, push } = useQueryPush();
   const toast = useToast();
   const [pending, startTransition] = useTransition();
   const [createType, setCreateType] = useState<EntryDraftType | null>(null);
@@ -138,7 +141,7 @@ export function EntriesView({
   const [draftType, setDraftType] = useState<EntryDraftType>("Income");
 
   const pushQuery = (next: ListEntriesInput) => {
-    router.push(entriesHref(next));
+    push(entriesHref(next));
   };
 
   const filteredEmpty =
@@ -317,27 +320,31 @@ export function EntriesView({
         </FormField>
       </FilterBar>
 
-      <dl className="ui-summary-grid">
-        <div className="ui-detail-item">
-          <dt>Total Income</dt>
-          <dd className="ui-amount-income">{formatInr(result.summary.total_income)}</dd>
-        </div>
-        <div className="ui-detail-item">
-          <dt>Total Expense</dt>
-          <dd className="ui-amount-expense">{formatInr(result.summary.total_expense)}</dd>
-        </div>
-        <div className="ui-detail-item">
-          <dt>Net Amount</dt>
-          <dd className={result.summary.net < 0 ? "ui-amount-expense" : "ui-amount-income"}>
-            {formatInr(result.summary.net)}
-          </dd>
-        </div>
-        <div className="ui-detail-item">
-          <dt>Total Entry Count</dt>
-          <dd>{result.summary.count}</dd>
-        </div>
-      </dl>
-      <p className="ui-field-help">Net Amount is Total Income minus Total Expense.</p>
+      {queryPending ? (
+        <SummaryGridSkeleton count={4} />
+      ) : (
+        <dl className="ui-summary-grid">
+          <div className="ui-detail-item">
+            <dt>Total Income</dt>
+            <dd className="ui-amount-income">{formatInr(result.summary.total_income)}</dd>
+          </div>
+          <div className="ui-detail-item">
+            <dt>Total Expense</dt>
+            <dd className="ui-amount-expense">{formatInr(result.summary.total_expense)}</dd>
+          </div>
+          <div className="ui-detail-item">
+            <dt>Net Amount</dt>
+            <dd className={result.summary.net < 0 ? "ui-amount-expense" : "ui-amount-income"}>
+              {formatInr(result.summary.net)}
+            </dd>
+          </div>
+          <div className="ui-detail-item">
+            <dt>Total Entry Count</dt>
+            <dd>{result.summary.count}</dd>
+          </div>
+        </dl>
+      )}
+      <p className="sr-only">Net Amount is Total Income minus Total Expense</p>
 
       <DataTable
         caption="Entries"
@@ -400,12 +407,14 @@ export function EntriesView({
           setDraftType(row.entry_type);
           setEditEntry(row);
         }}
+        loading={queryPending}
         emptyTitle={filteredEmpty ? "No entries match the selected filters." : "No entries found."}
       />
       <Pagination
         page={result.page}
         pageSize={result.pageSize}
         totalCount={result.totalCount}
+        disabled={queryPending}
         onPageChange={(page) => pushQuery({ ...query, page })}
         onPageSizeChange={(pageSize) => pushQuery({ ...query, page: 1, pageSize })}
       />
@@ -510,8 +519,8 @@ export function EntriesView({
               <Button variant="secondary" disabled={pending} onClick={() => setCreateType(null)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={pending}>
-                {pending ? "Saving…" : "Create"}
+              <Button type="submit" loading={pending}>
+                Create
               </Button>
             </div>
           </form>
@@ -541,7 +550,7 @@ export function EntriesView({
                     party_id: String(form.get("party_id") ?? ""),
                     employee_id: String(form.get("employee_id") ?? ""),
                     entry_date: String(form.get("entry_date") ?? ""),
-                    amount: String(form.get("amount") ?? ""),
+                    amount: String(form.get("amount") || editEntry.amount),
                     remarks: String(form.get("remarks") ?? ""),
                   }),
                 "Entry updated successfully.",
@@ -648,8 +657,8 @@ export function EntriesView({
                 name="amount"
                 inputMode="decimal"
                 required
-                defaultValue={String(editEntry.amount)}
-                disabled={pending || editEntry.allocated > 0}
+                defaultValue={Number(editEntry.amount).toFixed(2)}
+                disabled={pending}
                 readOnly={editEntry.allocated > 0}
                 placeholder="e.g. 1000.00"
               />
@@ -666,8 +675,8 @@ export function EntriesView({
               <Button variant="secondary" disabled={pending} onClick={() => setEditEntry(null)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={pending}>
-                {pending ? "Saving…" : "Save"}
+              <Button type="submit" loading={pending}>
+                Save
               </Button>
             </div>
           </form>
@@ -762,8 +771,8 @@ export function EntriesView({
               <Button variant="secondary" disabled={pending} onClick={() => setAllocateEntry(null)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={pending || previewRemaining < 0}>
-                {pending ? "Saving…" : "Allocate"}
+              <Button type="submit" loading={pending} disabled={previewRemaining < 0}>
+                Allocate
               </Button>
             </div>
           </form>

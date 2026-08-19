@@ -169,7 +169,11 @@ describe("entry and allocation security", () => {
   );
   const actions = readFileSync(path.join(process.cwd(), "src/app/actions/entries.ts"), "utf8");
   const exportRoute = readFileSync(
-    path.join(process.cwd(), "src/app/api/export/entries/route.ts"),
+    path.join(process.cwd(), "src/app/api/export/[report]/route.ts"),
+    "utf8",
+  );
+  const csvResponse = readFileSync(
+    path.join(process.cwd(), "src/lib/api/csv-response.ts"),
     "utf8",
   );
   const view = readFileSync(
@@ -214,13 +218,14 @@ describe("entry and allocation security", () => {
   it("blocks allocated amount/type edits and deletes", () => {
     expect(service).toMatch(/Remove invoice allocations before changing this entry amount or type/);
     expect(service).toMatch(/Remove invoice allocations before deleting this entry/);
+    expect(view).toMatch(/id="edit-amount"[\s\S]*disabled=\{pending\}[\s\S]*readOnly=\{editEntry\.allocated > 0\}/);
   });
 
   it("exports the filtered CSV with authz, no-store, and a row cap", () => {
     expect(EXPORT_ENTRIES_MAX_ROWS).toBe(5000);
     expect(exportRoute).toMatch(/requireActiveAdmin/);
     expect(exportRoute).toMatch(/parseOrThrow\(listEntriesSchema/);
-    expect(exportRoute).toMatch(/Cache-Control": "private, no-store"/);
+    expect(csvResponse).toMatch(/Cache-Control": "private, no-store"/);
     expect(service).toMatch(/EXPORT_ENTRIES_MAX_ROWS/);
     expect(service).toMatch(/Too many entries to export/);
   });
@@ -241,8 +246,11 @@ describe("entry and allocation security", () => {
     expect(invoiceDialog).toMatch(/Invoice Total/);
     expect(invoiceDialog).toMatch(/Remaining/);
     expect(invoiceDialog).not.toMatch(/Select invoice/);
-    expect(partyDialog).toMatch(/FIFO/);
-    expect(partyDialog).toMatch(/Allocation preview/);
+    expect(partyDialog).toMatch(/Outstanding Payment/);
+    expect(partyDialog).not.toMatch(/Allocation preview/);
+    expect(partyDialog).not.toMatch(/FIFO/);
+    expect(partyDialog).toMatch(/Add Payment/);
+    expect(allocations).toMatch(/planFifoAllocations/);
     expect(employeeDialog).toMatch(/Add Payment/);
     expect(employeeDialog).toMatch(/categoryType="Expense"/);
     expect(employeeDialog).toMatch(/remaining salary/);
