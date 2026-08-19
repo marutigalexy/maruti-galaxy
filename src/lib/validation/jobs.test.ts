@@ -102,7 +102,7 @@ describe("job schemas", () => {
       job_type: "Sarin",
       status: "all",
       page: 1,
-      pageSize: 20,
+      pageSize: 30,
     });
     expect(() => parseOrThrow(listJobsSchema, { pageSize: 1000 })).toThrow();
   });

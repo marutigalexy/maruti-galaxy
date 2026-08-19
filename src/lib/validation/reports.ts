@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { clampPageSize } from "@/lib/api/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/lib/api/pagination";
 import { listEntriesSchema } from "@/lib/validation/entries";
 import { listInvoicesSchema } from "@/lib/validation/invoices";
 import {
@@ -52,7 +52,7 @@ export const jobWorkReportSchema = withDateOrder(
     })
     .transform((value) => ({
       page: value.page,
-      pageSize: clampPageSize(value.pageSize),
+      pageSize: DEFAULT_PAGE_SIZE,
       search: value.search,
       status: value.status,
       job_type: value.job_type,
@@ -75,7 +75,7 @@ export const salaryReportSchema = withDateOrder(
     })
     .transform((value) => ({
       page: value.page,
-      pageSize: clampPageSize(value.pageSize),
+      pageSize: DEFAULT_PAGE_SIZE,
       employee_id: value.employee_id,
       date_from: value.date_from,
       date_to: value.date_to,

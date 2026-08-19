@@ -60,8 +60,8 @@ describe("numeric schemas", () => {
 });
 
 describe("paginationSchema", () => {
-  it("defaults to page 1 and pageSize 20", () => {
-    expect(parseOrThrow(paginationSchema, {})).toEqual({ page: 1, pageSize: 20 });
+  it("defaults to page 1 and pageSize 30", () => {
+    expect(parseOrThrow(paginationSchema, {})).toEqual({ page: 1, pageSize: 30 });
   });
 
   it("rejects a huge page size", () => {
@@ -77,9 +77,9 @@ describe("paginationSchema", () => {
     }
   });
 
-  it("accepts the allowed UI page sizes", () => {
-    for (const pageSize of [10, 20, 50]) {
-      expect(parseOrThrow(paginationSchema, { pageSize })).toEqual({ page: 1, pageSize });
+  it("always uses the fixed page size of 30", () => {
+    for (const pageSize of [10, 20, 30, 50]) {
+      expect(parseOrThrow(paginationSchema, { pageSize })).toEqual({ page: 1, pageSize: 30 });
     }
   });
 });

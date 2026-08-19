@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { clampPageSize } from "@/lib/api/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/lib/api/pagination";
 import {
   moneySchema,
   pageSchema,
@@ -97,7 +97,7 @@ export const listJobsSchema = z
   })
   .transform((value) => ({
     page: value.page,
-    pageSize: clampPageSize(value.pageSize),
+    pageSize: DEFAULT_PAGE_SIZE,
     search: value.search,
     status: value.status,
     job_type: value.job_type,

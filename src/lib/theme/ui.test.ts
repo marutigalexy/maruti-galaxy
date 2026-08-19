@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { paginationControls } from "@/lib/api/pagination";
+import { paginationControls} from "@/lib/api/pagination";
 import { formatInr, formatWeightCt } from "@/lib/formatters";
 import {
   breadcrumbsForPath,
@@ -141,11 +141,11 @@ describe("formatters", () => {
 
 describe("pagination controls", () => {
   it("disables previous on the first page and next on the last page", () => {
-    const first = paginationControls(1, 20, 25);
+    const first = paginationControls(1, 30, 35);
     expect(first.prevDisabled).toBe(true);
     expect(first.nextDisabled).toBe(false);
 
-    const last = paginationControls(2, 20, 25);
+    const last = paginationControls(2, 30, 35);
     expect(last.prevDisabled).toBe(false);
     expect(last.nextDisabled).toBe(true);
   });

@@ -28,7 +28,7 @@ describe("invoice schemas", () => {
       date_from: "2026-01-01",
       date_to: "2026-01-31",
       page: 1,
-      pageSize: 20,
+      pageSize: 30,
     });
     expect(parsed).not.toHaveProperty("tax");
     expect(parsed).not.toHaveProperty("discount");

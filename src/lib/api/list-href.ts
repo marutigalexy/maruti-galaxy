@@ -1,5 +1,3 @@
-import { DEFAULT_PAGE_SIZE } from "@/lib/api/pagination";
-
 type ListHrefQuery = {
   search: string;
   status: string;
@@ -17,9 +15,6 @@ export function listHref(pathname: string, query: ListHrefQuery): string {
   }
   if (query.page > 1) {
     params.set("page", String(query.page));
-  }
-  if (query.pageSize !== DEFAULT_PAGE_SIZE) {
-    params.set("pageSize", String(query.pageSize));
   }
   const qs = params.toString();
   return qs ? `${pathname}?${qs}` : pathname;

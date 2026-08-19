@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { clampPageSize } from "@/lib/api/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/lib/api/pagination";
 import {
   isoDateSchema,
   pageSchema,
@@ -37,7 +37,7 @@ export const listInvoicesSchema = z
   })
   .transform((value) => ({
     page: value.page,
-    pageSize: clampPageSize(value.pageSize),
+    pageSize: DEFAULT_PAGE_SIZE,
     search: value.search,
     status: value.status,
     party_id: value.party_id,

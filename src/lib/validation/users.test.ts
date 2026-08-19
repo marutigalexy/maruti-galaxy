@@ -70,7 +70,7 @@ describe("user schemas", () => {
   it("parses list filters and rejects a huge page size", () => {
     expect(parseOrThrow(listUsersSchema, {})).toMatchObject({
       page: 1,
-      pageSize: 20,
+      pageSize: 30,
       search: "",
       status: "all",
     });

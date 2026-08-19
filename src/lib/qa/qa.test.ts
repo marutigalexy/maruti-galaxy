@@ -77,6 +77,9 @@ describe("QA-003 accessibility pass", () => {
     expect(read("src/components/layout/sidebar.tsx")).toMatch(/app-sidebar-profile/);
     expect(read("src/components/ui/pagination.tsx")).toMatch(/Previous/);
     expect(read("src/components/ui/pagination.tsx")).toMatch(/Next/);
+    expect(read("src/components/ui/pagination.tsx")).not.toMatch(/page-size/);
+    expect(read("src/components/ui/data-table.tsx")).toMatch(/footer/);
+    expect(read("src/lib/api/pagination.ts")).toMatch(/DEFAULT_PAGE_SIZE = 30/);
     expect(read("src/components/ui/skeleton.tsx")).toMatch(/aria-busy="true"/);
     expect(read("src/components/ui/skeleton.tsx")).toMatch(/sr-only/);
     expect(read("src/components/ui/button.tsx")).toMatch(/aria-busy=\{loading/);

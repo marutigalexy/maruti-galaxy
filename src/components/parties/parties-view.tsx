@@ -166,14 +166,15 @@ export function PartiesView({ query, result }: PartiesViewProps) {
         emptyTitle={
           query.search || query.status !== "all" ? "No parties match the selected filters." : "No parties found."
         }
-      />
-      <Pagination
-        page={result.page}
-        pageSize={result.pageSize}
-        totalCount={result.totalCount}
-        disabled={queryPending}
-        onPageChange={(page) => pushQuery({ ...query, page })}
-        onPageSizeChange={(pageSize) => pushQuery({ ...query, page: 1, pageSize })}
+        footer={
+          <Pagination
+            page={result.page}
+            pageSize={result.pageSize}
+            totalCount={result.totalCount}
+            disabled={queryPending}
+            onPageChange={(page) => pushQuery({ ...query, page })}
+          />
+        }
       />
 
       <Dialog

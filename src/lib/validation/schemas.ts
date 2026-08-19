@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { AppError } from "@/lib/api/result";
-import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, clampPageSize } from "@/lib/api/pagination";
+import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from "@/lib/api/pagination";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -102,7 +102,7 @@ export const paginationSchema = z
   })
   .transform((value) => ({
     page: value.page,
-    pageSize: clampPageSize(value.pageSize),
+    pageSize: DEFAULT_PAGE_SIZE,
   }));
 
 export const listQuerySchema = z
@@ -114,7 +114,7 @@ export const listQuerySchema = z
   })
   .transform((value) => ({
     page: value.page,
-    pageSize: clampPageSize(value.pageSize),
+    pageSize: DEFAULT_PAGE_SIZE,
     search: value.search,
     status: value.status,
   }));

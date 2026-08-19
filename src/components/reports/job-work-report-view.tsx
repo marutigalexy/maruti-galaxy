@@ -161,14 +161,15 @@ export function JobWorkReportView({ query, result, parties }: JobWorkReportViewP
         rowKey={(row) => row.id}
         loading={queryPending}
         emptyTitle={filtered ? "No jobs match the selected filters." : "No jobs found."}
-      />
-      <Pagination
-        page={result.page}
-        pageSize={result.pageSize}
-        totalCount={result.totalCount}
-        disabled={queryPending}
-        onPageChange={(page) => pushQuery({ ...query, page })}
-        onPageSizeChange={(pageSize) => pushQuery({ ...query, page: 1, pageSize })}
+        footer={
+          <Pagination
+            page={result.page}
+            pageSize={result.pageSize}
+            totalCount={result.totalCount}
+            disabled={queryPending}
+            onPageChange={(page) => pushQuery({ ...query, page })}
+          />
+        }
       />
     </>
   );

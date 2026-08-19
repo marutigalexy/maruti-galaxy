@@ -29,6 +29,7 @@ type TableSkeletonProps = {
   columns?: TableSkeletonColumn[];
   columnCount?: number;
   rows?: number;
+  framed?: boolean;
 };
 
 function tableColumnClass(column: TableSkeletonColumn) {
@@ -46,15 +47,14 @@ export function TableSkeleton({
   columns,
   columnCount = 6,
   rows = 8,
+  framed = true,
 }: TableSkeletonProps) {
   const cols: TableSkeletonColumn[] =
     columns && columns.length > 0
       ? columns
       : Array.from({ length: columnCount }, (_, index) => ({ key: `col-${index}` }));
 
-  return (
-    <div className="ui-table-wrap" aria-busy="true" aria-live="polite">
-      <span className="sr-only">Loading</span>
+  const table = (
       <table className="ui-table">
         <caption className="sr-only">{caption}</caption>
         <thead>
@@ -78,6 +78,16 @@ export function TableSkeleton({
           ))}
         </tbody>
       </table>
+  );
+
+  if (!framed) {
+    return table;
+  }
+
+  return (
+    <div className="ui-table-wrap" aria-busy="true" aria-live="polite">
+      <span className="sr-only">Loading</span>
+      {table}
     </div>
   );
 }

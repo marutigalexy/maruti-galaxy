@@ -69,7 +69,7 @@ describe("party schemas", () => {
   it("parses list filters and rejects a huge page size", () => {
     expect(parseOrThrow(listPartiesSchema, {})).toMatchObject({
       page: 1,
-      pageSize: 20,
+      pageSize: 30,
       search: "",
       status: "all",
     });

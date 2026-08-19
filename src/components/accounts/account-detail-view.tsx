@@ -51,9 +51,6 @@ function accountEntriesHref(accountId: string, query: ListEntriesInput): string 
   if (query.page > 1) {
     params.set("page", String(query.page));
   }
-  if (query.pageSize !== 20) {
-    params.set("pageSize", String(query.pageSize));
-  }
   const qs = params.toString();
   return qs ? `/accounting/accounts/${accountId}?${qs}` : `/accounting/accounts/${accountId}`;
 }
@@ -210,14 +207,15 @@ export function AccountDetailView({ account, query, entries, categories }: Accou
           rowKey={(row) => row.id}
           loading={queryPending}
           emptyTitle={filtered ? "No entries match the selected filters." : "No entries yet."}
-        />
-        <Pagination
-          page={entries.page}
-          pageSize={entries.pageSize}
-          totalCount={entries.totalCount}
-          disabled={queryPending}
-          onPageChange={(page) => pushQuery({ ...query, page })}
-          onPageSizeChange={(pageSize) => pushQuery({ ...query, page: 1, pageSize })}
+          footer={
+            <Pagination
+              page={entries.page}
+              pageSize={entries.pageSize}
+              totalCount={entries.totalCount}
+              disabled={queryPending}
+              onPageChange={(page) => pushQuery({ ...query, page })}
+            />
+          }
         />
         </Card>
       </div>

@@ -23,6 +23,7 @@ type DataTableProps<T> = {
   emptyDescription?: string;
   onRetry?: () => void;
   onRowClick?: (row: T) => void;
+  footer?: ReactNode;
 };
 
 export function DataTable<T>({
@@ -36,19 +37,8 @@ export function DataTable<T>({
   emptyDescription,
   onRetry,
   onRowClick,
+  footer,
 }: DataTableProps<T>) {
-  if (error) {
-    return <ErrorState title="Unable to load records" description={error} onRetry={onRetry} />;
-  }
-
-  if (loading) {
-    return <TableSkeleton caption={caption} columns={columns} rows={rows.length > 0 ? rows.length : 8} />;
-  }
-
-  if (rows.length === 0) {
-    return <EmptyState title={emptyTitle} description={emptyDescription} />;
-  }
-
   function columnClass(column: DataTableColumn<T>) {
     if (column.numeric) {
       return "is-numeric";
@@ -69,8 +59,22 @@ export function DataTable<T>({
     }
   }
 
-  return (
-    <div className="ui-table-wrap">
+  let body: ReactNode;
+  if (error) {
+    body = <ErrorState title="Unable to load records" description={error} onRetry={onRetry} />;
+  } else if (loading) {
+    body = (
+      <TableSkeleton
+        framed={false}
+        caption={caption}
+        columns={columns}
+        rows={rows.length > 0 ? rows.length : 8}
+      />
+    );
+  } else if (rows.length === 0) {
+    body = <EmptyState title={emptyTitle} description={emptyDescription} />;
+  } else {
+    body = (
       <table className="ui-table">
         <caption className="sr-only">{caption}</caption>
         <thead>
@@ -100,6 +104,14 @@ export function DataTable<T>({
           ))}
         </tbody>
       </table>
+    );
+  }
+
+  return (
+    <div className="ui-table-wrap" aria-busy={loading || undefined} aria-live={loading ? "polite" : undefined}>
+      {loading ? <span className="sr-only">Loading</span> : null}
+      {body}
+      {footer}
     </div>
   );
 }

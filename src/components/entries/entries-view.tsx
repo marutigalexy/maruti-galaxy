@@ -86,9 +86,6 @@ function entriesHref(query: ListEntriesInput): string {
   if (query.page > 1) {
     params.set("page", String(query.page));
   }
-  if (query.pageSize !== 20) {
-    params.set("pageSize", String(query.pageSize));
-  }
   const qs = params.toString();
   return qs ? `/accounting/entries?${qs}` : "/accounting/entries";
 }
@@ -409,14 +406,15 @@ export function EntriesView({
         }}
         loading={queryPending}
         emptyTitle={filteredEmpty ? "No entries match the selected filters." : "No entries found."}
-      />
-      <Pagination
-        page={result.page}
-        pageSize={result.pageSize}
-        totalCount={result.totalCount}
-        disabled={queryPending}
-        onPageChange={(page) => pushQuery({ ...query, page })}
-        onPageSizeChange={(pageSize) => pushQuery({ ...query, page: 1, pageSize })}
+        footer={
+          <Pagination
+            page={result.page}
+            pageSize={result.pageSize}
+            totalCount={result.totalCount}
+            disabled={queryPending}
+            onPageChange={(page) => pushQuery({ ...query, page })}
+          />
+        }
       />
 
       <Dialog

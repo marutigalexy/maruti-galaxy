@@ -55,9 +55,6 @@ function jobsHref(query: ListJobsInput): string {
   if (query.page > 1) {
     params.set("page", String(query.page));
   }
-  if (query.pageSize !== 20) {
-    params.set("pageSize", String(query.pageSize));
-  }
   const qs = params.toString();
   return qs ? `/jobs?${qs}` : "/jobs";
 }
@@ -247,14 +244,15 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
         loading={queryPending}
         onRowClick={(row) => router.push(`/jobs/${row.id}`)}
         emptyTitle={filteredEmpty ? "No jobs match the selected filters." : "No jobs found."}
-      />
-      <Pagination
-        page={result.page}
-        pageSize={result.pageSize}
-        totalCount={result.totalCount}
-        disabled={queryPending}
-        onPageChange={(page) => pushQuery({ ...query, page })}
-        onPageSizeChange={(pageSize) => pushQuery({ ...query, page: 1, pageSize })}
+        footer={
+          <Pagination
+            page={result.page}
+            pageSize={result.pageSize}
+            totalCount={result.totalCount}
+            disabled={queryPending}
+            onPageChange={(page) => pushQuery({ ...query, page })}
+          />
+        }
       />
       <Dialog
         open={createOpen}

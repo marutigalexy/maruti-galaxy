@@ -204,14 +204,15 @@ export function EntryReportView({
         rowKey={(row) => row.id}
         loading={queryPending}
         emptyTitle={filtered ? "No entries match the selected filters." : "No entries found."}
-      />
-      <Pagination
-        page={result.page}
-        pageSize={result.pageSize}
-        totalCount={result.totalCount}
-        disabled={queryPending}
-        onPageChange={(page) => pushQuery({ ...query, page })}
-        onPageSizeChange={(pageSize) => pushQuery({ ...query, page: 1, pageSize })}
+        footer={
+          <Pagination
+            page={result.page}
+            pageSize={result.pageSize}
+            totalCount={result.totalCount}
+            disabled={queryPending}
+            onPageChange={(page) => pushQuery({ ...query, page })}
+          />
+        }
       />
     </>
   );

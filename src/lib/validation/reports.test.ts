@@ -37,7 +37,7 @@ describe("report schemas", () => {
     expect(parseOrThrow(salaryReportSchema, { employee_id: UUID })).toMatchObject({
       employee_id: UUID,
       page: 1,
-      pageSize: 20,
+      pageSize: 30,
     });
   });
 
@@ -65,7 +65,7 @@ describe("queryHref", () => {
         search: "",
         entry_type: "all",
         page: 1,
-        pageSize: 20,
+        pageSize: 30,
         party_id: UUID,
       }),
     ).toBe(`/reports/entries?party_id=${UUID}`);

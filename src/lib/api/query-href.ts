@@ -1,5 +1,3 @@
-import { DEFAULT_PAGE_SIZE } from "@/lib/api/pagination";
-
 export function queryHref(
   pathname: string,
   params: Record<string, string | number | undefined | null>,
@@ -12,7 +10,7 @@ export function queryHref(
     if (key === "page" && Number(value) === 1) {
       continue;
     }
-    if (key === "pageSize" && Number(value) === DEFAULT_PAGE_SIZE) {
+    if (key === "pageSize") {
       continue;
     }
     search.set(key, String(value));

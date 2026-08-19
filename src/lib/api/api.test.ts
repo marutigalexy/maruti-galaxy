@@ -7,7 +7,6 @@ import { runAction } from "@/lib/api/action";
 import { sanitizeForLog } from "@/lib/api/logging";
 import { mapToActionError } from "@/lib/api/map-error";
 import {
-  ALLOWED_PAGE_SIZES,
   DEFAULT_PAGE_SIZE,
   MAX_PAGE_SIZE,
   clampPageSize,
@@ -27,22 +26,21 @@ describe("clampPageSize", () => {
     expect(clampPageSize(0)).toBe(DEFAULT_PAGE_SIZE);
     expect(clampPageSize(-5)).toBe(DEFAULT_PAGE_SIZE);
     expect(clampPageSize(1000)).toBe(MAX_PAGE_SIZE);
-    expect(clampPageSize(20)).toBe(20);
+    expect(clampPageSize(30)).toBe(30);
   });
 
-  it("matches the UI allow-list and security max", () => {
-    expect(ALLOWED_PAGE_SIZES).toEqual([10, 20, 50]);
+  it("uses a fixed list page size of 30", () => {
     expect(MAX_PAGE_SIZE).toBe(50);
-    expect(DEFAULT_PAGE_SIZE).toBe(20);
+    expect(DEFAULT_PAGE_SIZE).toBe(30);
   });
 
   it("builds a paginated envelope", () => {
-    expect(paginationOffset(2, 20)).toBe(20);
-    expect(paginated(["a"], 21, 2, 20)).toEqual({
+    expect(paginationOffset(2, 30)).toBe(30);
+    expect(paginated(["a"], 31, 2, 30)).toEqual({
       records: ["a"],
       page: 2,
-      pageSize: 20,
-      totalCount: 21,
+      pageSize: 30,
+      totalCount: 31,
     });
   });
 });
