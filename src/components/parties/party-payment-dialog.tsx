@@ -1,24 +1,21 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 
 import { createPartyPaymentAction } from "@/app/actions/entries";
 import { PaymentEntryFields } from "@/components/payments/payment-entry-fields";
+import { AddButton } from "@/components/ui/add-button";
 import { Button } from "@/components/ui/button";
-import { DataTable } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
-import { planFifoAllocations, type AllocatableInvoice } from "@/lib/allocations/plan";
-import { formatDisplayDate, formatInr } from "@/lib/formatters";
+import { formatInr } from "@/lib/formatters";
 import type { AccountOption } from "@/services/accounts/accounts-service";
 import type { CategoryOption } from "@/services/categories/categories-service";
-import type { PartyInvoiceRow } from "@/services/parties/parties-service";
 
 type PartyPaymentDialogProps = {
   partyId: string;
   outstanding: number;
-  invoices: PartyInvoiceRow[];
   accounts: AccountOption[];
   categories: CategoryOption[];
 };
@@ -26,7 +23,6 @@ type PartyPaymentDialogProps = {
 export function PartyPaymentDialog({
   partyId,
   outstanding,
-  invoices,
   accounts,
   categories,
 }: PartyPaymentDialogProps) {
@@ -37,21 +33,6 @@ export function PartyPaymentDialog({
   const [amount, setAmount] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
 
-  const allocatable = useMemo<AllocatableInvoice[]>(
-    () =>
-      invoices
-        .filter((invoice) => invoice.outstanding > 0)
-        .map((invoice) => ({
-          id: invoice.id,
-          invoice_number: invoice.invoice_number,
-          invoice_date: invoice.invoice_date,
-          lot_number: invoice.lot_number,
-          outstanding: invoice.outstanding,
-        })),
-    [invoices],
-  );
-  const preview = planFifoAllocations(allocatable, Number(amount) || 0);
-
   function openDialog() {
     setFormError(null);
     setAmount("");
@@ -60,7 +41,7 @@ export function PartyPaymentDialog({
 
   return (
     <>
-      <Button onClick={openDialog}>Payment</Button>
+      <AddButton onClick={openDialog}>Add Payment</AddButton>
       <Dialog open={open} title="Payment" onClose={() => setOpen(false)} disableClose={pending} footer={null}>
         <form
           className="ui-dialog-form"
@@ -88,6 +69,12 @@ export function PartyPaymentDialog({
             });
           }}
         >
+          <dl className="ui-summary-grid">
+            <div className="ui-detail-item">
+              <dt>Outstanding Payment</dt>
+              <dd>{formatInr(outstanding)}</dd>
+            </div>
+          </dl>
           <PaymentEntryFields
             idPrefix="party-pay"
             pending={pending}
@@ -96,42 +83,6 @@ export function PartyPaymentDialog({
             amount={amount}
             onAmountChange={setAmount}
           />
-          <div>
-            <h3 className="ui-card-title">Allocation preview</h3>
-            <DataTable
-              caption="FIFO allocation preview"
-              columns={[
-                { key: "number", header: "Invoice", render: (row) => row.invoice_number },
-                { key: "date", header: "Date", render: (row) => formatDisplayDate(row.invoice_date) },
-                { key: "lot", header: "Lot", render: (row) => row.lot_number },
-                {
-                  key: "apply",
-                  header: "Apply",
-                  numeric: true,
-                  render: (row) => formatInr(row.amount),
-                },
-                {
-                  key: "remaining",
-                  header: "Remaining after",
-                  numeric: true,
-                  render: (row) => formatInr(row.outstanding - row.amount),
-                },
-              ]}
-              rows={preview.items}
-              rowKey={(row) => row.id}
-              emptyTitle={
-                allocatable.length === 0
-                  ? "No outstanding invoices. The full payment stays unallocated."
-                  : "Enter an amount to preview FIFO allocation."
-              }
-            />
-            {amount ? (
-              <p className="ui-field-help">
-                Allocated {formatInr(preview.allocated)}
-                {preview.unallocated > 0 ? ` · Unallocated ${formatInr(preview.unallocated)}` : ""}.
-              </p>
-            ) : null}
-          </div>
           {formError ? (
             <p className="ui-field-error" role="alert">
               {formError}
@@ -141,8 +92,8 @@ export function PartyPaymentDialog({
             <Button variant="secondary" disabled={pending} onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Saving…" : "Save payment"}
+            <Button type="submit" loading={pending}>
+              Save payment
             </Button>
           </div>
         </form>

@@ -26,6 +26,7 @@ export const PARTY_LIST_COLUMNS = selectColumns([
 const JOB_SUMMARY_COLUMNS = selectColumns([
   "id",
   "lot_number",
+  "job_type",
   "status",
   "than",
   "price",
@@ -57,8 +58,10 @@ export type PartyRecord = {
 export type PartyJobRow = {
   id: string;
   lot_number: string;
+  job_type: string;
   status: string;
   than: number;
+  remaining_than: number;
   price: number;
   kapan_number: string;
   weight: number;
@@ -200,18 +203,40 @@ export async function getPartySummary(id: string): Promise<PartySummary> {
     throw new AppError("INTERNAL", "Unable to load party jobs.");
   }
 
-  const jobRows: PartyJobRow[] = (jobs ?? []).map((row) => ({
-    id: row.id,
-    lot_number: row.lot_number,
-    status: row.status,
-    than: asMoneyNumber(row.than),
-    price: asMoneyNumber(row.price),
-    kapan_number: row.kapan_number,
-    weight: asMoneyNumber(row.weight),
-    created_at: row.created_at,
-  }));
+  const jobIds = (jobs ?? []).map((row) => row.id);
+  const allocated = new Map<string, number>();
 
-  const jobIds = jobRows.map((row) => row.id);
+  if (jobIds.length > 0) {
+    const { data: subRows, error: subError } = await supabase
+      .from("sub_jobs")
+      .select("job_id, than")
+      .in("job_id", jobIds);
+
+    if (subError) {
+      throw new AppError("INTERNAL", "Unable to load party jobs.");
+    }
+
+    for (const sub of subRows ?? []) {
+      allocated.set(sub.job_id, (allocated.get(sub.job_id) ?? 0) + asMoneyNumber(sub.than));
+    }
+  }
+
+  const jobRows: PartyJobRow[] = (jobs ?? []).map((row) => {
+    const than = asMoneyNumber(row.than);
+    return {
+      id: row.id,
+      lot_number: row.lot_number,
+      job_type: row.job_type,
+      status: row.status,
+      than,
+      remaining_than: than - (allocated.get(row.id) ?? 0),
+      price: asMoneyNumber(row.price),
+      kapan_number: row.kapan_number,
+      weight: asMoneyNumber(row.weight),
+      created_at: row.created_at,
+    };
+  });
+
   const jobById = new Map(jobRows.map((row) => [row.id, row]));
   let invoices: PartyInvoiceRow[] = [];
 

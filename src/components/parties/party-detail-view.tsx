@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 
 import { updatePartyAction } from "@/app/actions/parties";
 import { TopbarActions, TopbarStatus, useRecordTitle } from "@/components/layout/page-chrome";
@@ -18,10 +17,10 @@ import { EditIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useToast } from "@/components/ui/toast";
-import { formatInr } from "@/lib/formatters";
+import { formatInr, formatThan, formatWeightCt } from "@/lib/formatters";
 import type { AccountOption } from "@/services/accounts/accounts-service";
 import type { CategoryOption } from "@/services/categories/categories-service";
-import type { PartyRecord, PartySummary } from "@/services/parties/parties-service";
+import type { PartyInvoiceRow, PartyJobRow, PartyRecord, PartySummary } from "@/services/parties/parties-service";
 
 type PartyDetailViewProps = {
   party: PartyRecord;
@@ -30,13 +29,57 @@ type PartyDetailViewProps = {
   categories: CategoryOption[];
 };
 
+type RelatedJobRow = PartyJobRow & {
+  invoice: PartyInvoiceRow | null;
+};
+
+function partySubtitle(party: PartyRecord) {
+  const parts = [party.contact_person_name?.trim(), party.mobile_number.trim()].filter(Boolean);
+  return parts.length > 0 ? parts.join(" · ") : undefined;
+}
+
+function jobTone(status: string) {
+  if (status === "Progress") {
+    return "progress" as const;
+  }
+  if (status === "Completed") {
+    return "completed" as const;
+  }
+  return "pending" as const;
+}
+
+function invoiceTone(status: string) {
+  if (status === "Paid") {
+    return "paid" as const;
+  }
+  if (status === "Partially Paid") {
+    return "partial" as const;
+  }
+  return "unpaid" as const;
+}
+
 export function PartyDetailView({ party, summary, accounts, categories }: PartyDetailViewProps) {
   const router = useRouter();
   const toast = useToast();
   const [pending, startTransition] = useTransition();
   const [editOpen, setEditOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  useRecordTitle(party.company_name);
+  useRecordTitle(party.company_name, partySubtitle(party));
+
+  const kpis = [
+    { label: "Default Price", value: formatInr(party.price) },
+    { label: "Jobs", value: String(summary.jobsCount) },
+    { label: "Invoices", value: String(summary.invoicesCount) },
+    { label: "Outstanding", value: formatInr(summary.outstanding) },
+  ];
+
+  const relatedJobs = useMemo<RelatedJobRow[]>(() => {
+    const invoiceByJob = new Map(summary.invoices.map((invoice) => [invoice.job_work_id, invoice]));
+    return summary.jobs.map((job) => ({
+      ...job,
+      invoice: invoiceByJob.get(job.id) ?? null,
+    }));
+  }, [summary.invoices, summary.jobs]);
 
   return (
     <>
@@ -44,61 +87,35 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
         <StatusBadge tone={party.is_active ? "active" : "inactive"} />
       </TopbarStatus>
       <TopbarActions>
-        <PartyOutstandingPrintButton party={party} invoices={summary.invoices} />
-        <IconButton tone="edit" label="Edit party" onClick={() => setEditOpen(true)}>
+        <PartyPaymentDialog
+          partyId={party.id}
+          outstanding={summary.outstanding}
+          accounts={accounts}
+          categories={categories}
+        />
+        <PartyOutstandingPrintButton
+          party={party}
+          invoices={summary.invoices}
+        />
+        <IconButton
+          tone="edit"
+          label="Edit party"
+          onClick={() => setEditOpen(true)}
+        >
           <EditIcon width={16} height={16} />
         </IconButton>
       </TopbarActions>
       <div className="ui-detail-stack">
-        <Card
-          title="Party"
-          action={
-            <PartyPaymentDialog
-              partyId={party.id}
-              outstanding={summary.outstanding}
-              invoices={summary.invoices}
-              accounts={accounts}
-              categories={categories}
-            />
-          }
-        >
-          <dl className="ui-property-list">
-            <div className="ui-detail-item">
-              <dt>Company Name</dt>
-              <dd>{party.company_name}</dd>
-            </div>
-            <div className="ui-detail-item">
-              <dt>Contact Person</dt>
-              <dd>{party.contact_person_name ?? "—"}</dd>
-            </div>
-            <div className="ui-detail-item">
-              <dt>Mobile Number</dt>
-              <dd>{party.mobile_number}</dd>
-            </div>
-            <div className="ui-detail-item">
-              <dt>Default Price</dt>
-              <dd>{formatInr(party.price)}</dd>
-            </div>
-            <div className="ui-detail-item">
-              <dt>Status</dt>
-              <dd>
-                <StatusBadge tone={party.is_active ? "active" : "inactive"} />
-              </dd>
-            </div>
-            <div className="ui-detail-item">
-              <dt>Jobs</dt>
-              <dd>{summary.jobsCount}</dd>
-            </div>
-            <div className="ui-detail-item">
-              <dt>Invoices</dt>
-              <dd>{summary.invoicesCount}</dd>
-            </div>
-            <div className="ui-detail-item">
-              <dt>Outstanding</dt>
-              <dd>{formatInr(summary.outstanding)}</dd>
-            </div>
-          </dl>
-        </Card>
+        <section className="ui-section" aria-label="Party summary">
+          <div className="ui-kpi-grid">
+            {kpis.map((kpi) => (
+              <article key={kpi.label} className="ui-kpi-card">
+                <p className="ui-kpi-label">{kpi.label}</p>
+                <p className="ui-kpi-value">{kpi.value}</p>
+              </article>
+            ))}
+          </div>
+        </section>
         <Card title="Related Jobs">
           <DataTable
             caption="Related jobs"
@@ -106,38 +123,92 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
               {
                 key: "lot",
                 header: "Lot Number",
-                render: (row) => <Link href={`/jobs/${row.id}`}>{row.lot_number}</Link>,
+                render: (row) => row.lot_number,
               },
-              { key: "status", header: "Status", render: (row) => row.status },
-              { key: "than", header: "Than", numeric: true, render: (row) => String(row.than) },
-              { key: "price", header: "Job Price", numeric: true, render: (row) => formatInr(row.price) },
+              {
+                key: "type",
+                header: "Job Type",
+                render: (row) => row.job_type,
+              },
+              {
+                key: "than",
+                header: "Than",
+                numeric: true,
+                render: (row) => formatThan(row.than),
+              },
+              {
+                key: "remaining",
+                header: "Remaining Than",
+                numeric: true,
+                render: (row) => formatThan(row.remaining_than),
+              },
+              {
+                key: "weight",
+                header: "Weight",
+                numeric: true,
+                render: (row) => formatWeightCt(row.weight),
+              },
+              {
+                key: "price",
+                header: "Price",
+                numeric: true,
+                render: (row) => formatInr(row.price),
+              },
+              {
+                key: "invoice_total",
+                header: "Total Amount",
+                numeric: true,
+                render: (row) =>
+                  row.invoice ? formatInr(row.invoice.amount) : "—",
+              },
+              {
+                key: "invoice_paid",
+                header: "Paid Amount",
+                numeric: true,
+                render: (row) =>
+                  row.invoice ? formatInr(row.invoice.allocated) : "—",
+              },
+              {
+                key: "invoice_remaining",
+                header: "Remaining Amount",
+                numeric: true,
+                render: (row) =>
+                  row.invoice ? formatInr(row.invoice.outstanding) : "—",
+              },
+              {
+                key: "status",
+                header: "Status",
+                render: (row) => <StatusBadge tone={jobTone(row.status)} />,
+              },
+              {
+                key: "payment_status",
+                header: "Payment Status",
+                align: "center",
+                render: (row) =>
+                  row.invoice ? (
+                    <StatusBadge
+                      tone={invoiceTone(row.invoice.status)}
+                      label={row.invoice.status}
+                    />
+                  ) : (
+                    "—"
+                  ),
+              },
             ]}
-            rows={summary.jobs}
+            rows={relatedJobs}
             rowKey={(row) => row.id}
+            onRowClick={(row) => router.push(`/jobs/${row.id}`)}
             emptyTitle="No related jobs yet."
           />
         </Card>
-        <Card title="Related Invoices">
-          <DataTable
-            caption="Related invoices"
-            columns={[
-              {
-                key: "number",
-                header: "Invoice Number",
-                render: (row) => <Link href={`/jobs/${row.job_work_id}`}>{row.invoice_number}</Link>,
-              },
-              { key: "amount", header: "Invoice Total", numeric: true, render: (row) => formatInr(row.amount) },
-              { key: "paid", header: "Paid", numeric: true, render: (row) => formatInr(row.allocated) },
-              { key: "remaining", header: "Remaining", numeric: true, render: (row) => formatInr(row.outstanding) },
-              { key: "status", header: "Status", render: (row) => row.status },
-            ]}
-            rows={summary.invoices}
-            rowKey={(row) => row.id}
-            emptyTitle="No related invoices yet."
-          />
-        </Card>
       </div>
-      <Dialog open={editOpen} title="Edit Party" onClose={() => setEditOpen(false)} disableClose={pending} footer={null}>
+      <Dialog
+        open={editOpen}
+        title="Edit Party"
+        onClose={() => setEditOpen(false)}
+        disableClose={pending}
+        footer={null}
+      >
         <form
           className="ui-dialog-form"
           onSubmit={(event) => {
@@ -148,7 +219,9 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
               const outcome = await updatePartyAction({
                 id: party.id,
                 company_name: String(form.get("company_name") ?? ""),
-                contact_person_name: String(form.get("contact_person_name") ?? ""),
+                contact_person_name: String(
+                  form.get("contact_person_name") ?? "",
+                ),
                 mobile_number: String(form.get("mobile_number") ?? ""),
                 price: String(form.get("price") ?? ""),
               });
@@ -163,7 +236,11 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
             });
           }}
         >
-          <FormField label="Company Name" htmlFor="detail-edit-company" required>
+          <FormField
+            label="Company Name"
+            htmlFor="detail-edit-company"
+            required
+          >
             <Input
               id="detail-edit-company"
               name="company_name"
@@ -182,7 +259,11 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
               placeholder="e.g. Amit Patel"
             />
           </FormField>
-          <FormField label="Mobile Number" htmlFor="detail-edit-mobile" required>
+          <FormField
+            label="Mobile Number"
+            htmlFor="detail-edit-mobile"
+            required
+          >
             <Input
               id="detail-edit-mobile"
               name="mobile_number"
@@ -192,11 +273,7 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
               placeholder="e.g. 9876543210"
             />
           </FormField>
-          <FormField
-            label="Price"
-            htmlFor="detail-edit-price"
-            required
-          >
+          <FormField label="Price" htmlFor="detail-edit-price" required>
             <Input
               id="detail-edit-price"
               name="price"
@@ -213,11 +290,15 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
             </p>
           ) : null}
           <div className="ui-dialog-actions">
-            <Button variant="secondary" disabled={pending} onClick={() => setEditOpen(false)}>
+            <Button
+              variant="secondary"
+              disabled={pending}
+              onClick={() => setEditOpen(false)}
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Saving…" : "Save"}
+            <Button type="submit" loading={pending}>
+              Save
             </Button>
           </div>
         </form>
