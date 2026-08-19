@@ -61,11 +61,16 @@ export function PartyOutstandingPrintButton({
   return (
     <>
       {variant === "icon" ? (
-        <IconButton tone="print" label="Print party invoice" onClick={() => setShouldPrint(true)}>
+        <IconButton
+          tone="print"
+          label="Print party invoice"
+          loading={shouldPrint}
+          onClick={() => setShouldPrint(true)}
+        >
           <PrintIcon width={16} height={16} />
         </IconButton>
       ) : (
-        <Button variant="secondary" onClick={() => setShouldPrint(true)}>
+        <Button variant="secondary" loading={shouldPrint} onClick={() => setShouldPrint(true)}>
           {children}
         </Button>
       )}

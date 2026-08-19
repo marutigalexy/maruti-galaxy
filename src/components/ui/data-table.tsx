@@ -2,7 +2,7 @@ import type { KeyboardEvent, ReactNode } from "react";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
-import { Skeleton } from "@/components/ui/skeleton";
+import { TableSkeleton } from "@/components/ui/skeleton";
 
 export type DataTableColumn<T> = {
   key: string;
@@ -37,12 +37,12 @@ export function DataTable<T>({
   onRetry,
   onRowClick,
 }: DataTableProps<T>) {
-  if (loading) {
-    return <Skeleton lines={5} />;
-  }
-
   if (error) {
     return <ErrorState title="Unable to load records" description={error} onRetry={onRetry} />;
+  }
+
+  if (loading) {
+    return <TableSkeleton caption={caption} columns={columns} rows={rows.length > 0 ? rows.length : 8} />;
   }
 
   if (rows.length === 0) {

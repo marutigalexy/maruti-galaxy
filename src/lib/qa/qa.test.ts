@@ -77,6 +77,10 @@ describe("QA-003 accessibility pass", () => {
     expect(read("src/components/layout/sidebar.tsx")).toMatch(/app-sidebar-profile/);
     expect(read("src/components/ui/pagination.tsx")).toMatch(/Previous/);
     expect(read("src/components/ui/pagination.tsx")).toMatch(/Next/);
+    expect(read("src/components/ui/skeleton.tsx")).toMatch(/aria-busy="true"/);
+    expect(read("src/components/ui/skeleton.tsx")).toMatch(/sr-only/);
+    expect(read("src/components/ui/button.tsx")).toMatch(/aria-busy=\{loading/);
+    expect(css).toMatch(/prefers-reduced-motion: reduce/);
   });
 
   it("exposes every primary module in named navigation", () => {

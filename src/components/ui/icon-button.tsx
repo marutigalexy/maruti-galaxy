@@ -3,11 +3,14 @@
 import { useEffect, useRef, useState, forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
+import { SpinnerIcon } from "@/components/ui/icons";
+
 type IconButtonTone = "default" | "edit" | "delete" | "activate" | "deactivate" | "print" | "allocate" | "password";
 
 type IconButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   label: string;
   tone?: IconButtonTone;
+  loading?: boolean;
   children: ReactNode;
 };
 
@@ -18,6 +21,8 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
     type = "button",
     className,
     children,
+    loading = false,
+    disabled,
     onBlur,
     onFocus,
     onMouseEnter,
@@ -77,6 +82,8 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
         type={type}
         aria-label={label}
         className={["ui-icon-button", `ui-icon-button-${tone}`, className].filter(Boolean).join(" ")}
+        disabled={Boolean(disabled || loading)}
+        aria-busy={loading || undefined}
         onMouseEnter={(event) => {
           showTooltip();
           onMouseEnter?.(event);
@@ -95,7 +102,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
         }}
         {...props}
       >
-        {children}
+        {loading ? <SpinnerIcon width={16} height={16} aria-hidden="true" /> : children}
       </button>
       {coords
         ? createPortal(

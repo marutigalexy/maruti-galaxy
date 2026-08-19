@@ -83,12 +83,12 @@ export function InvoicePrintButton({
   return (
     <>
       {variant === "icon" ? (
-        <IconButton tone="print" label="Print invoice" disabled={pending} onClick={printNow}>
+        <IconButton tone="print" label="Print invoice" loading={pending} onClick={printNow}>
           <PrintIcon width={16} height={16} />
         </IconButton>
       ) : (
-        <Button variant="secondary" disabled={pending} onClick={printNow}>
-          {pending ? "Preparing…" : children}
+        <Button variant="secondary" loading={pending} onClick={printNow}>
+          {children}
         </Button>
       )}
       {printDoc ? (

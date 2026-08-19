@@ -110,8 +110,8 @@ export function LoginForm({ nextPath }: LoginFormProps) {
         <Link href="#">Forgot password?</Link>
       </div>
 
-      <Button type="submit" disabled={pending} variant="primary">
-        {pending ? "Signing in…" : "Sign In"}
+      <Button type="submit" loading={pending} variant="primary">
+        Sign In
       </Button>
     </form>
   );

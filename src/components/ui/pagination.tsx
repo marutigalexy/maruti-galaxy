@@ -7,6 +7,7 @@ type PaginationProps = {
   page: number;
   pageSize: number;
   totalCount: number;
+  disabled?: boolean;
   onPageChange: (page: number) => void;
   onPageSizeChange: (pageSize: number) => void;
 };
@@ -15,6 +16,7 @@ export function Pagination({
   page,
   pageSize,
   totalCount,
+  disabled = false,
   onPageChange,
   onPageSizeChange,
 }: PaginationProps) {
@@ -35,6 +37,7 @@ export function Pagination({
           <Select
             id="page-size"
             value={String(controls.pageSize)}
+            disabled={disabled}
             onChange={(event) => onPageSizeChange(Number(event.target.value))}
             className="ui-pagination-select"
           >
@@ -50,7 +53,7 @@ export function Pagination({
           <Button
             variant="secondary"
             className="ui-pagination-btn"
-            disabled={controls.prevDisabled}
+            disabled={disabled || controls.prevDisabled}
             onClick={() => onPageChange(controls.page - 1)}
             aria-label="Previous page"
             title="Previous page"
@@ -67,7 +70,7 @@ export function Pagination({
           <Button
             variant="secondary"
             className="ui-pagination-btn"
-            disabled={controls.nextDisabled}
+            disabled={disabled || controls.nextDisabled}
             onClick={() => onPageChange(controls.page + 1)}
             aria-label="Next page"
             title="Next page"

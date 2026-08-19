@@ -80,10 +80,10 @@ export function ConfirmDialog({
         </Button>
         <Button
           variant={danger ? "danger" : "primary"}
-          disabled={pending}
+          loading={pending}
           onClick={onConfirm}
         >
-          {pending ? "Working…" : confirmLabel}
+          {confirmLabel}
         </Button>
       </div>
     </dialog>
