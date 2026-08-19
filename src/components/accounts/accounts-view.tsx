@@ -25,6 +25,7 @@ import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TableActions } from "@/components/ui/table-actions";
 import { useToast } from "@/components/ui/toast";
+import { useQueryPush } from "@/hooks/use-query-push";
 import { listHref } from "@/lib/api/list-href";
 import type { Paginated } from "@/lib/api/pagination";
 import { formatInr } from "@/lib/formatters";
@@ -38,6 +39,7 @@ type AccountsViewProps = {
 
 export function AccountsView({ query, result }: AccountsViewProps) {
   const router = useRouter();
+  const { pending: queryPending, push } = useQueryPush();
   const toast = useToast();
   const [pending, startTransition] = useTransition();
   const [createOpen, setCreateOpen] = useState(false);
@@ -47,7 +49,7 @@ export function AccountsView({ query, result }: AccountsViewProps) {
   const [formError, setFormError] = useState<string | null>(null);
 
   const pushQuery = (next: ListAccountsInput) => {
-    router.push(listHref("/accounting/accounts", next));
+    push(listHref("/accounting/accounts", next));
   };
 
   function runMutation(
@@ -89,7 +91,7 @@ export function AccountsView({ query, result }: AccountsViewProps) {
         <SearchInput
           value={query.search}
           onValueChange={(search) =>
-            router.push(listHref("/accounting/accounts", { ...query, search, page: 1 }))
+            push(listHref("/accounting/accounts", { ...query, search, page: 1 }))
           }
           placeholder="Search account name"
         />
@@ -179,6 +181,7 @@ export function AccountsView({ query, result }: AccountsViewProps) {
         rows={result.records}
         rowKey={(row) => row.id}
         onRowClick={(row) => router.push(`/accounting/accounts/${row.id}`)}
+        loading={queryPending}
         emptyTitle={
           query.search || query.status !== "all"
             ? "No accounts match the selected filters."
@@ -189,6 +192,7 @@ export function AccountsView({ query, result }: AccountsViewProps) {
         page={result.page}
         pageSize={result.pageSize}
         totalCount={result.totalCount}
+        disabled={queryPending}
         onPageChange={(page) => pushQuery({ ...query, page })}
         onPageSizeChange={(pageSize) => pushQuery({ ...query, page: 1, pageSize })}
       />
@@ -239,8 +243,8 @@ export function AccountsView({ query, result }: AccountsViewProps) {
             <Button variant="secondary" disabled={pending} onClick={() => setCreateOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Saving…" : "Create"}
+            <Button type="submit" loading={pending}>
+              Create
             </Button>
           </div>
         </form>
@@ -313,8 +317,8 @@ export function AccountsView({ query, result }: AccountsViewProps) {
               <Button variant="secondary" disabled={pending} onClick={() => setEditAccount(null)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={pending}>
-                {pending ? "Saving…" : "Save"}
+              <Button type="submit" loading={pending}>
+                Save
               </Button>
             </div>
           </form>

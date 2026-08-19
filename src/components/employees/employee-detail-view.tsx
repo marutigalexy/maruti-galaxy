@@ -88,7 +88,7 @@ export function EmployeeDetailView({ employee, summary, accounts, categories }: 
               { key: "than", header: "Done Than", numeric: true, render: (row) => String(row.done_than) },
               {
                 key: "commission",
-                header: "Commission (snapshot)",
+                header: "Commission",
                 numeric: true,
                 render: (row) => formatInr(row.commission),
               },
@@ -175,8 +175,8 @@ export function EmployeeDetailView({ employee, summary, accounts, categories }: 
             <Button variant="secondary" disabled={pending} onClick={() => setEditOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Saving…" : "Save"}
+            <Button type="submit" loading={pending}>
+              Save
             </Button>
           </div>
         </form>

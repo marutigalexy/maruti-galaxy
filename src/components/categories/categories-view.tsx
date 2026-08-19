@@ -25,6 +25,7 @@ import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TableActions } from "@/components/ui/table-actions";
 import { useToast } from "@/components/ui/toast";
+import { useQueryPush } from "@/hooks/use-query-push";
 import { listHref } from "@/lib/api/list-href";
 import type { Paginated } from "@/lib/api/pagination";
 import type { ListCategoriesInput } from "@/lib/validation/categories";
@@ -37,6 +38,7 @@ type CategoriesViewProps = {
 
 export function CategoriesView({ query, result }: CategoriesViewProps) {
   const router = useRouter();
+  const { pending: queryPending, push } = useQueryPush();
   const toast = useToast();
   const [pending, startTransition] = useTransition();
   const [createOpen, setCreateOpen] = useState(false);
@@ -46,7 +48,7 @@ export function CategoriesView({ query, result }: CategoriesViewProps) {
   const [formError, setFormError] = useState<string | null>(null);
 
   const pushQuery = (next: ListCategoriesInput) => {
-    router.push(listHref("/accounting/categories", next));
+    push(listHref("/accounting/categories", next));
   };
 
   function runMutation(
@@ -88,7 +90,7 @@ export function CategoriesView({ query, result }: CategoriesViewProps) {
         <SearchInput
           value={query.search}
           onValueChange={(search) =>
-            router.push(listHref("/accounting/categories", { ...query, search, page: 1 }))
+            push(listHref("/accounting/categories", { ...query, search, page: 1 }))
           }
           placeholder="Search category name"
         />
@@ -174,6 +176,7 @@ export function CategoriesView({ query, result }: CategoriesViewProps) {
           setFormError(null);
           setEditCategory(row);
         }}
+        loading={queryPending}
         emptyTitle={
           query.search || query.status !== "all"
             ? "No categories match the selected filters."
@@ -184,6 +187,7 @@ export function CategoriesView({ query, result }: CategoriesViewProps) {
         page={result.page}
         pageSize={result.pageSize}
         totalCount={result.totalCount}
+        disabled={queryPending}
         onPageChange={(page) => pushQuery({ ...query, page })}
         onPageSizeChange={(pageSize) => pushQuery({ ...query, page: 1, pageSize })}
       />
@@ -229,8 +233,8 @@ export function CategoriesView({ query, result }: CategoriesViewProps) {
             <Button variant="secondary" disabled={pending} onClick={() => setCreateOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Saving…" : "Create"}
+            <Button type="submit" loading={pending}>
+              Create
             </Button>
           </div>
         </form>
@@ -303,8 +307,8 @@ export function CategoriesView({ query, result }: CategoriesViewProps) {
               <Button variant="secondary" disabled={pending} onClick={() => setEditCategory(null)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={pending}>
-                {pending ? "Saving…" : "Save"}
+              <Button type="submit" loading={pending}>
+                Save
               </Button>
             </div>
           </form>

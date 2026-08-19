@@ -25,6 +25,7 @@ import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TableActions } from "@/components/ui/table-actions";
 import { useToast } from "@/components/ui/toast";
+import { useQueryPush } from "@/hooks/use-query-push";
 import { listHref } from "@/lib/api/list-href";
 import type { Paginated } from "@/lib/api/pagination";
 import { formatInr } from "@/lib/formatters";
@@ -38,6 +39,7 @@ type EmployeesViewProps = {
 
 export function EmployeesView({ query, result }: EmployeesViewProps) {
   const router = useRouter();
+  const { pending: queryPending, push } = useQueryPush();
   const toast = useToast();
   const [pending, startTransition] = useTransition();
   const [createOpen, setCreateOpen] = useState(false);
@@ -47,7 +49,7 @@ export function EmployeesView({ query, result }: EmployeesViewProps) {
   const [formError, setFormError] = useState<string | null>(null);
 
   const pushQuery = (next: ListEmployeesInput) => {
-    router.push(listHref("/employees", next));
+    push(listHref("/employees", next));
   };
 
   function runMutation(
@@ -88,7 +90,7 @@ export function EmployeesView({ query, result }: EmployeesViewProps) {
       >
         <SearchInput
           value={query.search}
-          onValueChange={(search) => router.push(listHref("/employees", { ...query, search, page: 1 }))}
+          onValueChange={(search) => push(listHref("/employees", { ...query, search, page: 1 }))}
           placeholder="Search name or mobile"
         />
         <FormField label="Status" htmlFor="employee-status">
@@ -168,6 +170,7 @@ export function EmployeesView({ query, result }: EmployeesViewProps) {
         rows={result.records}
         rowKey={(row) => row.id}
         onRowClick={(row) => router.push(`/employees/${row.id}`)}
+        loading={queryPending}
         emptyTitle={
           query.search || query.status !== "all"
             ? "No employees match the selected filters."
@@ -178,6 +181,7 @@ export function EmployeesView({ query, result }: EmployeesViewProps) {
         page={result.page}
         pageSize={result.pageSize}
         totalCount={result.totalCount}
+        disabled={queryPending}
         onPageChange={(page) => pushQuery({ ...query, page })}
         onPageSizeChange={(pageSize) => pushQuery({ ...query, page: 1, pageSize })}
       />
@@ -228,8 +232,8 @@ export function EmployeesView({ query, result }: EmployeesViewProps) {
             <Button variant="secondary" disabled={pending} onClick={() => setCreateOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Saving…" : "Create"}
+            <Button type="submit" loading={pending}>
+              Create
             </Button>
           </div>
         </form>
@@ -304,8 +308,8 @@ export function EmployeesView({ query, result }: EmployeesViewProps) {
               <Button variant="secondary" disabled={pending} onClick={() => setEditEmployee(null)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={pending}>
-                {pending ? "Saving…" : "Save"}
+              <Button type="submit" loading={pending}>
+                Save
               </Button>
             </div>
           </form>

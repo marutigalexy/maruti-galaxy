@@ -25,6 +25,7 @@ import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TableActions } from "@/components/ui/table-actions";
 import { useToast } from "@/components/ui/toast";
+import { useQueryPush } from "@/hooks/use-query-push";
 import { listHref } from "@/lib/api/list-href";
 import type { Paginated } from "@/lib/api/pagination";
 import { formatInr } from "@/lib/formatters";
@@ -38,6 +39,7 @@ type PartiesViewProps = {
 
 export function PartiesView({ query, result }: PartiesViewProps) {
   const router = useRouter();
+  const { pending: queryPending, push } = useQueryPush();
   const toast = useToast();
   const [pending, startTransition] = useTransition();
   const [createOpen, setCreateOpen] = useState(false);
@@ -47,7 +49,7 @@ export function PartiesView({ query, result }: PartiesViewProps) {
   const [formError, setFormError] = useState<string | null>(null);
 
   const pushQuery = (next: ListPartiesInput) => {
-    router.push(listHref("/parties", next));
+    push(listHref("/parties", next));
   };
 
   function runMutation(
@@ -88,7 +90,7 @@ export function PartiesView({ query, result }: PartiesViewProps) {
       >
         <SearchInput
           value={query.search}
-          onValueChange={(search) => router.push(listHref("/parties", { ...query, search, page: 1 }))}
+          onValueChange={(search) => push(listHref("/parties", { ...query, search, page: 1 }))}
           placeholder="Search company or mobile"
         />
         <FormField label="Status" htmlFor="party-status">
@@ -160,6 +162,7 @@ export function PartiesView({ query, result }: PartiesViewProps) {
         rows={result.records}
         rowKey={(row) => row.id}
         onRowClick={(row) => router.push(`/parties/${row.id}`)}
+        loading={queryPending}
         emptyTitle={
           query.search || query.status !== "all" ? "No parties match the selected filters." : "No parties found."
         }
@@ -168,6 +171,7 @@ export function PartiesView({ query, result }: PartiesViewProps) {
         page={result.page}
         pageSize={result.pageSize}
         totalCount={result.totalCount}
+        disabled={queryPending}
         onPageChange={(page) => pushQuery({ ...query, page })}
         onPageSizeChange={(pageSize) => pushQuery({ ...query, page: 1, pageSize })}
       />
@@ -218,8 +222,8 @@ export function PartiesView({ query, result }: PartiesViewProps) {
             <Button variant="secondary" disabled={pending} onClick={() => setCreateOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Saving…" : "Create"}
+            <Button type="submit" loading={pending}>
+              Create
             </Button>
           </div>
         </form>
@@ -304,8 +308,8 @@ export function PartiesView({ query, result }: PartiesViewProps) {
               <Button variant="secondary" disabled={pending} onClick={() => setEditParty(null)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={pending}>
-                {pending ? "Saving…" : "Save"}
+              <Button type="submit" loading={pending}>
+                Save
               </Button>
             </div>
           </form>

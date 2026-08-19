@@ -19,6 +19,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useToast } from "@/components/ui/toast";
+import { useQueryPush } from "@/hooks/use-query-push";
 import type { Paginated } from "@/lib/api/pagination";
 import { formatDisplayDate, formatInr } from "@/lib/formatters";
 import type { ListEntriesInput } from "@/lib/validation/entries";
@@ -59,13 +60,14 @@ function accountEntriesHref(accountId: string, query: ListEntriesInput): string 
 
 export function AccountDetailView({ account, query, entries, categories }: AccountDetailViewProps) {
   const router = useRouter();
+  const { pending: queryPending, push } = useQueryPush();
   const toast = useToast();
   const [pending, startTransition] = useTransition();
   const [editOpen, setEditOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   useRecordTitle(account.name);
   const pushQuery = (next: ListEntriesInput) => {
-    router.push(accountEntriesHref(account.id, next));
+    push(accountEntriesHref(account.id, next));
   };
   const filtered =
     query.entry_type !== "all" ||
@@ -206,12 +208,14 @@ export function AccountDetailView({ account, query, entries, categories }: Accou
           ]}
           rows={entries.records}
           rowKey={(row) => row.id}
+          loading={queryPending}
           emptyTitle={filtered ? "No entries match the selected filters." : "No entries yet."}
         />
         <Pagination
           page={entries.page}
           pageSize={entries.pageSize}
           totalCount={entries.totalCount}
+          disabled={queryPending}
           onPageChange={(page) => pushQuery({ ...query, page })}
           onPageSizeChange={(pageSize) => pushQuery({ ...query, page: 1, pageSize })}
         />
@@ -290,8 +294,8 @@ export function AccountDetailView({ account, query, entries, categories }: Accou
             <Button variant="secondary" disabled={pending} onClick={() => setEditOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Saving…" : "Save"}
+            <Button type="submit" loading={pending}>
+              Save
             </Button>
           </div>
         </form>

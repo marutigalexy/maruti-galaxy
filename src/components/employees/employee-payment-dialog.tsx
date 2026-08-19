@@ -114,8 +114,8 @@ export function EmployeePaymentDialog({
             <Button variant="secondary" disabled={pending} onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Saving…" : "Save payment"}
+            <Button type="submit" loading={pending}>
+              Save payment
             </Button>
           </div>
         </form>

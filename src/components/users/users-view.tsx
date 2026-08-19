@@ -25,6 +25,7 @@ import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TableActions } from "@/components/ui/table-actions";
 import { useToast } from "@/components/ui/toast";
+import { useQueryPush } from "@/hooks/use-query-push";
 import type { Paginated } from "@/lib/api/pagination";
 import { formatDisplayDate } from "@/lib/formatters";
 import type { ListUsersInput } from "@/lib/validation/users";
@@ -56,6 +57,7 @@ function usersHref(query: Partial<ListUsersInput> & Pick<ListUsersInput, "page" 
 
 export function UsersView({ currentUserId, query, result }: UsersViewProps) {
   const router = useRouter();
+  const { pending: queryPending, push } = useQueryPush();
   const toast = useToast();
   const [pending, startTransition] = useTransition();
   const [createOpen, setCreateOpen] = useState(false);
@@ -65,11 +67,11 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
   const [formError, setFormError] = useState<string | null>(null);
 
   const pushQuery = (next: ListUsersInput) => {
-    router.push(usersHref(next));
+    push(usersHref(next));
   };
 
   const onSearch = (search: string) => {
-    router.push(usersHref({ ...query, search, page: 1 }));
+    push(usersHref({ ...query, search, page: 1 }));
   };
 
   function runMutation(action: () => Promise<{ ok: boolean; error?: { message: string } }>, success: string) {
@@ -190,12 +192,14 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
           setFormError(null);
           setEditUser(row);
         }}
+        loading={queryPending}
         emptyTitle={query.search || query.status !== "all" ? "No users match the selected filters." : "No users found."}
       />
       <Pagination
         page={result.page}
         pageSize={result.pageSize}
         totalCount={result.totalCount}
+        disabled={queryPending}
         onPageChange={(page) => pushQuery({ ...query, page })}
         onPageSizeChange={(pageSize) => pushQuery({ ...query, page: 1, pageSize })}
       />
@@ -262,8 +266,8 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
             <Button variant="secondary" disabled={pending} onClick={() => setCreateOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Saving…" : "Create"}
+            <Button type="submit" loading={pending}>
+              Create
             </Button>
           </div>
         </form>
@@ -316,8 +320,8 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
               <Button variant="secondary" disabled={pending} onClick={() => setEditUser(null)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={pending}>
-                {pending ? "Saving…" : "Save"}
+              <Button type="submit" loading={pending}>
+                Save
               </Button>
             </div>
           </form>
@@ -379,8 +383,8 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
               <Button variant="secondary" disabled={pending} onClick={() => setPasswordUser(null)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={pending}>
-                {pending ? "Saving…" : "Update Password"}
+              <Button type="submit" loading={pending}>
+                Update Password
               </Button>
             </div>
           </form>
