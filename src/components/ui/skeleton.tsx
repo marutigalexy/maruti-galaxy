@@ -36,7 +36,7 @@ function tableColumnClass(column: TableSkeletonColumn) {
   if (column.numeric) {
     return "is-numeric";
   }
-  if (column.align === "center" || column.key === "status") {
+  if (column.align === "center" || column.key === "status" || column.key === "type") {
     return "is-center";
   }
   return undefined;

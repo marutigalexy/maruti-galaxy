@@ -50,6 +50,9 @@ describe("design tokens", () => {
     expect(tokenCss).toContain("--icon-size-nav: 20px");
     expect(componentCss).toMatch(/\.app-nav-icon\s*\{[\s\S]*?width:\s*var\(--icon-size-nav\)/);
     expect(componentCss).toContain("border-radius: var(--radius-md)");
+    expect(componentCss).toMatch(/\.ui-badge-sarin/);
+    expect(componentCss).toMatch(/\.ui-badge-dropping/);
+    expect(componentCss).toMatch(/\.ui-badge-galaxy/);
   });
 
   it("keeps hex values in the token files only", () => {

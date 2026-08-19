@@ -764,24 +764,22 @@ a {
 }
 
 .ui-badge-pending,
-.ui-badge-unpaid {
+.ui-badge-partial {
   background: var(--color-warning-soft);
   color: var(--color-warning);
 }
 
 .ui-badge-pending .ui-badge-dot,
-.ui-badge-unpaid .ui-badge-dot {
+.ui-badge-partial .ui-badge-dot {
   background: var(--color-warning);
 }
 
-.ui-badge-progress,
-.ui-badge-partial {
+.ui-badge-progress{
   background: var(--color-info-soft);
   color: var(--color-secondary-navy);
 }
 
-.ui-badge-progress .ui-badge-dot,
-.ui-badge-partial .ui-badge-dot {
+.ui-badge-progress .ui-badge-dot{
   background: var(--color-secondary-navy);
 }
 
@@ -801,14 +799,48 @@ a {
 }
 
 .ui-badge-inactive,
-.ui-badge-expense {
+.ui-badge-expense,
+.ui-badge-unpaid {
   background: var(--color-danger-soft);
   color: var(--color-danger);
 }
 
 .ui-badge-inactive .ui-badge-dot,
-.ui-badge-expense .ui-badge-dot {
+.ui-badge-expense .ui-badge-dot,
+.ui-badge-unpaid .ui-badge-dot {
   background: var(--color-danger);
+}
+
+.ui-badge-sarin {
+  background: var(--color-info-soft);
+  color: var(--color-accent-blue);
+}
+
+.ui-badge-dropping {
+  background: var(--color-light-silver);
+  color: var(--color-dark-navy);
+}
+
+.ui-badge-galaxy {
+  background: var(--color-invoice-band);
+  color: var(--color-deep-navy);
+}
+
+.ui-field-control-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.ui-field-control-row > .ui-select-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.ui-field-control-row .ui-badge,
+.ui-detail-item dd .ui-badge,
+.ui-table td .ui-badge {
+  flex-shrink: 0;
 }
 
 .ui-tabs {
@@ -2079,6 +2111,11 @@ a {
   margin: 4px 0 0;
   font-weight: var(--font-weight-semibold);
   font-variant-numeric: tabular-nums;
+}
+
+.ui-detail-item dd:has(.ui-badge) {
+  display: flex;
+  align-items: center;
 }
 
 .ui-detail-item a {

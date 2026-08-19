@@ -8,6 +8,7 @@ import { createJobAction } from "@/app/actions/jobs";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { JobTypeBadge } from "@/components/ui/job-type-badge";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
@@ -27,6 +28,7 @@ export function JobCreateForm({ parties, onCancel }: JobCreateFormProps) {
   const [pending, startTransition] = useTransition();
   const [formError, setFormError] = useState<string | null>(null);
   const [partyId, setPartyId] = useState("");
+  const [jobType, setJobType] = useState("Sarin");
   const [price, setPrice] = useState("");
   const [priceEdited, setPriceEdited] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -111,8 +113,22 @@ export function JobCreateForm({ parties, onCancel }: JobCreateFormProps) {
       <FormField label="Lot Number" htmlFor="job-lot">
         <Input id="job-lot" value="" placeholder="Assigned on save" disabled readOnly />
       </FormField>
-      <FormField label="Job Type" htmlFor="job-type" required>
-        <Select id="job-type" name="job_type" required disabled={pending} defaultValue="Sarin">
+      <FormField
+        label="Job Type"
+        htmlFor="job-type"
+        required
+      >
+        <Select
+          id="job-type"
+          name="job_type"
+          required
+          disabled={pending}
+          value={jobType}
+          onChange={(event) => {
+            setDirty(true);
+            setJobType(event.target.value);
+          }}
+        >
           <option value="Sarin">Sarin</option>
           <option value="Dropping">Dropping</option>
           <option value="Galaxy">Galaxy</option>

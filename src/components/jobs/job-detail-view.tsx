@@ -24,6 +24,7 @@ import { FormField } from "@/components/ui/form-field";
 import { IconButton } from "@/components/ui/icon-button";
 import { DeleteIcon, EditIcon, EyeIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
+import { JobTypeBadge } from "@/components/ui/job-type-badge";
 import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TableActions } from "@/components/ui/table-actions";
@@ -168,7 +169,9 @@ export function JobDetailView({ job, invoice, employees, accounts, categories }:
                 </div>
                 <div className="ui-detail-item">
                   <dt>Job Type</dt>
-                  <dd>{job.job_type}</dd>
+                  <dd>
+                    <JobTypeBadge type={job.job_type} />
+                  </dd>
                 </div>
               </dl>
             </section>

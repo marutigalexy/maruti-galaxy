@@ -7,6 +7,7 @@ import { updateJobAction } from "@/app/actions/jobs";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { JobTypeBadge } from "@/components/ui/job-type-badge";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
@@ -25,6 +26,7 @@ export function JobEditForm({ job, onCancel }: JobEditFormProps) {
   const [formError, setFormError] = useState<string | null>(null);
   const [than, setThan] = useState(String(job.than));
   const [price, setPrice] = useState(String(job.price));
+  const [jobType, setJobType] = useState<string>(job.job_type);
   const [dirty, setDirty] = useState(false);
 
   useUnsavedChanges(dirty && !pending);
@@ -74,8 +76,22 @@ export function JobEditForm({ job, onCancel }: JobEditFormProps) {
       <FormField label="Lot Number" htmlFor="edit-job-lot">
         <Input id="edit-job-lot" value={job.lot_number} disabled readOnly placeholder="Lot number" />
       </FormField>
-      <FormField label="Job Type" htmlFor="edit-job-type" required>
-        <Select id="edit-job-type" name="job_type" required disabled={pending} defaultValue={job.job_type}>
+      <FormField
+        label="Job Type"
+        htmlFor="edit-job-type"
+        required
+      >
+        <Select
+          id="edit-job-type"
+          name="job_type"
+          required
+          disabled={pending}
+          value={jobType}
+          onChange={(event) => {
+            setDirty(true);
+            setJobType(event.target.value);
+          }}
+        >
           <option value="Sarin">Sarin</option>
           <option value="Dropping">Dropping</option>
           <option value="Galaxy">Galaxy</option>

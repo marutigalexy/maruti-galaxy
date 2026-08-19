@@ -15,6 +15,7 @@ import { FormField } from "@/components/ui/form-field";
 import { IconButton } from "@/components/ui/icon-button";
 import { EditIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
+import { JobTypeBadge } from "@/components/ui/job-type-badge";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useToast } from "@/components/ui/toast";
 import { formatInr, formatThan, formatWeightCt } from "@/lib/formatters";
@@ -128,7 +129,7 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
               {
                 key: "type",
                 header: "Job Type",
-                render: (row) => row.job_type,
+                render: (row) => <JobTypeBadge type={row.job_type} />,
               },
               {
                 key: "than",

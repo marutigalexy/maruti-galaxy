@@ -5,6 +5,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { ExportButton } from "@/components/ui/export-button";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { FormField } from "@/components/ui/form-field";
+import { JobTypeBadge } from "@/components/ui/job-type-badge";
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput } from "@/components/ui/search-input";
 import { Select } from "@/components/ui/select";
@@ -81,7 +82,10 @@ export function JobWorkReportView({ query, result, parties }: JobWorkReportViewP
           onValueChange={(search) => pushQuery({ ...query, search, page: 1 })}
           placeholder="Search lot number"
         />
-        <FormField label="Job Type" htmlFor="report-job-type">
+        <FormField
+          label="Job Type"
+          htmlFor="report-job-type"
+        >
           <Select
             id="report-job-type"
             value={query.job_type}
@@ -143,7 +147,7 @@ export function JobWorkReportView({ query, result, parties }: JobWorkReportViewP
         columns={[
           { key: "lot", header: "Lot Number", render: (row) => row.lot_number },
           { key: "party", header: "Party", render: (row) => row.party_name },
-          { key: "type", header: "Job Type", render: (row) => row.job_type },
+          { key: "type", header: "Job Type", render: (row) => <JobTypeBadge type={row.job_type} /> },
           { key: "than", header: "Than", numeric: true, render: (row) => formatThan(row.than) },
           { key: "price", header: "Price", numeric: true, render: (row) => formatInr(row.price) },
           { key: "kapan", header: "Kapan", render: (row) => row.kapan_number },

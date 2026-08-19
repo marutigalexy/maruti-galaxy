@@ -14,6 +14,7 @@ import { FilterBar } from "@/components/ui/filter-bar";
 import { FormField } from "@/components/ui/form-field";
 import { IconButton } from "@/components/ui/icon-button";
 import { EditIcon } from "@/components/ui/icons";
+import { JobTypeBadge } from "@/components/ui/job-type-badge";
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput } from "@/components/ui/search-input";
 import { Select } from "@/components/ui/select";
@@ -123,7 +124,10 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
           onValueChange={(search) => pushQuery({ ...query, search, page: 1 })}
           placeholder="Search lot or sub-job (J01, J01-A)"
         />
-        <FormField label="Job Type" htmlFor="job-type-filter">
+        <FormField
+          label="Job Type"
+          htmlFor="job-type-filter"
+        >
           <Select
             id="job-type-filter"
             value={query.job_type}
@@ -205,7 +209,7 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
         columns={[
           { key: "lot", header: "Lot Number", render: (row) => row.lot_number },
           { key: "party", header: "Party", render: (row) => row.party_name },
-          { key: "type", header: "Job Type", render: (row) => row.job_type },
+          { key: "type", header: "Job Type", render: (row) => <JobTypeBadge type={row.job_type} /> },
           { key: "than", header: "Than", numeric: true, render: (row) => formatThan(row.than) },
           {
             key: "remaining",

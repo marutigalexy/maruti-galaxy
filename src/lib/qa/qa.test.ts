@@ -64,6 +64,7 @@ describe("QA-003 accessibility pass", () => {
     expect(field).toMatch(/aria-invalid/);
     expect(field).toMatch(/htmlFor/);
     expect(badge).toMatch(/const text = label \?\? LABELS\[tone\]/);
+    expect(read("src/components/ui/job-type-badge.tsx")).toMatch(/\{type\}/);
     expect(table).toMatch(/<caption className="sr-only">/);
     expect(table).toMatch(/scope="col"/);
     expect(css).toMatch(/:focus-visible/);
