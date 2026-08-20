@@ -21,7 +21,8 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { useToast } from "@/components/ui/toast";
 import { useQueryPush } from "@/hooks/use-query-push";
 import type { Paginated } from "@/lib/api/pagination";
-import { formatDisplayDate, formatInr } from "@/lib/formatters";
+import { queryHref } from "@/lib/api/query-href";
+import { formatDisplayDate, formatSignedInr, signedAmountType } from "@/lib/formatters";
 import type { ListEntriesInput } from "@/lib/validation/entries";
 import type { AccountRecord } from "@/services/accounts/accounts-service";
 import type { CategoryOption } from "@/services/categories/categories-service";
@@ -35,24 +36,30 @@ type AccountDetailViewProps = {
 };
 
 function accountEntriesHref(accountId: string, query: ListEntriesInput): string {
-  const params = new URLSearchParams();
-  if (query.entry_type !== "all") {
-    params.set("entry_type", query.entry_type);
-  }
-  if (query.category_id) {
-    params.set("category_id", query.category_id);
-  }
-  if (query.date_from) {
-    params.set("date_from", query.date_from);
-  }
-  if (query.date_to) {
-    params.set("date_to", query.date_to);
-  }
-  if (query.page > 1) {
-    params.set("page", String(query.page));
-  }
-  const qs = params.toString();
-  return qs ? `/accounting/accounts/${accountId}?${qs}` : `/accounting/accounts/${accountId}`;
+  return queryHref(`/accounting/accounts/${accountId}`, {
+    entry_type: query.entry_type,
+    category_id: query.category_id,
+    date_from: query.date_from,
+    date_to: query.date_to,
+    sort: query.sort === "date" ? undefined : query.sort,
+    dir: query.dir === "desc" ? undefined : query.dir,
+    page: query.page,
+  });
+}
+
+function nextSort(query: ListEntriesInput, key: string): ListEntriesInput {
+  const sort = key as ListEntriesInput["sort"];
+  const dir = query.sort === sort && query.dir === "desc" ? "asc" : "desc";
+  return { ...query, sort, dir, page: 1 };
+}
+
+function SignedInr({ amount, type }: { amount: number; type?: "Income" | "Expense" }) {
+  const resolved = type ?? signedAmountType(amount);
+  return (
+    <span className={resolved === "Income" ? "ui-amount-income" : "ui-amount-expense"}>
+      {formatSignedInr(resolved, amount)}
+    </span>
+  );
 }
 
 export function AccountDetailView({ account, query, entries, categories }: AccountDetailViewProps) {
@@ -83,43 +90,39 @@ export function AccountDetailView({ account, query, entries, categories }: Accou
         </IconButton>
       </TopbarActions>
       <div className="ui-detail-stack">
-        <Card title="Account">
-          <dl className="ui-property-list">
-            <div className="ui-detail-item">
-              <dt>Account Name</dt>
-              <dd>{account.name}</dd>
-            </div>
-            <div className="ui-detail-item">
-              <dt>Opening Balance</dt>
-              <dd>{formatInr(account.opening_balance)}</dd>
-            </div>
-            <div className="ui-detail-item">
-              <dt>Total In</dt>
-              <dd>{formatInr(account.total_in)}</dd>
-            </div>
-            <div className="ui-detail-item">
-              <dt>Total Out</dt>
-              <dd>{formatInr(account.total_out)}</dd>
-            </div>
-            <div className="ui-detail-item">
-              <dt>Current Balance</dt>
-              <dd>{formatInr(account.current_balance)}</dd>
-            </div>
-            <div className="ui-detail-item">
-              <dt>Total Entry Count</dt>
-              <dd>{account.entry_count}</dd>
-            </div>
-            <div className="ui-detail-item">
-              <dt>Status</dt>
-              <dd>
-                <StatusBadge tone={account.is_active ? "active" : "inactive"} />
-              </dd>
-            </div>
-          </dl>
-          <p className="ui-field-help">
-            Derived account balances. Current balance is Opening + Total In − Total Out.
-          </p>
-        </Card>
+        <section className="ui-section" aria-label="Account summary">
+          <div className="ui-kpi-grid">
+            <article className="ui-kpi-card">
+              <p className="ui-kpi-label">Opening Balance</p>
+              <p className="ui-kpi-value">
+                <SignedInr amount={account.opening_balance} />
+              </p>
+            </article>
+            <article className="ui-kpi-card">
+              <p className="ui-kpi-label">Total In</p>
+              <p className="ui-kpi-value">
+                <SignedInr amount={account.total_in} type="Income" />
+              </p>
+            </article>
+            <article className="ui-kpi-card">
+              <p className="ui-kpi-label">Total Out</p>
+              <p className="ui-kpi-value">
+                <SignedInr amount={account.total_out} type="Expense" />
+              </p>
+            </article>
+            <article className="ui-kpi-card">
+              <p className="ui-kpi-label">Current Balance</p>
+              <p className="ui-kpi-value">
+                <SignedInr amount={account.current_balance} />
+              </p>
+              <p className="ui-kpi-help">Opening + Total In − Total Out</p>
+            </article>
+            <article className="ui-kpi-card">
+              <p className="ui-kpi-label">Total Entry Count</p>
+              <p className="ui-kpi-value">{account.entry_count}</p>
+            </article>
+          </div>
+        </section>
         <Card title="Related Entries">
         <FilterBar
           onReset={() =>
@@ -132,6 +135,8 @@ export function AccountDetailView({ account, query, entries, categories }: Accou
               employee_id: undefined,
               date_from: undefined,
               date_to: undefined,
+              sort: "date",
+              dir: "desc",
               page: 1,
               pageSize: query.pageSize,
             })
@@ -192,19 +197,32 @@ export function AccountDetailView({ account, query, entries, categories }: Accou
         <DataTable
           caption="Related entries"
           columns={[
-            { key: "date", header: "Date", render: (row) => formatDisplayDate(row.entry_date) },
-            { key: "type", header: "Type", render: (row) => row.entry_type },
+            { key: "date", header: "Date", sortKey: "date", render: (row) => formatDisplayDate(row.entry_date) },
+            {
+              key: "type",
+              header: "Type",
+              sortKey: "type",
+              render: (row) => <StatusBadge tone={row.entry_type === "Income" ? "income" : "expense"} />,
+            },
             { key: "category", header: "Category", render: (row) => row.category_name },
             {
               key: "amount",
               header: "Amount",
               numeric: true,
-              render: (row) => formatInr(row.amount),
+              sortKey: "amount",
+              render: (row) => (
+                <span className={row.entry_type === "Income" ? "ui-amount-income" : "ui-amount-expense"}>
+                  {formatSignedInr(row.entry_type, row.amount)}
+                </span>
+              ),
             },
             { key: "remarks", header: "Remarks", render: (row) => row.remarks ?? "—" },
           ]}
           rows={entries.records}
           rowKey={(row) => row.id}
+          sort={query.sort}
+          sortDir={query.dir}
+          onSort={(key) => pushQuery(nextSort(query, key))}
           loading={queryPending}
           emptyTitle={filtered ? "No entries match the selected filters." : "No entries yet."}
           footer={

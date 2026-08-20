@@ -90,6 +90,8 @@ export const listEntriesSchema = z
     employee_id: z.preprocess(emptyToUndefined, uuidSchema.optional()),
     date_from: z.preprocess(emptyToUndefined, isoDateSchema.optional()),
     date_to: z.preprocess(emptyToUndefined, isoDateSchema.optional()),
+    sort: z.enum(["date", "type", "amount"]).optional().default("date"),
+    dir: z.enum(["asc", "desc"]).optional().default("desc"),
   })
   .transform((value) => ({
     page: value.page,
@@ -102,6 +104,8 @@ export const listEntriesSchema = z
     employee_id: value.employee_id,
     date_from: value.date_from,
     date_to: value.date_to,
+    sort: value.sort,
+    dir: value.dir,
   }))
   .refine(
     (value) => !value.date_from || !value.date_to || value.date_from <= value.date_to,

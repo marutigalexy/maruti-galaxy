@@ -14,6 +14,7 @@ import { AddButton } from "@/components/ui/add-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
+import { ExportButton } from "@/components/ui/export-button";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { FormField } from "@/components/ui/form-field";
 import { IconButton } from "@/components/ui/icon-button";
@@ -28,7 +29,8 @@ import { useToast } from "@/components/ui/toast";
 import { useQueryPush } from "@/hooks/use-query-push";
 import { listHref } from "@/lib/api/list-href";
 import type { Paginated } from "@/lib/api/pagination";
-import { formatInr } from "@/lib/formatters";
+import { queryHref } from "@/lib/api/query-href";
+import { formatSignedInr, signedAmountType } from "@/lib/formatters";
 import type { ListAccountsInput } from "@/lib/validation/accounts";
 import type { AccountRecord } from "@/services/accounts/accounts-service";
 
@@ -36,6 +38,15 @@ type AccountsViewProps = {
   query: ListAccountsInput;
   result: Paginated<AccountRecord>;
 };
+
+function SignedInr({ amount, type }: { amount: number; type?: "Income" | "Expense" }) {
+  const resolved = type ?? signedAmountType(amount);
+  return (
+    <span className={resolved === "Income" ? "ui-amount-income" : "ui-amount-expense"}>
+      {formatSignedInr(resolved, amount)}
+    </span>
+  );
+}
 
 export function AccountsView({ query, result }: AccountsViewProps) {
   const router = useRouter();
@@ -77,14 +88,17 @@ export function AccountsView({ query, result }: AccountsViewProps) {
     <>
       <FilterBar
         action={
-          <AddButton
-            onClick={() => {
-              setFormError(null);
-              setCreateOpen(true);
-            }}
-          >
-            Add Account
-          </AddButton>
+          <>
+            <ExportButton href={queryHref("/api/export/accounts", { search: query.search, status: query.status })} />
+            <AddButton
+              onClick={() => {
+                setFormError(null);
+                setCreateOpen(true);
+              }}
+            >
+              Add Account
+            </AddButton>
+          </>
         }
         onReset={() => pushQuery({ search: "", status: "all", page: 1, pageSize: query.pageSize })}
       >
@@ -121,15 +135,15 @@ export function AccountsView({ query, result }: AccountsViewProps) {
             key: "opening",
             header: "Opening Balance",
             numeric: true,
-            render: (row) => formatInr(row.opening_balance),
+            render: (row) => <SignedInr amount={row.opening_balance} />,
           },
-          { key: "in", header: "Total In", numeric: true, render: (row) => formatInr(row.total_in) },
-          { key: "out", header: "Total Out", numeric: true, render: (row) => formatInr(row.total_out) },
+          { key: "in", header: "Total In", numeric: true, render: (row) => <SignedInr amount={row.total_in} type="Income" /> },
+          { key: "out", header: "Total Out", numeric: true, render: (row) => <SignedInr amount={row.total_out} type="Expense" /> },
           {
             key: "balance",
             header: "Current Balance",
             numeric: true,
-            render: (row) => formatInr(row.current_balance),
+            render: (row) => <SignedInr amount={row.current_balance} />,
           },
           {
             key: "status",

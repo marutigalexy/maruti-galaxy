@@ -241,9 +241,12 @@ export async function listEntries(input: ListEntriesInput): Promise<ListedEntrie
   let query = supabase
     .from("entries")
     .select(ENTRY_COLUMNS, { count: "exact" })
-    .order("entry_date", { ascending: false })
-    .order("created_at", { ascending: false })
     .range(offset, offset + input.pageSize - 1);
+
+  const sortColumn =
+    input.sort === "type" ? "entry_type" : input.sort === "amount" ? "amount" : "entry_date";
+  query = query.order(sortColumn, { ascending: input.dir === "asc" });
+  query = query.order("created_at", { ascending: false });
 
   query = applyEntryFilters(query, input);
 

@@ -129,6 +129,15 @@ export function ChevronDownIcon(props: IconProps) {
   );
 }
 
+export function SortIcon({ className, ...props }: IconProps) {
+  return (
+    <Svg className={className} {...props}>
+      <path className="ui-sort-up" d="m7 9 5-5 5 5" />
+      <path className="ui-sort-down" d="m7 15 5 5 5-5" />
+    </Svg>
+  );
+}
+
 export function CheckIcon(props: IconProps) {
   return (
     <Svg {...props}>

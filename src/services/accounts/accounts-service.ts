@@ -1,4 +1,5 @@
 import { escapeIlike } from "@/lib/api/ilike";
+import { toCsv } from "@/lib/api/csv";
 import { asMoneyNumber, moneyEquals } from "@/lib/api/numbers";
 import { paginated, paginationOffset, type Paginated } from "@/lib/api/pagination";
 import { isRestrictViolation, isUniqueViolation } from "@/lib/api/postgres";
@@ -284,4 +285,48 @@ export async function listAccountOptions(): Promise<AccountOption[]> {
   }
 
   return data ?? [];
+}
+
+export async function exportAccountsCsv(input: ListAccountsInput): Promise<{ csv: string; count: number }> {
+  await requireActiveAdmin();
+  const supabase = await createSupabaseServerClient();
+  const search = input.search.trim();
+  let query = supabase
+    .from("v_account_balances")
+    .select(ACCOUNT_BALANCE_COLUMNS, { count: "exact" })
+    .order("name", { ascending: true })
+    .range(0, 4999);
+
+  if (input.status === "active") {
+    query = query.eq("is_active", true);
+  }
+  if (input.status === "inactive") {
+    query = query.eq("is_active", false);
+  }
+  if (search !== "") {
+    query = query.ilike("name", `%${escapeIlike(search)}%`);
+  }
+
+  const { data, error, count } = await query;
+  if (error) {
+    throw new AppError("INTERNAL", "Unable to export accounts.");
+  }
+  if ((count ?? 0) > 5000) {
+    throw new AppError("VALIDATION", "Too many accounts to export. Narrow the filters and try again.");
+  }
+
+  const records = (data ?? []).map(toAccount).filter((row): row is AccountRecord => row !== null);
+  const csv = toCsv(
+    ["Account Name", "Opening Balance", "Total In", "Total Out", "Current Balance", "Status"],
+    records.map((row) => [
+      row.name,
+      row.opening_balance.toFixed(2),
+      row.total_in.toFixed(2),
+      row.total_out.toFixed(2),
+      row.current_balance.toFixed(2),
+      row.is_active ? "Active" : "Inactive",
+    ]),
+  );
+
+  return { csv: `\uFEFF${csv}`, count: records.length };
 }

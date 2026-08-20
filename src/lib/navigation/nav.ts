@@ -19,7 +19,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: "Accounting",
     children: [
       { href: "/accounting/entries", label: "Entries" },
-      { href: "/accounting/accounts", label: "Accounts" },
+      { href: "/accounting/accounts", label: "Account" },
       { href: "/accounting/categories", label: "Categories" },
     ],
   },

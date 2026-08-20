@@ -78,6 +78,8 @@ export function EntryReportView({
             employee_id: undefined,
             date_from: undefined,
             date_to: undefined,
+            sort: "date",
+            dir: "desc",
             page: 1,
             pageSize: query.pageSize,
           })

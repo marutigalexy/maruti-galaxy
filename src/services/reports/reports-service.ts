@@ -415,6 +415,8 @@ export async function getProfitLossReport(input: ProfitLossInput): Promise<Profi
     employee_id: undefined,
     date_from: input.date_from,
     date_to: input.date_to,
+    sort: "date",
+    dir: "desc",
   });
 
   const supabase = await createSupabaseServerClient();

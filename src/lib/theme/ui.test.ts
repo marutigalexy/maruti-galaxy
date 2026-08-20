@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { paginationControls} from "@/lib/api/pagination";
-import { formatInr, formatThan, formatWeightCt } from "@/lib/formatters";
+import { formatInr, formatSignedInr, formatThan, formatWeightCt, signedAmountType } from "@/lib/formatters";
 import {
   breadcrumbsForPath,
   isNavActive,
@@ -88,7 +88,7 @@ describe("navigation", () => {
     const accounting = NAV_ITEMS.find((item) => item.label === "Accounting");
     expect(accounting?.children?.map((child) => child.label)).toEqual([
       "Entries",
-      "Accounts",
+      "Account",
       "Categories",
     ]);
     expect(readFileSync(path.join(process.cwd(), "src/components/layout/sidebar.tsx"), "utf8")).not.toMatch(
@@ -100,13 +100,16 @@ describe("navigation", () => {
     expect(readFileSync(path.join(process.cwd(), "src/app/(dashboard)/reports/layout.tsx"), "utf8")).toMatch(
       /ModuleTabs/,
     );
+    expect(readFileSync(path.join(process.cwd(), "src/components/layout/module-tabs.tsx"), "utf8")).toMatch(
+      /isRecordPath/,
+    );
   });
 
   it("marks nested accounting routes as the accounting section", () => {
     expect(isNavActive("/accounting/entries", "/accounting")).toBe(true);
     expect(isNavActive("/dashboard", "/dashboard")).toBe(true);
     expect(isNavActive("/jobs", "/dashboard")).toBe(false);
-    expect(pageTitleForPath("/accounting/accounts")).toBe("Accounts");
+    expect(pageTitleForPath("/accounting/accounts")).toBe("Account");
     expect(breadcrumbsForPath("/accounting/entries").map((item) => item.label)).toEqual([
       "Accounting",
       "Entries",
@@ -127,7 +130,7 @@ describe("navigation", () => {
     expect(isRecordPath("/jobs/new")).toBe(true);
     expect(isRecordPath("/jobs/11111111-1111-4111-8111-111111111111")).toBe(true);
     expect(isRecordPath("/jobs/11111111-1111-4111-8111-111111111111/edit")).toBe(true);
-    expect(isRecordPath("/reports/outstanding")).toBe(false);
+    expect(isRecordPath("/accounting/accounts/11111111-1111-4111-8111-111111111111")).toBe(true);
     expect(parentPath("/jobs/new")).toBe("/jobs");
     expect(parentPath("/jobs/11111111-1111-4111-8111-111111111111/edit")).toBe(
       "/jobs/11111111-1111-4111-8111-111111111111",
@@ -138,6 +141,11 @@ describe("navigation", () => {
 describe("formatters", () => {
   it("formats INR, than quantity, and carat weight", () => {
     expect(formatInr("1234.5")).toContain("1,234.50");
+    expect(formatSignedInr("Income", 100)).toMatch(/^\+/);
+    expect(formatSignedInr("Expense", 100)).toMatch(/^−/);
+    expect(formatSignedInr("Expense", -100)).toMatch(/^−₹/);
+    expect(signedAmountType(-10)).toBe("Expense");
+    expect(signedAmountType(10)).toBe("Income");
     expect(formatThan("10.00")).toBe("10");
     expect(formatThan(10.5)).toBe("10.5");
     expect(formatThan("10")).not.toMatch(/Than/);

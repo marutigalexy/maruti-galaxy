@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { listQuerySchema, uuidSchema } from "@/lib/validation/schemas";
+import { DEFAULT_PAGE_SIZE } from "@/lib/api/pagination";
+import { pageSchema, pageSizeSchema, searchSchema, uuidSchema } from "@/lib/validation/schemas";
 
 export const categoryNameSchema = z
   .string()
@@ -31,7 +32,21 @@ export const categoryIdSchema = z.object({
   id: uuidSchema,
 });
 
-export const listCategoriesSchema = listQuerySchema;
+export const listCategoriesSchema = z
+  .object({
+    page: pageSchema,
+    pageSize: pageSizeSchema,
+    search: z.preprocess((value) => value ?? "", searchSchema),
+    status: z.enum(["all", "active", "inactive"]).optional().default("all"),
+    type: z.enum(["all", "Income", "Expense"]).optional().default("all"),
+  })
+  .transform((value) => ({
+    page: value.page,
+    pageSize: DEFAULT_PAGE_SIZE,
+    search: value.search,
+    status: value.status,
+    type: value.type,
+  }));
 
 export type CreateCategoryInput = z.output<typeof createCategorySchema>;
 export type UpdateCategoryInput = z.output<typeof updateCategorySchema>;

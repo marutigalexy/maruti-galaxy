@@ -10,6 +10,7 @@ import {
 } from "@/lib/validation/accounts";
 import {
   createCategorySchema,
+  listCategoriesSchema,
   updateCategorySchema,
 } from "@/lib/validation/categories";
 import {
@@ -152,6 +153,11 @@ describe("category schemas", () => {
     expect(parseOrThrow(createCategorySchema, { name: "Sale", type: "Income" }).type).toBe("Income");
   });
 
+  it("filters categories by Income or Expense type", () => {
+    expect(parseOrThrow(listCategoriesSchema, { type: "Expense" }).type).toBe("Expense");
+    expect(parseOrThrow(listCategoriesSchema, {}).type).toBe("all");
+  });
+
   it("strips extra fields", () => {
     const parsed = parseOrThrow(updateCategorySchema, {
       id: UUID,
@@ -216,7 +222,7 @@ describe("master data services", () => {
     expect(accounts).toMatch(/\.from\("v_account_balances"\)/);
     expect(accounts).toMatch(/Opening balance cannot be changed after entries exist/);
     expect(accounts).toMatch(/entry_count > 0/);
-    expect(accounts).not.toMatch(/\.update\(\{[\s\S]*current_balance/);
+    expect(accounts).not.toMatch(/opening_balance: nextOpening,\s*current_balance/);
     expect(accountView).toMatch(/entry_count === 0/);
     expect(accountView).toMatch(/Opening balance cannot be changed after entries exist/);
   });
@@ -225,6 +231,10 @@ describe("master data services", () => {
     expect(categories).toMatch(/A category with this name and type already exists/);
     expect(categories).toMatch(/This category type cannot be changed because it has entries/);
     expect(categoryView).toMatch(/entry_count === 0/);
+    expect(categoryView).toMatch(/htmlFor="category-type"/);
+    expect(categoryView).toMatch(/create-category-status/);
+    expect(categories).toMatch(/exportCategoriesCsv/);
+    expect(accounts).toMatch(/exportAccountsCsv/);
   });
 
   it("maps party and employee delete restrict copy", () => {

@@ -14,6 +14,7 @@ import { AddButton } from "@/components/ui/add-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
+import { ExportButton } from "@/components/ui/export-button";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { FormField } from "@/components/ui/form-field";
 import { IconButton } from "@/components/ui/icon-button";
@@ -26,8 +27,8 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { TableActions } from "@/components/ui/table-actions";
 import { useToast } from "@/components/ui/toast";
 import { useQueryPush } from "@/hooks/use-query-push";
-import { listHref } from "@/lib/api/list-href";
 import type { Paginated } from "@/lib/api/pagination";
+import { queryHref } from "@/lib/api/query-href";
 import type { ListCategoriesInput } from "@/lib/validation/categories";
 import type { CategoryRecord } from "@/services/categories/categories-service";
 
@@ -48,7 +49,14 @@ export function CategoriesView({ query, result }: CategoriesViewProps) {
   const [formError, setFormError] = useState<string | null>(null);
 
   const pushQuery = (next: ListCategoriesInput) => {
-    push(listHref("/accounting/categories", next));
+    push(
+      queryHref("/accounting/categories", {
+        search: next.search,
+        status: next.status,
+        type: next.type,
+        page: next.page,
+      }),
+    );
   };
 
   function runMutation(
@@ -76,24 +84,48 @@ export function CategoriesView({ query, result }: CategoriesViewProps) {
     <>
       <FilterBar
         action={
-          <AddButton
-            onClick={() => {
-              setFormError(null);
-              setCreateOpen(true);
-            }}
-          >
-            Add Category
-          </AddButton>
+          <>
+            <ExportButton
+              href={queryHref("/api/export/categories", {
+                search: query.search,
+                status: query.status,
+                type: query.type,
+              })}
+            />
+            <AddButton
+              onClick={() => {
+                setFormError(null);
+                setCreateOpen(true);
+              }}
+            >
+              Add Category
+            </AddButton>
+          </>
         }
-        onReset={() => pushQuery({ search: "", status: "all", page: 1, pageSize: query.pageSize })}
+        onReset={() => pushQuery({ search: "", status: "all", type: "all", page: 1, pageSize: query.pageSize })}
       >
         <SearchInput
           value={query.search}
-          onValueChange={(search) =>
-            push(listHref("/accounting/categories", { ...query, search, page: 1 }))
-          }
+          onValueChange={(search) => pushQuery({ ...query, search, page: 1 })}
           placeholder="Search category name"
         />
+        <FormField label="Type" htmlFor="category-type">
+          <Select
+            id="category-type"
+            value={query.type}
+            onChange={(event) =>
+              pushQuery({
+                ...query,
+                type: event.target.value as ListCategoriesInput["type"],
+                page: 1,
+              })
+            }
+          >
+            <option value="all">All</option>
+            <option value="Income">Income</option>
+            <option value="Expense">Expense</option>
+          </Select>
+        </FormField>
         <FormField label="Status" htmlFor="category-status">
           <Select
             id="category-status"
@@ -178,7 +210,7 @@ export function CategoriesView({ query, result }: CategoriesViewProps) {
         }}
         loading={queryPending}
         emptyTitle={
-          query.search || query.status !== "all"
+          query.search || query.status !== "all" || query.type !== "all"
             ? "No categories match the selected filters."
             : "No categories found."
         }
@@ -210,7 +242,7 @@ export function CategoriesView({ query, result }: CategoriesViewProps) {
                 createCategoryAction({
                   name: String(form.get("name") ?? ""),
                   type: String(form.get("type") ?? ""),
-                  is_active: true,
+                  is_active: String(form.get("is_active") ?? "true") === "true",
                 }),
               "Category created successfully.",
             );
@@ -223,6 +255,12 @@ export function CategoriesView({ query, result }: CategoriesViewProps) {
             <Select id="create-category-type" name="type" required disabled={pending} defaultValue="Income">
               <option value="Income">Income</option>
               <option value="Expense">Expense</option>
+            </Select>
+          </FormField>
+          <FormField label="Status" htmlFor="create-category-status">
+            <Select id="create-category-status" name="is_active" disabled={pending} defaultValue="true">
+              <option value="true">Active</option>
+              <option value="false">Inactive</option>
             </Select>
           </FormField>
           {formError && createOpen ? (

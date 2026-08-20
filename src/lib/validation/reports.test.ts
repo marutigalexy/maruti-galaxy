@@ -181,6 +181,8 @@ describe("report and dashboard security", () => {
     expect(exportRoute).toMatch(/parseOrThrow\(listInvoicesSchema/);
     expect(exportRoute).toMatch(/parseOrThrow\(salaryReportSchema/);
     expect(exportRoute).toMatch(/parseOrThrow\(profitLossSchema/);
+    expect(exportRoute).toMatch(/parseOrThrow\(listAccountsSchema/);
+    expect(exportRoute).toMatch(/parseOrThrow\(listCategoriesSchema/);
     expect(reports).toMatch(/ilike\("lot_number"/);
     expect(dashView).toMatch(/Total Jobs/);
     expect(dashView).toMatch(/Outstanding Amount/);

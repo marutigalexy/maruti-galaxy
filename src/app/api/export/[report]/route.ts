@@ -4,11 +4,15 @@ import { requireActiveAdmin } from "@/lib/permissions/require-active-admin";
 import { parseOrThrow } from "@/lib/validation";
 import { listEntriesSchema } from "@/lib/validation/entries";
 import { listInvoicesSchema } from "@/lib/validation/invoices";
+import { listAccountsSchema } from "@/lib/validation/accounts";
+import { listCategoriesSchema } from "@/lib/validation/categories";
 import {
   jobWorkReportSchema,
   profitLossSchema,
   salaryReportSchema,
 } from "@/lib/validation/reports";
+import { exportAccountsCsv } from "@/services/accounts/accounts-service";
+import { exportCategoriesCsv } from "@/services/categories/categories-service";
 import { exportEntriesCsv } from "@/services/entries/entries-service";
 import {
   exportJobWorkReportCsv,
@@ -19,7 +23,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const REPORT_SLUGS = ["entries", "jobs", "outstanding", "salary", "profit-loss"] as const;
+const REPORT_SLUGS = ["entries", "jobs", "outstanding", "salary", "profit-loss", "accounts", "categories"] as const;
 type ReportSlug = (typeof REPORT_SLUGS)[number];
 
 function isReportSlug(value: string): value is ReportSlug {
@@ -97,6 +101,29 @@ export async function GET(request: Request, { params }: ExportRouteProps) {
       });
       const { csv } = await exportSalaryReportCsv(parsed);
       return csvAttachment(csv, "maruti-galaxy-salary-report.csv");
+    }
+
+    if (report === "accounts") {
+      const parsed = parseOrThrow(listAccountsSchema, {
+        search: query.search ?? "",
+        status: query.status ?? "all",
+        page: "1",
+        pageSize: "20",
+      });
+      const { csv } = await exportAccountsCsv(parsed);
+      return csvAttachment(csv, "maruti-galaxy-accounts.csv");
+    }
+
+    if (report === "categories") {
+      const parsed = parseOrThrow(listCategoriesSchema, {
+        search: query.search ?? "",
+        status: query.status ?? "all",
+        type: query.type ?? "all",
+        page: "1",
+        pageSize: "20",
+      });
+      const { csv } = await exportCategoriesCsv(parsed);
+      return csvAttachment(csv, "maruti-galaxy-categories.csv");
     }
 
     const parsed = parseOrThrow(profitLossSchema, {

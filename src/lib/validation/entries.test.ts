@@ -56,6 +56,12 @@ describe("entry schemas", () => {
     expect(parsed).not.toHaveProperty("transaction_reference");
   });
 
+  it("sorts entries by date, type, or amount", () => {
+    expect(parseOrThrow(listEntriesSchema, {}).sort).toBe("date");
+    expect(parseOrThrow(listEntriesSchema, {}).dir).toBe("desc");
+    expect(parseOrThrow(listEntriesSchema, { sort: "amount", dir: "asc" }).sort).toBe("amount");
+  });
+
   it("rejects Date From after Date To", () => {
     expect(() =>
       parseOrThrow(listEntriesSchema, {
@@ -219,6 +225,9 @@ describe("entry and allocation security", () => {
     expect(service).toMatch(/Remove invoice allocations before changing this entry amount or type/);
     expect(service).toMatch(/Remove invoice allocations before deleting this entry/);
     expect(view).toMatch(/id="edit-amount"[\s\S]*disabled=\{pending\}[\s\S]*readOnly=\{editEntry\.allocated > 0\}/);
+    expect(view).not.toMatch(/edit-party/);
+    expect(view).not.toMatch(/edit-employee/);
+    expect(view).toMatch(/ui-entry-form/);
   });
 
   it("exports the filtered CSV with authz, no-store, and a row cap", () => {
@@ -235,9 +244,19 @@ describe("entry and allocation security", () => {
     expect(view).not.toMatch(/Payment mode/);
     expect(view).not.toMatch(/Transaction reference/);
     expect(view).toMatch(/Net Amount is Total Income minus Total Expense/);
-    expect(view).toMatch(/Add Income/);
-    expect(view).toMatch(/Add Expense/);
+    expect(view).toMatch(/Add Entry/);
+    expect(view).toMatch(/Add New Entry/);
+    expect(view).toMatch(/Save Entry/);
+    expect(view).toMatch(/ui-type-toggle/);
+    expect(view).not.toMatch(/Add Income/);
+    expect(view).not.toMatch(/Add Expense/);
     expect(view).toMatch(/is_active/);
+    expect(view).toMatch(/FinancialKpiCards/);
+    expect(view).toMatch(/netLabel="Net Amount"/);
+    expect(view).toMatch(/totalEntries=\{result\.summary\.count\}/);
+    expect(view).toMatch(/<option value="all">All<\/option>/);
+    expect(view).toMatch(/formatSignedInr/);
+    expect(view).toMatch(/sortKey: "date"/);
     expect(view).toMatch(/Allocate/);
   });
 

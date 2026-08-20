@@ -1,4 +1,5 @@
 import { escapeIlike } from "@/lib/api/ilike";
+import { toCsv } from "@/lib/api/csv";
 import { paginated, paginationOffset, type Paginated } from "@/lib/api/pagination";
 import { isRestrictViolation, isUniqueViolation } from "@/lib/api/postgres";
 import { AppError } from "@/lib/api/result";
@@ -103,6 +104,10 @@ export async function listCategories(input: ListCategoriesInput): Promise<Pagina
 
   if (input.status === "inactive") {
     query = query.eq("is_active", false);
+  }
+
+  if (input.type === "Income" || input.type === "Expense") {
+    query = query.eq("type", input.type);
   }
 
   if (search !== "") {
@@ -269,4 +274,43 @@ export async function listCategoryOptions(): Promise<CategoryOption[]> {
   }
 
   return data ?? [];
+}
+
+export async function exportCategoriesCsv(input: ListCategoriesInput): Promise<{ csv: string; count: number }> {
+  await requireActiveAdmin();
+  const supabase = await createSupabaseServerClient();
+  const search = input.search.trim();
+  let query = supabase
+    .from("categories")
+    .select(CATEGORY_LIST_COLUMNS, { count: "exact" })
+    .order("name", { ascending: true })
+    .range(0, 4999);
+
+  if (input.status === "active") {
+    query = query.eq("is_active", true);
+  }
+  if (input.status === "inactive") {
+    query = query.eq("is_active", false);
+  }
+  if (input.type === "Income" || input.type === "Expense") {
+    query = query.eq("type", input.type);
+  }
+  if (search !== "") {
+    query = query.ilike("name", `%${escapeIlike(search)}%`);
+  }
+
+  const { data, error, count } = await query;
+  if (error) {
+    throw new AppError("INTERNAL", "Unable to export categories.");
+  }
+  if ((count ?? 0) > 5000) {
+    throw new AppError("VALIDATION", "Too many categories to export. Narrow the filters and try again.");
+  }
+
+  const csv = toCsv(
+    ["Category Name", "Type", "Status"],
+    (data ?? []).map((row) => [row.name, row.type, row.is_active ? "Active" : "Inactive"]),
+  );
+
+  return { csv: `\uFEFF${csv}`, count: (data ?? []).length };
 }

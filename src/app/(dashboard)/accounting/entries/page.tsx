@@ -5,9 +5,7 @@ import { parseOrThrow } from "@/lib/validation";
 import { listEntriesSchema, type ListEntriesInput } from "@/lib/validation/entries";
 import { listAccountOptions } from "@/services/accounts/accounts-service";
 import { listCategoryOptions } from "@/services/categories/categories-service";
-import { listEmployeeOptions } from "@/services/employees/employees-service";
 import { listEntries, type ListedEntries } from "@/services/entries/entries-service";
-import { listPartyOptions } from "@/services/parties/parties-service";
 
 type EntriesPageProps = {
   searchParams: Promise<{
@@ -17,6 +15,8 @@ type EntriesPageProps = {
     category_id?: string;
     date_from?: string;
     date_to?: string;
+    sort?: string;
+    dir?: string;
     page?: string;
     pageSize?: string;
   }>;
@@ -30,8 +30,6 @@ export default async function EntriesPage({ searchParams }: EntriesPageProps) {
   let result: ListedEntries;
   let accounts;
   let categories;
-  let parties;
-  let employees;
   try {
     query = parseOrThrow(listEntriesSchema, {
       search: params.search ?? "",
@@ -40,15 +38,15 @@ export default async function EntriesPage({ searchParams }: EntriesPageProps) {
       category_id: params.category_id,
       date_from: params.date_from,
       date_to: params.date_to,
+      sort: params.sort,
+      dir: params.dir,
       page: params.page,
       pageSize: params.pageSize,
     });
-    [result, accounts, categories, parties, employees] = await Promise.all([
+    [result, accounts, categories] = await Promise.all([
       listEntries(query),
       listAccountOptions(),
       listCategoryOptions(),
-      listPartyOptions(),
-      listEmployeeOptions(),
     ]);
   } catch {
     return (
@@ -62,8 +60,6 @@ export default async function EntriesPage({ searchParams }: EntriesPageProps) {
       result={result}
       accounts={accounts}
       categories={categories}
-      parties={parties}
-      employees={employees}
     />
   );
 }

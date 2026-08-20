@@ -14,6 +14,8 @@ type AccountDetailPageProps = {
     category_id?: string;
     date_from?: string;
     date_to?: string;
+    sort?: string;
+    dir?: string;
     page?: string;
     pageSize?: string;
   }>;
@@ -37,6 +39,8 @@ export default async function AccountDetailPage({ params, searchParams }: Accoun
       category_id: filters.category_id,
       date_from: filters.date_from,
       date_to: filters.date_to,
+      sort: filters.sort,
+      dir: filters.dir,
       page: filters.page,
       pageSize: filters.pageSize,
     });

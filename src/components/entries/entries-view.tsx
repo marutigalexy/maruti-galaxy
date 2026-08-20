@@ -10,12 +10,14 @@ import {
   listOutstandingInvoicesAction,
   updateEntryAction,
 } from "@/app/actions/entries";
+import { FinancialKpiCards } from "@/components/reports/financial-kpi-cards";
 import { Button } from "@/components/ui/button";
 import { AddButton } from "@/components/ui/add-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Dialog } from "@/components/ui/dialog";
+import { ExportButton } from "@/components/ui/export-button";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { FormField } from "@/components/ui/form-field";
 import { IconButton } from "@/components/ui/icon-button";
@@ -24,20 +26,18 @@ import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput } from "@/components/ui/search-input";
 import { Select } from "@/components/ui/select";
-import { SummaryGridSkeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TableActions } from "@/components/ui/table-actions";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
 import { useQueryPush } from "@/hooks/use-query-push";
-import { formatDisplayDate, formatInr } from "@/lib/formatters";
+import { queryHref } from "@/lib/api/query-href";
+import { formatDisplayDate, formatInr, formatSignedInr } from "@/lib/formatters";
 import type { ListEntriesInput } from "@/lib/validation/entries";
 import type { AccountOption } from "@/services/accounts/accounts-service";
 import type { OutstandingInvoiceOption } from "@/services/allocations/allocations-service";
 import type { CategoryOption } from "@/services/categories/categories-service";
-import type { EmployeeOption } from "@/services/employees/employees-service";
 import type { EntryListRecord, EntrySummary } from "@/services/entries/entries-service";
-import type { PartyOption } from "@/services/parties/parties-service";
 
 type EntriesViewProps = {
   query: ListEntriesInput;
@@ -50,8 +50,6 @@ type EntriesViewProps = {
   };
   accounts: AccountOption[];
   categories: CategoryOption[];
-  parties: PartyOption[];
-  employees: EmployeeOption[];
 };
 
 type EntryDraftType = "Income" | "Expense";
@@ -64,54 +62,84 @@ function todayIso(): string {
 }
 
 function entriesHref(query: ListEntriesInput): string {
-  const params = new URLSearchParams();
-  if (query.search) {
-    params.set("search", query.search);
-  }
-  if (query.entry_type !== "all") {
-    params.set("entry_type", query.entry_type);
-  }
-  if (query.account_id) {
-    params.set("account_id", query.account_id);
-  }
-  if (query.category_id) {
-    params.set("category_id", query.category_id);
-  }
-  if (query.date_from) {
-    params.set("date_from", query.date_from);
-  }
-  if (query.date_to) {
-    params.set("date_to", query.date_to);
-  }
-  if (query.page > 1) {
-    params.set("page", String(query.page));
-  }
-  const qs = params.toString();
-  return qs ? `/accounting/entries?${qs}` : "/accounting/entries";
+  return queryHref("/accounting/entries", {
+    search: query.search,
+    entry_type: query.entry_type,
+    account_id: query.account_id,
+    category_id: query.category_id,
+    date_from: query.date_from,
+    date_to: query.date_to,
+    sort: query.sort === "date" ? undefined : query.sort,
+    dir: query.dir === "desc" ? undefined : query.dir,
+    page: query.page,
+  });
 }
 
 function exportHref(query: ListEntriesInput): string {
-  const params = new URLSearchParams();
-  if (query.search) {
-    params.set("search", query.search);
-  }
-  if (query.entry_type !== "all") {
-    params.set("entry_type", query.entry_type);
-  }
-  if (query.account_id) {
-    params.set("account_id", query.account_id);
-  }
-  if (query.category_id) {
-    params.set("category_id", query.category_id);
-  }
-  if (query.date_from) {
-    params.set("date_from", query.date_from);
-  }
-  if (query.date_to) {
-    params.set("date_to", query.date_to);
-  }
-  const qs = params.toString();
-  return qs ? `/api/export/entries?${qs}` : "/api/export/entries";
+  return queryHref("/api/export/entries", {
+    search: query.search,
+    entry_type: query.entry_type,
+    account_id: query.account_id,
+    category_id: query.category_id,
+    date_from: query.date_from,
+    date_to: query.date_to,
+  });
+}
+
+function nextSort(query: ListEntriesInput, key: string): ListEntriesInput {
+  const sort = key as ListEntriesInput["sort"];
+  const dir = query.sort === sort && query.dir === "desc" ? "asc" : "desc";
+  return { ...query, sort, dir, page: 1 };
+}
+
+type EntryTypeToggleProps = {
+  id?: string;
+  value: EntryDraftType;
+  disabled?: boolean;
+  onChange: (type: EntryDraftType) => void;
+  "aria-invalid"?: boolean;
+  "aria-describedby"?: string;
+};
+
+function EntryTypeToggle({
+  id,
+  value,
+  disabled,
+  onChange,
+  "aria-invalid": ariaInvalid,
+  "aria-describedby": ariaDescribedBy,
+}: EntryTypeToggleProps) {
+  return (
+    <div
+      id={id}
+      className="ui-type-toggle"
+      role="radiogroup"
+      aria-label="Entry Type"
+      aria-invalid={ariaInvalid}
+      aria-describedby={ariaDescribedBy}
+    >
+      <button
+        type="button"
+        className={["ui-type-toggle-btn", value === "Expense" ? "is-expense" : ""].filter(Boolean).join(" ")}
+        role="radio"
+        aria-checked={value === "Expense"}
+        disabled={disabled}
+        onClick={() => onChange("Expense")}
+      >
+        Expense
+      </button>
+      <button
+        type="button"
+        className={["ui-type-toggle-btn", value === "Income" ? "is-income" : ""].filter(Boolean).join(" ")}
+        role="radio"
+        aria-checked={value === "Income"}
+        disabled={disabled}
+        onClick={() => onChange("Income")}
+      >
+        Income
+      </button>
+    </div>
+  );
 }
 
 export function EntriesView({
@@ -119,14 +147,12 @@ export function EntriesView({
   result,
   accounts,
   categories,
-  parties,
-  employees,
 }: EntriesViewProps) {
   const router = useRouter();
   const { pending: queryPending, push } = useQueryPush();
   const toast = useToast();
   const [pending, startTransition] = useTransition();
-  const [createType, setCreateType] = useState<EntryDraftType | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
   const [editEntry, setEditEntry] = useState<EntryListRecord | null>(null);
   const [deleteEntry, setDeleteEntry] = useState<EntryListRecord | null>(null);
   const [allocateEntry, setAllocateEntry] = useState<EntryListRecord | null>(null);
@@ -150,8 +176,6 @@ export function EntriesView({
     Boolean(query.date_to);
 
   const activeAccounts = accounts.filter((row) => row.is_active);
-  const activeParties = parties.filter((row) => row.is_active);
-  const activeEmployees = employees.filter((row) => row.is_active);
   const categoriesForType = useMemo(
     () => categories.filter((row) => row.type === draftType && row.is_active),
     [categories, draftType],
@@ -169,7 +193,7 @@ export function EntriesView({
         toast.error(outcome.error?.message ?? "Unable to save.");
         return;
       }
-      setCreateType(null);
+      setCreateOpen(false);
       setEditEntry(null);
       setDeleteEntry(null);
       setAllocateEntry(null);
@@ -178,10 +202,10 @@ export function EntriesView({
     });
   }
 
-  function openCreate(type: EntryDraftType) {
+  function openCreate() {
     setFormError(null);
-    setDraftType(type);
-    setCreateType(type);
+    setDraftType("Income");
+    setCreateOpen(true);
   }
 
   function openAllocate(row: EntryListRecord) {
@@ -208,24 +232,8 @@ export function EntriesView({
       <FilterBar
         action={
           <>
-            <a className="ui-button ui-button-secondary" href={exportHref(query)}>
-              Export
-            </a>
-            <AddButton
-              onClick={() => {
-                openCreate("Income");
-              }}
-            >
-              Add Income
-            </AddButton>
-            <AddButton
-              variant="secondary"
-              onClick={() => {
-                openCreate("Expense");
-              }}
-            >
-              Add Expense
-            </AddButton>
+            <ExportButton href={exportHref(query)} />
+            <AddButton onClick={openCreate}>Add Entry</AddButton>
           </>
         }
         onReset={() =>
@@ -238,6 +246,8 @@ export function EntriesView({
             employee_id: undefined,
             date_from: undefined,
             date_to: undefined,
+            sort: "date",
+            dir: "desc",
             page: 1,
             pageSize: query.pageSize,
           })
@@ -317,39 +327,24 @@ export function EntriesView({
         </FormField>
       </FilterBar>
 
-      {queryPending ? (
-        <SummaryGridSkeleton count={4} />
-      ) : (
-        <dl className="ui-summary-grid">
-          <div className="ui-detail-item">
-            <dt>Total Income</dt>
-            <dd className="ui-amount-income">{formatInr(result.summary.total_income)}</dd>
-          </div>
-          <div className="ui-detail-item">
-            <dt>Total Expense</dt>
-            <dd className="ui-amount-expense">{formatInr(result.summary.total_expense)}</dd>
-          </div>
-          <div className="ui-detail-item">
-            <dt>Net Amount</dt>
-            <dd className={result.summary.net < 0 ? "ui-amount-expense" : "ui-amount-income"}>
-              {formatInr(result.summary.net)}
-            </dd>
-          </div>
-          <div className="ui-detail-item">
-            <dt>Total Entry Count</dt>
-            <dd>{result.summary.count}</dd>
-          </div>
-        </dl>
-      )}
+      <FinancialKpiCards
+        totalIncome={result.summary.total_income}
+        totalExpense={result.summary.total_expense}
+        net={result.summary.net}
+        totalEntries={result.summary.count}
+        loading={queryPending}
+        netLabel="Net Amount"
+      />
       <p className="sr-only">Net Amount is Total Income minus Total Expense</p>
 
       <DataTable
         caption="Entries"
         columns={[
-          { key: "date", header: "Date", render: (row) => formatDisplayDate(row.entry_date) },
+          { key: "date", header: "Date", sortKey: "date", render: (row) => formatDisplayDate(row.entry_date) },
           {
             key: "type",
             header: "Type",
+            sortKey: "type",
             render: (row) => <StatusBadge tone={row.entry_type === "Income" ? "income" : "expense"} />,
           },
           { key: "account", header: "Account", render: (row) => row.account_name },
@@ -360,9 +355,10 @@ export function EntriesView({
             key: "amount",
             header: "Amount",
             numeric: true,
+            sortKey: "amount",
             render: (row) => (
               <span className={row.entry_type === "Income" ? "ui-amount-income" : "ui-amount-expense"}>
-                {row.entry_type === "Expense" ? `−${formatInr(row.amount)}` : formatInr(row.amount)}
+                {formatSignedInr(row.entry_type, row.amount)}
               </span>
             ),
           },
@@ -399,6 +395,9 @@ export function EntriesView({
         ]}
         rows={result.records}
         rowKey={(row) => row.id}
+        sort={query.sort}
+        sortDir={query.dir}
+        onSort={(key) => pushQuery(nextSort(query, key))}
         onRowClick={(row) => {
           setFormError(null);
           setDraftType(row.entry_type);
@@ -418,38 +417,45 @@ export function EntriesView({
       />
 
       <Dialog
-        open={createType !== null}
-        title={createType === "Expense" ? "Add Expense" : "Add Income"}
-        onClose={() => setCreateType(null)}
+        open={createOpen}
+        title="Add New Entry"
+        onClose={() => setCreateOpen(false)}
         disableClose={pending}
         footer={null}
       >
-        {createType ? (
+        {createOpen ? (
           <form
-            className="ui-dialog-form"
+            className="ui-dialog-form ui-entry-form"
             onSubmit={(event) => {
               event.preventDefault();
               const form = new FormData(event.currentTarget);
               runMutation(
                 () =>
                   createEntryAction({
-                    entry_type: createType,
+                    entry_type: draftType,
                     account_id: String(form.get("account_id") ?? ""),
                     category_id: String(form.get("category_id") ?? ""),
-                    party_id: String(form.get("party_id") ?? ""),
-                    employee_id: String(form.get("employee_id") ?? ""),
+                    party_id: "",
+                    employee_id: "",
                     entry_date: String(form.get("entry_date") ?? ""),
                     amount: String(form.get("amount") ?? ""),
                     remarks: String(form.get("remarks") ?? ""),
                   }),
-                createType === "Income" ? "Income entry created successfully." : "Expense entry created successfully.",
+                draftType === "Income" ? "Income entry created successfully." : "Expense entry created successfully.",
               );
             }}
           >
-            <FormField label="Entry Type" htmlFor="create-entry-type" required>
-              <Input id="create-entry-type" value={createType} readOnly disabled placeholder="Income or Expense" />
+            <FormField label="Entry Type" htmlFor="create-entry-type" required className="ui-entry-span">
+              <EntryTypeToggle
+                value={draftType}
+                disabled={pending}
+                onChange={(type) => {
+                  setDraftType(type);
+                  setFormError(null);
+                }}
+              />
             </FormField>
-            <FormField label="Account" htmlFor="create-account" required>
+            <FormField label="Payment Account" htmlFor="create-account" required>
               <Select id="create-account" name="account_id" required disabled={pending}>
                 <option value="">Select account</option>
                 {activeAccounts.map((account) => (
@@ -459,9 +465,15 @@ export function EntriesView({
                 ))}
               </Select>
             </FormField>
-            <FormField label="Category" htmlFor="create-category" required>
-              <Select id="create-category" name="category_id" required disabled={pending}>
-                <option value="">Select category</option>
+            <FormField label={`${draftType} Category`} htmlFor="create-category" required>
+              <Select
+                key={draftType}
+                id="create-category"
+                name="category_id"
+                required
+                disabled={pending}
+              >
+                <option value="">Select {draftType.toLowerCase()} category</option>
                 {categoriesForType.map((category) => (
                   <option key={category.id} value={category.id}>
                     {category.name}
@@ -469,31 +481,7 @@ export function EntriesView({
                 ))}
               </Select>
             </FormField>
-            <FormField label="Party" htmlFor="create-party">
-              <Select id="create-party" name="party_id" disabled={pending}>
-                <option value="">None</option>
-                {activeParties.map((party) => (
-                  <option key={party.id} value={party.id}>
-                    {party.company_name}
-                  </option>
-                ))}
-              </Select>
-            </FormField>
-            <FormField
-              label="Employee"
-              htmlFor="create-employee"
-              help={createType === "Expense" ? "Salary payments use an Expense entry with an employee." : undefined}
-            >
-              <Select id="create-employee" name="employee_id" disabled={pending}>
-                <option value="">None</option>
-                {activeEmployees.map((employee) => (
-                  <option key={employee.id} value={employee.id}>
-                    {employee.name}
-                  </option>
-                ))}
-              </Select>
-            </FormField>
-            <FormField label="Entry Date" htmlFor="create-date" required>
+            <FormField label="Entry Date" htmlFor="create-date" required className="ui-entry-span">
               <DatePicker
                 id="create-date"
                 name="entry_date"
@@ -502,23 +490,36 @@ export function EntriesView({
                 disabled={pending}
               />
             </FormField>
-            <FormField label="Amount" htmlFor="create-amount" required>
-              <Input id="create-amount" name="amount" inputMode="decimal" required disabled={pending} placeholder="e.g. 1000.00" />
+            <FormField label="Amount" htmlFor="create-amount" required className="ui-entry-span">
+              <Input
+                id="create-amount"
+                name="amount"
+                inputMode="decimal"
+                required
+                defaultValue="0"
+                disabled={pending}
+                placeholder="0"
+              />
             </FormField>
-            <FormField label="Remarks" htmlFor="create-remarks">
-              <Textarea id="create-remarks" name="remarks" disabled={pending} placeholder="Optional note" />
+            <FormField label="Remarks" htmlFor="create-remarks" className="ui-entry-span">
+              <Textarea
+                id="create-remarks"
+                name="remarks"
+                disabled={pending}
+                placeholder="Add notes for this entry (optional)"
+              />
             </FormField>
-            {formError && createType ? (
+            {formError && createOpen ? (
               <p className="ui-field-error" role="alert">
                 {formError}
               </p>
             ) : null}
             <div className="ui-dialog-actions">
-              <Button variant="secondary" disabled={pending} onClick={() => setCreateType(null)}>
+              <Button variant="ghost" disabled={pending} onClick={() => setCreateOpen(false)}>
                 Cancel
               </Button>
               <Button type="submit" loading={pending}>
-                Create
+                Save Entry
               </Button>
             </div>
           </form>
@@ -534,7 +535,7 @@ export function EntriesView({
       >
         {editEntry ? (
           <form
-            className="ui-dialog-form"
+            className="ui-dialog-form ui-entry-form"
             onSubmit={(event) => {
               event.preventDefault();
               const form = new FormData(event.currentTarget);
@@ -545,8 +546,8 @@ export function EntriesView({
                     entry_type: draftType,
                     account_id: String(form.get("account_id") ?? ""),
                     category_id: String(form.get("category_id") ?? ""),
-                    party_id: String(form.get("party_id") ?? ""),
-                    employee_id: String(form.get("employee_id") ?? ""),
+                    party_id: editEntry.party_id ?? "",
+                    employee_id: editEntry.employee_id ?? "",
                     entry_date: String(form.get("entry_date") ?? ""),
                     amount: String(form.get("amount") || editEntry.amount),
                     remarks: String(form.get("remarks") ?? ""),
@@ -559,23 +560,23 @@ export function EntriesView({
               label="Entry Type"
               htmlFor="edit-entry-type"
               required
+              className="ui-entry-span"
               help={
                 editEntry.allocated > 0
                   ? "Amount and type cannot be changed while allocations exist."
                   : undefined
               }
             >
-              <Select
-                id="edit-entry-type"
+              <EntryTypeToggle
                 value={draftType}
                 disabled={pending || editEntry.allocated > 0}
-                onChange={(event) => setDraftType(event.target.value as EntryDraftType)}
-              >
-                <option value="Income">Income</option>
-                <option value="Expense">Expense</option>
-              </Select>
+                onChange={(type) => {
+                  setDraftType(type);
+                  setFormError(null);
+                }}
+              />
             </FormField>
-            <FormField label="Account" htmlFor="edit-account" required>
+            <FormField label="Payment Account" htmlFor="edit-account" required>
               <Select
                 id="edit-account"
                 name="account_id"
@@ -595,9 +596,16 @@ export function EntriesView({
                   })}
               </Select>
             </FormField>
-            <FormField label="Category" htmlFor="edit-category" required>
-              <Select id="edit-category" name="category_id" required disabled={pending} defaultValue={editEntry.category_id}>
-                <option value="">Select category</option>
+            <FormField label={`${draftType} Category`} htmlFor="edit-category" required>
+              <Select
+                key={`${editEntry.id}-${draftType}`}
+                id="edit-category"
+                name="category_id"
+                required
+                disabled={pending}
+                defaultValue={draftType === editEntry.entry_type ? editEntry.category_id : ""}
+              >
+                <option value="">Select {draftType.toLowerCase()} category</option>
                 {categories
                   .filter(
                     (category) =>
@@ -611,36 +619,7 @@ export function EntriesView({
                   ))}
               </Select>
             </FormField>
-            <FormField label="Party" htmlFor="edit-party">
-              <Select id="edit-party" name="party_id" defaultValue={editEntry.party_id ?? ""} disabled={pending}>
-                <option value="">None</option>
-                {parties
-                  .filter((party) => party.is_active || party.id === editEntry.party_id)
-                  .map((party) => (
-                    <option key={party.id} value={party.id}>
-                      {party.company_name}
-                    </option>
-                  ))}
-              </Select>
-            </FormField>
-            <FormField label="Employee" htmlFor="edit-employee">
-              <Select
-                id="edit-employee"
-                name="employee_id"
-                defaultValue={editEntry.employee_id ?? ""}
-                disabled={pending}
-              >
-                <option value="">None</option>
-                {employees
-                  .filter((employee) => employee.is_active || employee.id === editEntry.employee_id)
-                  .map((employee) => (
-                    <option key={employee.id} value={employee.id}>
-                      {employee.name}
-                    </option>
-                  ))}
-              </Select>
-            </FormField>
-            <FormField label="Entry Date" htmlFor="edit-date" required>
+            <FormField label="Entry Date" htmlFor="edit-date" required className="ui-entry-span">
               <DatePicker
                 id="edit-date"
                 name="entry_date"
@@ -649,7 +628,7 @@ export function EntriesView({
                 disabled={pending}
               />
             </FormField>
-            <FormField label="Amount" htmlFor="edit-amount" required>
+            <FormField label="Amount" htmlFor="edit-amount" required className="ui-entry-span">
               <Input
                 id="edit-amount"
                 name="amount"
@@ -658,11 +637,17 @@ export function EntriesView({
                 defaultValue={Number(editEntry.amount).toFixed(2)}
                 disabled={pending}
                 readOnly={editEntry.allocated > 0}
-                placeholder="e.g. 1000.00"
+                placeholder="0"
               />
             </FormField>
-            <FormField label="Remarks" htmlFor="edit-remarks">
-              <Textarea id="edit-remarks" name="remarks" defaultValue={editEntry.remarks ?? ""} disabled={pending} placeholder="Optional note" />
+            <FormField label="Remarks" htmlFor="edit-remarks" className="ui-entry-span">
+              <Textarea
+                id="edit-remarks"
+                name="remarks"
+                defaultValue={editEntry.remarks ?? ""}
+                disabled={pending}
+                placeholder="Add notes for this entry (optional)"
+              />
             </FormField>
             {formError && editEntry ? (
               <p className="ui-field-error" role="alert">
@@ -670,11 +655,11 @@ export function EntriesView({
               </p>
             ) : null}
             <div className="ui-dialog-actions">
-              <Button variant="secondary" disabled={pending} onClick={() => setEditEntry(null)}>
+              <Button variant="ghost" disabled={pending} onClick={() => setEditEntry(null)}>
                 Cancel
               </Button>
               <Button type="submit" loading={pending}>
-                Save
+                Save Entry
               </Button>
             </div>
           </form>

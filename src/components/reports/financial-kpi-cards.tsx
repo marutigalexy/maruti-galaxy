@@ -7,6 +7,7 @@ type FinancialKpiCardsProps = {
   net: number;
   totalEntries: number;
   loading?: boolean;
+  netLabel?: string;
 };
 
 function netHelp(net: number): string {
@@ -25,9 +26,10 @@ export function FinancialKpiCards({
   net,
   totalEntries,
   loading = false,
+  netLabel,
 }: FinancialKpiCardsProps) {
   const isLoss = net < 0;
-  const netLabel = isLoss ? "Net Loss" : net > 0 ? "Net Profit" : "Net Profit/Loss";
+  const resolvedNetLabel = netLabel ?? (isLoss ? "Net Loss" : net > 0 ? "Net Profit" : "Net Profit/Loss");
 
   return (
     <section className="ui-section" aria-label="Financial summary">
@@ -44,7 +46,7 @@ export function FinancialKpiCards({
             <p className="ui-kpi-value ui-amount-expense">{formatInr(totalExpense)}</p>
           </article>
           <article className="ui-kpi-card">
-            <p className="ui-kpi-label">{netLabel}</p>
+            <p className="ui-kpi-label">{resolvedNetLabel}</p>
             <p className={`ui-kpi-value ${isLoss ? "ui-amount-expense" : "ui-amount-income"}`}>
               {formatInr(net)}
             </p>

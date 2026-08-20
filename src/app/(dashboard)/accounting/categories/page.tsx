@@ -10,6 +10,7 @@ type CategoriesPageProps = {
   searchParams: Promise<{
     search?: string;
     status?: string;
+    type?: string;
     page?: string;
     pageSize?: string;
   }>;
@@ -25,6 +26,7 @@ export default async function CategoriesPage({ searchParams }: CategoriesPagePro
     query = parseOrThrow(listCategoriesSchema, {
       search: params.search ?? "",
       status: params.status ?? "all",
+      type: params.type ?? "all",
       page: params.page,
       pageSize: params.pageSize,
     });

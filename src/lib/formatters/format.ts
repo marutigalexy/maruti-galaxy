@@ -12,6 +12,17 @@ export function formatInr(amount: string | number): string {
   }).format(value);
 }
 
+export function formatSignedInr(type: "Income" | "Expense", amount: string | number): string {
+  const value = typeof amount === "number" ? amount : Number(amount);
+  const formatted = formatInr(Number.isFinite(value) ? Math.abs(value) : 0);
+  return type === "Expense" ? `−${formatted}` : `+${formatted}`;
+}
+
+export function signedAmountType(amount: string | number): "Income" | "Expense" {
+  const value = typeof amount === "number" ? amount : Number(amount);
+  return Number.isFinite(value) && value < 0 ? "Expense" : "Income";
+}
+
 export function formatThan(value: string | number): string {
   const amount = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(amount)) {
