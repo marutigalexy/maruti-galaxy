@@ -6,6 +6,7 @@ type FormFieldProps = {
   required?: boolean;
   error?: string;
   help?: string;
+  className?: string;
   children: ReactNode;
 };
 
@@ -21,6 +22,7 @@ export function FormField({
   required = false,
   error,
   help,
+  className,
   children,
 }: FormFieldProps) {
   const errorId = error ? `${htmlFor}-error` : undefined;
@@ -36,7 +38,7 @@ export function FormField({
     : children;
 
   return (
-    <div className="ui-field">
+    <div className={["ui-field", className].filter(Boolean).join(" ")}>
       <label className="ui-field-label" htmlFor={htmlFor}>
         {label}
         {required ? (

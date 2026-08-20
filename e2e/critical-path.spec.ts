@@ -88,14 +88,14 @@ test.describe("QA-001 critical path", () => {
     await expect(page.getByText("Completed").first()).toBeVisible();
 
     await page.goto("/accounting/entries");
-    await page.getByRole("button", { name: "Add Income" }).click();
-    const incomeDialog = page.getByRole("dialog", { name: "Add Income" });
+    await page.getByRole("button", { name: "Add Entry" }).click();
+    const incomeDialog = page.getByRole("dialog", { name: "Add New Entry" });
     await expect(incomeDialog).toBeVisible();
-    await chooseOption(incomeDialog, "Account", { label: accountName });
-    await selectOptionContaining(incomeDialog, "Category", incomeCategory);
-    await chooseOption(incomeDialog, "Party", { label: partyName });
+    await incomeDialog.getByRole("radio", { name: "Income" }).click();
+    await chooseOption(incomeDialog, "Payment Account", { label: accountName });
+    await selectOptionContaining(incomeDialog, "Income Category", incomeCategory);
     await incomeDialog.getByLabel("Amount").fill("1000");
-    await incomeDialog.getByRole("button", { name: "Create" }).click();
+    await incomeDialog.getByRole("button", { name: "Save Entry" }).click();
     await expect(incomeDialog).toHaveCount(0);
     await page.getByRole("button", { name: "Allocate entry" }).first().click();
     const allocateDialog = page.getByRole("dialog", { name: "Allocate Income" });
@@ -106,14 +106,14 @@ test.describe("QA-001 critical path", () => {
     await allocateDialog.getByRole("button", { name: "Allocate" }).click();
     await expect(allocateDialog).toHaveCount(0);
 
-    await page.getByRole("button", { name: "Add Expense" }).click();
-    const expenseDialog = page.getByRole("dialog", { name: "Add Expense" });
+    await page.getByRole("button", { name: "Add Entry" }).click();
+    const expenseDialog = page.getByRole("dialog", { name: "Add New Entry" });
     await expect(expenseDialog).toBeVisible();
-    await chooseOption(expenseDialog, "Account", { label: accountName });
-    await selectOptionContaining(expenseDialog, "Category", expenseCategory);
-    await chooseOption(expenseDialog, "Employee", { label: employeeName });
+    await expenseDialog.getByRole("radio", { name: "Expense" }).click();
+    await chooseOption(expenseDialog, "Payment Account", { label: accountName });
+    await selectOptionContaining(expenseDialog, "Expense Category", expenseCategory);
     await expenseDialog.getByLabel("Amount").fill("50");
-    await expenseDialog.getByRole("button", { name: "Create" }).click();
+    await expenseDialog.getByRole("button", { name: "Save Entry" }).click();
     await expect(expenseDialog).toHaveCount(0);
 
     await page.goto(jobUrl);

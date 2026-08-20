@@ -55,6 +55,15 @@ const WORK_COLUMNS = selectColumns([
   "created_at",
 ]);
 
+export type JobListSubJob = {
+  id: string;
+  display_no: string;
+  than: number;
+  weight: number;
+  status: JobStatus;
+  remaining_than: number;
+};
+
 export type JobListRecord = {
   id: string;
   lot_number: string;
@@ -69,6 +78,7 @@ export type JobListRecord = {
   remaining_than: number;
   invoice_id: string | null;
   created_at: string;
+  sub_jobs: JobListSubJob[];
 };
 
 export type JobWorkRecord = {
@@ -235,6 +245,7 @@ export async function listJobs(input: ListJobsInput): Promise<Paginated<JobListR
   const partyNames = new Map<string, string>();
   const allocated = new Map<string, number>();
   const invoiceIds = new Map<string, string>();
+  const subsByJob = new Map<string, JobListSubJob[]>();
 
   if (partyIds.length > 0) {
     const { data: parties, error: partyError } = await supabase
@@ -253,16 +264,61 @@ export async function listJobs(input: ListJobsInput): Promise<Paginated<JobListR
 
   if (jobIds.length > 0) {
     const { data: subRows, error: subError } = await supabase
-      .from("sub_jobs")
-      .select("job_id, than")
-      .in("job_id", jobIds);
+      .from("v_sub_jobs_display")
+      .select(SUB_DISPLAY_COLUMNS)
+      .in("job_id", jobIds)
+      .order("sequence_no", { ascending: true });
 
     if (subError) {
       throw new AppError("INTERNAL", "Unable to load jobs.");
     }
 
-    for (const sub of subRows ?? []) {
-      allocated.set(sub.job_id, (allocated.get(sub.job_id) ?? 0) + asMoneyNumber(sub.than));
+    const pendingSubs: Array<JobListSubJob & { job_id: string }> = [];
+    for (const row of subRows ?? []) {
+      if (!row.id || !row.job_id || !row.display_no || !row.status) {
+        continue;
+      }
+      const than = asMoneyNumber(row.than);
+      pendingSubs.push({
+        id: row.id,
+        job_id: row.job_id,
+        display_no: row.display_no,
+        than,
+        weight: asMoneyNumber(row.weight),
+        status: row.status,
+        remaining_than: than,
+      });
+      allocated.set(row.job_id, (allocated.get(row.job_id) ?? 0) + than);
+    }
+
+    const subIds = pendingSubs.map((sub) => sub.id);
+    const doneBySub = new Map<string, number>();
+    if (subIds.length > 0) {
+      const { data: workRows, error: workError } = await supabase
+        .from("sub_job_employee_work")
+        .select("sub_job_id, done_than")
+        .in("sub_job_id", subIds);
+
+      if (workError) {
+        throw new AppError("INTERNAL", "Unable to load jobs.");
+      }
+
+      for (const row of workRows ?? []) {
+        doneBySub.set(row.sub_job_id, (doneBySub.get(row.sub_job_id) ?? 0) + asMoneyNumber(row.done_than));
+      }
+    }
+
+    for (const sub of pendingSubs) {
+      const list = subsByJob.get(sub.job_id) ?? [];
+      list.push({
+        id: sub.id,
+        display_no: sub.display_no,
+        than: sub.than,
+        weight: sub.weight,
+        status: sub.status,
+        remaining_than: sub.than - (doneBySub.get(sub.id) ?? 0),
+      });
+      subsByJob.set(sub.job_id, list);
     }
 
     const { data: invoiceRows, error: invoiceError } = await supabase
@@ -297,6 +353,7 @@ export async function listJobs(input: ListJobsInput): Promise<Paginated<JobListR
         remaining_than: than - used,
         invoice_id: invoiceIds.get(row.id) ?? null,
         created_at: row.created_at,
+        sub_jobs: subsByJob.get(row.id) ?? [],
       };
     }),
     count ?? 0,

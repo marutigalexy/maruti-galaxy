@@ -20,9 +20,12 @@ describe("QA-001 critical path coverage", () => {
     expect(spec).toMatch(/Create Job/);
     expect(spec).toMatch(/Add Sub Job/);
     expect(spec).toMatch(/Add Work/);
-    expect(spec).toMatch(/Add Income/);
+    expect(spec).toMatch(/Add Entry/);
+    expect(spec).toMatch(/Add New Entry/);
+    expect(spec).toMatch(/Save Entry/);
+    expect(spec).toMatch(/getByRole\("radio", \{ name: "Income" \}\)/);
+    expect(spec).toMatch(/getByRole\("radio", \{ name: "Expense" \}\)/);
     expect(spec).toMatch(/Allocate/);
-    expect(spec).toMatch(/Add Expense/);
     expect(spec).toMatch(/\/dashboard/);
     expect(spec).toMatch(/\/reports\/outstanding/);
     expect(spec).toMatch(/\/reports\/profit-loss/);

@@ -37,8 +37,11 @@ function tableColumnClass(column: TableSkeletonColumn, isHeader = false) {
   if (column.numeric) {
     classes.push("is-numeric");
   }
-  if (column.align === "center" || column.key === "status" || column.key === "type") {
+  if (column.align === "center" || column.key === "status" || column.key === "type" || column.key === "expand") {
     classes.push("is-center");
+  }
+  if (column.key === "expand") {
+    classes.push("is-expand");
   }
   if (!isHeader && column.key === "price") {
     classes.push("ui-price");

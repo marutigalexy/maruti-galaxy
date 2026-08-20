@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 
 import { Tabs } from "@/components/ui/tabs";
-import { NAV_ITEMS } from "@/lib/navigation/nav";
+import { isRecordPath, NAV_ITEMS } from "@/lib/navigation/nav";
 
 type ModuleTabsProps = {
   moduleHref: string;
@@ -11,6 +11,10 @@ type ModuleTabsProps = {
 
 export function ModuleTabs({ moduleHref }: ModuleTabsProps) {
   const pathname = usePathname();
+  if (isRecordPath(pathname)) {
+    return null;
+  }
+
   const items = NAV_ITEMS.find((item) => item.href === moduleHref)?.children ?? [];
   const activeHref =
     items.find((tab) => pathname === tab.href || pathname.startsWith(`${tab.href}/`))?.href ??

@@ -185,4 +185,10 @@ describe("jobs service security", () => {
     expect(detail).not.toMatch(/\/jobs\/\$\{job\.id\}\/edit/);
     expect(list).not.toMatch(/\/jobs\/\$\{row\.id\}\/edit/);
   });
+
+  it("nests expandable sub-jobs inside the main jobs table", () => {
+    expect(service).toMatch(/from\("v_sub_jobs_display"\)/);
+    expect(list).toMatch(/Show sub-jobs/);
+    expect(list).toMatch(/is-nested/);
+  });
 });

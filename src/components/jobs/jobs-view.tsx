@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition, type MouseEvent } from "react";
 
 import { getJobAction } from "@/app/actions/jobs";
 import { JobCreateForm } from "@/components/jobs/job-create-form";
@@ -13,7 +13,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { FormField } from "@/components/ui/form-field";
 import { IconButton } from "@/components/ui/icon-button";
-import { EditIcon } from "@/components/ui/icons";
+import { ChevronDownIcon, EditIcon } from "@/components/ui/icons";
 import { JobTypeBadge } from "@/components/ui/job-type-badge";
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput } from "@/components/ui/search-input";
@@ -26,7 +26,7 @@ import type { Paginated } from "@/lib/api/pagination";
 import { formatInr, formatThan, formatWeightCt } from "@/lib/formatters";
 import type { ListJobsInput } from "@/lib/validation/jobs";
 import type { EmployeeOption } from "@/services/employees/employees-service";
-import type { JobDetail, JobListRecord } from "@/services/jobs/jobs-service";
+import type { JobDetail, JobListRecord, JobListSubJob } from "@/services/jobs/jobs-service";
 import type { PartyOption } from "@/services/parties/parties-service";
 
 type JobsViewProps = {
@@ -35,6 +35,11 @@ type JobsViewProps = {
   parties: PartyOption[];
   employees: EmployeeOption[];
 };
+
+type JobsTableRow =
+  | { kind: "job"; job: JobListRecord }
+  | { kind: "sub"; job: JobListRecord; sub: JobListSubJob }
+  | { kind: "empty"; job: JobListRecord };
 
 function jobsHref(query: ListJobsInput): string {
   const params = new URLSearchParams();
@@ -78,6 +83,28 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
   const [editJob, setEditJob] = useState<JobDetail | null>(null);
   const [editJobId, setEditJobId] = useState<string | null>(null);
   const [editPending, startEdit] = useTransition();
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
+
+  useEffect(() => {
+    const needle = query.search.trim().toLowerCase();
+    if (!needle) {
+      return;
+    }
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      for (const job of result.records) {
+        if (
+          !next.has(job.id) &&
+          job.sub_jobs.some((sub) => sub.display_no.toLowerCase().includes(needle))
+        ) {
+          next.add(job.id);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [query.search, result.records]);
 
   const pushQuery = (next: ListJobsInput) => {
     push(jobsHref(next));
@@ -96,12 +123,36 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
     });
   }
 
+  function toggleExpanded(event: MouseEvent<HTMLButtonElement>, jobId: string) {
+    event.stopPropagation();
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(jobId)) {
+        next.delete(jobId);
+      } else {
+        next.add(jobId);
+      }
+      return next;
+    });
+  }
+
   const filteredEmpty =
     Boolean(query.search) ||
     query.status !== "all" ||
     query.job_type !== "all" ||
     Boolean(query.party_id) ||
     Boolean(query.employee_id);
+
+  const rows = result.records.flatMap((job): JobsTableRow[] => {
+    const parent: JobsTableRow = { kind: "job", job };
+    if (!expandedIds.has(job.id)) {
+      return [parent];
+    }
+    if (job.sub_jobs.length === 0) {
+      return [parent, { kind: "empty", job }];
+    }
+    return [parent, ...job.sub_jobs.map((sub): JobsTableRow => ({ kind: "sub", job, sub }))];
+  });
 
   return (
     <>
@@ -207,46 +258,143 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
       <DataTable
         caption="Jobs"
         columns={[
-          { key: "lot", header: "Lot Number", render: (row) => row.lot_number },
-          { key: "party", header: "Party", render: (row) => row.party_name },
-          { key: "type", header: "Job Type", render: (row) => <JobTypeBadge type={row.job_type} /> },
-          { key: "than", header: "Than", numeric: true, render: (row) => formatThan(row.than) },
+          {
+            key: "expand",
+            header: "",
+            render: (row) => {
+              if (row.kind !== "job") {
+                return null;
+              }
+              const expanded = expandedIds.has(row.job.id);
+              return (
+                <IconButton
+                  className="ui-table-expand"
+                  label={expanded ? "Hide sub-jobs" : "Show sub-jobs"}
+                  aria-expanded={expanded}
+                  onClick={(event) => toggleExpanded(event, row.job.id)}
+                >
+                  <ChevronDownIcon
+                    className={["ui-table-expand-icon", expanded ? "is-open" : "is-closed"].join(" ")}
+                    width={16}
+                    height={16}
+                  />
+                </IconButton>
+              );
+            },
+          },
+          {
+            key: "lot",
+            header: "Lot Number",
+            render: (row) => {
+              if (row.kind === "sub") {
+                return <span className="ui-table-nested-label">{row.sub.display_no}</span>;
+              }
+              if (row.kind === "empty") {
+                return <span className="ui-table-nested-label is-muted">No sub-jobs</span>;
+              }
+              return row.job.lot_number;
+            },
+          },
+          {
+            key: "party",
+            header: "Party",
+            render: (row) => (row.kind === "job" ? row.job.party_name : "—"),
+          },
+          {
+            key: "type",
+            header: "Job Type",
+            render: (row) => (row.kind === "job" ? <JobTypeBadge type={row.job.job_type} /> : "—"),
+          },
+          {
+            key: "than",
+            header: "Than",
+            numeric: true,
+            render: (row) => {
+              if (row.kind === "empty") {
+                return "";
+              }
+              return formatThan(row.kind === "job" ? row.job.than : row.sub.than);
+            },
+          },
           {
             key: "remaining",
             header: "Remaining Than",
             numeric: true,
-            render: (row) => formatThan(row.remaining_than),
+            render: (row) => {
+              if (row.kind === "empty") {
+                return "";
+              }
+              return formatThan(row.kind === "job" ? row.job.remaining_than : row.sub.remaining_than);
+            },
           },
-          { key: "weight", header: "Weight", numeric: true, render: (row) => formatWeightCt(row.weight) },
-          { key: "price", header: "Price", numeric: true, render: (row) => formatInr(row.price) },
+          {
+            key: "weight",
+            header: "Weight",
+            numeric: true,
+            render: (row) => {
+              if (row.kind === "empty") {
+                return "";
+              }
+              return formatWeightCt(row.kind === "job" ? row.job.weight : row.sub.weight);
+            },
+          },
+          {
+            key: "price",
+            header: "Price",
+            numeric: true,
+            render: (row) => (row.kind === "job" ? formatInr(row.job.price) : ""),
+          },
           {
             key: "status",
             header: "Status",
-            render: (row) => <StatusBadge tone={statusTone(row.status)} />,
+            render: (row) => {
+              if (row.kind === "empty") {
+                return null;
+              }
+              const status = row.kind === "job" ? row.job.status : row.sub.status;
+              return <StatusBadge tone={statusTone(status)} />;
+            },
           },
           {
             key: "actions",
             header: "Actions",
-            render: (row) => (
-              <TableActions>
-                {row.invoice_id ? <InvoicePrintButton variant="icon" invoiceId={row.invoice_id} /> : null}
-                <IconButton
-                  tone="edit"
-                  label="Edit job"
-                  loading={editPending && editJobId === row.id}
-                  disabled={editPending}
-                  onClick={() => openEdit(row.id)}
-                >
-                  <EditIcon width={16} height={16} />
-                </IconButton>
-              </TableActions>
-            ),
+            render: (row) =>
+              row.kind === "job" ? (
+                <TableActions>
+                  {row.job.invoice_id ? (
+                    <InvoicePrintButton variant="icon" invoiceId={row.job.invoice_id} />
+                  ) : null}
+                  <IconButton
+                    tone="edit"
+                    label="Edit job"
+                    loading={editPending && editJobId === row.job.id}
+                    disabled={editPending}
+                    onClick={() => openEdit(row.job.id)}
+                  >
+                    <EditIcon width={16} height={16} />
+                  </IconButton>
+                </TableActions>
+              ) : null,
           },
         ]}
-        rows={result.records}
-        rowKey={(row) => row.id}
+        rows={rows}
+        rowKey={(row) =>
+          row.kind === "job" ? row.job.id : row.kind === "sub" ? `${row.job.id}:${row.sub.id}` : `${row.job.id}:empty`
+        }
         loading={queryPending}
-        onRowClick={(row) => router.push(`/jobs/${row.id}`)}
+        getRowProps={(row) =>
+          row.kind === "job"
+            ? {
+                className: "is-parent",
+                "aria-expanded": expandedIds.has(row.job.id),
+                "aria-level": 1,
+              }
+            : {
+                className: "is-nested",
+                "aria-level": 2,
+              }
+        }
+        onRowClick={(row) => router.push(`/jobs/${row.job.id}`)}
         emptyTitle={filteredEmpty ? "No jobs match the selected filters." : "No jobs found."}
         footer={
           <Pagination

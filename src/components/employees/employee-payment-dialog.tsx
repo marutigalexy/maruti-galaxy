@@ -97,14 +97,6 @@ export function EmployeePaymentDialog({
             amount={amount}
             onAmountChange={setAmount}
           />
-          {amount ? (
-            <p className="ui-field-help">
-              After this payment, remaining salary will be{" "}
-              {formatInr(remainingAfterPayment(summary.remaining_amount, amount))}. Server remaining is final.
-            </p>
-          ) : (
-            <p className="ui-field-help">Salary payments are recorded as an expense entry for this employee.</p>
-          )}
           {formError ? (
             <p className="ui-field-error" role="alert">
               {formError}
