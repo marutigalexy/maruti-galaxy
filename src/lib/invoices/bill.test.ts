@@ -4,9 +4,9 @@ import { formatBillDate, formatBillNumber, formatInrWords } from "@/lib/formatte
 import { INVOICE_BILL, billDateFromLines, summarizeBillLines } from "@/lib/invoices/bill";
 
 describe("invoice bill formatters", () => {
-  it("formats bill dates as d-M-yyyy", () => {
-    expect(formatBillDate("2026-04-18")).toBe("18-4-2026");
-    expect(formatBillDate("2026-04-26")).toBe("26-4-2026");
+  it("formats bill dates as dd/mm/yyyy", () => {
+    expect(formatBillDate("2026-04-18")).toBe("18/04/2026");
+    expect(formatBillDate("2026-04-26")).toBe("26/04/2026");
   });
 
   it("omits trailing zeros on whole bill numbers", () => {

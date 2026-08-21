@@ -10,14 +10,14 @@ import {
   updateUserProfileAction,
 } from "@/app/actions/users";
 import { Button } from "@/components/ui/button";
-import { AddButton } from "@/components/ui/add-button";
+// import { AddButton } from "@/components/ui/add-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { FormField } from "@/components/ui/form-field";
 import { IconButton } from "@/components/ui/icon-button";
-import { EditIcon, KeyIcon, PowerIcon } from "@/components/ui/icons";
+import { EditIcon, EyeIcon, EyeOffIcon, KeyIcon, PowerIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput } from "@/components/ui/search-input";
@@ -25,6 +25,7 @@ import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TableActions } from "@/components/ui/table-actions";
 import { useToast } from "@/components/ui/toast";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useQueryPush } from "@/hooks/use-query-push";
 import type { Paginated } from "@/lib/api/pagination";
 import { formatDisplayDate } from "@/lib/formatters";
@@ -50,6 +51,44 @@ function usersHref(query: Partial<ListUsersInput> & Pick<ListUsersInput, "page" 
   }
   const qs = params.toString();
   return qs ? `/users?${qs}` : "/users";
+}
+
+function PasswordInput({
+  id,
+  name,
+  placeholder,
+  disabled,
+}: {
+  id: string;
+  name: string;
+  placeholder: string;
+  disabled?: boolean;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="password-input-wrap">
+      <Input
+        id={id}
+        name={name}
+        type={show ? "text" : "password"}
+        required
+        disabled={disabled}
+        autoComplete="new-password"
+        placeholder={placeholder}
+        style={{ paddingRight: "40px" }}
+      />
+      <Tooltip label={show ? "Hide password" : "Show password"}>
+        <button
+          type="button"
+          className="password-toggle"
+          onClick={() => setShow((value) => !value)}
+          aria-label={show ? "Hide password" : "Show password"}
+        >
+          {show ? <EyeOffIcon width={18} height={18} /> : <EyeIcon width={18} height={18} />}
+        </button>
+      </Tooltip>
+    </div>
+  );
 }
 
 export function UsersView({ currentUserId, query, result }: UsersViewProps) {
@@ -93,14 +132,15 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
     <>
       <FilterBar
         action={
-          <AddButton
-            onClick={() => {
-              setFormError(null);
-              setCreateOpen(true);
-            }}
-          >
-            Add User
-          </AddButton>
+          // <AddButton
+          //   onClick={() => {
+          //     setFormError(null);
+          //     setCreateOpen(true);
+          //   }}
+          // >
+          //   Add User
+          // </AddButton>
+          undefined
         }
         onReset={() => pushQuery({ search: "", status: "all", page: 1, pageSize: query.pageSize })}
       >
@@ -185,10 +225,6 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
         ]}
         rows={result.records}
         rowKey={(row) => row.id}
-        onRowClick={(row) => {
-          setFormError(null);
-          setEditUser(row);
-        }}
         loading={queryPending}
         emptyTitle={query.search || query.status !== "all" ? "No users match the selected filters." : "No users found."}
         footer={
@@ -234,25 +270,19 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
             <Input id="create-email" name="email" type="email" required disabled={pending} autoComplete="off" placeholder="name@company.com" />
           </FormField>
           <FormField label="Password" htmlFor="create-password" required>
-            <Input
+            <PasswordInput
               id="create-password"
               name="password"
-              type="password"
-              required
-              disabled={pending}
-              autoComplete="new-password"
               placeholder="At least 6 characters"
+              disabled={pending}
             />
           </FormField>
           <FormField label="Confirm Password" htmlFor="create-confirm" required>
-            <Input
+            <PasswordInput
               id="create-confirm"
               name="confirmPassword"
-              type="password"
-              required
-              disabled={pending}
-              autoComplete="new-password"
               placeholder="Re-enter password"
+              disabled={pending}
             />
           </FormField>
           {formError && createOpen ? (
@@ -350,25 +380,19 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
             }}
           >
             <FormField label="New Password" htmlFor="pw-password" required>
-              <Input
+              <PasswordInput
                 id="pw-password"
                 name="password"
-                type="password"
-                required
-                disabled={pending}
-                autoComplete="new-password"
                 placeholder="At least 6 characters"
+                disabled={pending}
               />
             </FormField>
             <FormField label="Confirm Password" htmlFor="pw-confirm" required>
-              <Input
+              <PasswordInput
                 id="pw-confirm"
                 name="confirmPassword"
-                type="password"
-                required
-                disabled={pending}
-                autoComplete="new-password"
                 placeholder="Re-enter password"
+                disabled={pending}
               />
             </FormField>
             {formError && passwordUser ? (

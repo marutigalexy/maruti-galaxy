@@ -1029,18 +1029,18 @@ a {
 }
 
 .ui-badge-sarin {
-  background: var(--color-info-soft);
-  color: var(--color-accent-blue);
+  background: #1f3ac0;
+  color: #ffffff;
 }
 
 .ui-badge-dropping {
-  background: var(--color-light-silver);
-  color: var(--color-dark-navy);
+  background: #d96f28;
+  color: #ffffff;
 }
 
 .ui-badge-galaxy {
-  background: var(--color-invoice-band);
-  color: var(--color-deep-navy);
+  background: #1b88a6;
+  color: #ffffff;
 }
 
 .ui-field-control-row {
@@ -1298,6 +1298,9 @@ a {
 
 .ui-tooltip {
   position: fixed;
+  inset: unset;
+  margin: 0;
+  border: 0;
   z-index: 2000;
   padding: 8px 10px;
   border-radius: 10px;
@@ -1706,11 +1709,12 @@ a {
   border: 1px solid transparent;
   border-radius: var(--radius-lg);
   background: transparent;
-  color: var(--color-nav-text);
+  color: var(--color-on-navy);
   text-align: left;
   cursor: pointer;
   font: inherit;
   font-size: 14px;
+  line-height: var(--line-height-tight);
   font-weight: 500;
   transition:
     background-color var(--transition-fast),
@@ -1725,10 +1729,12 @@ a {
 
 .app-nav-link[aria-current="page"],
 .app-nav-link.is-current-section {
-  background: linear-gradient(135deg, rgb(59 130 246 / 0.1), rgb(59 130 246 / 0.05));
-  border-color: rgb(59 130 246 / 0.2);
+  background: linear-gradient(135deg, rgb(59 130 246 / 0.16), rgb(59 130 246 / 0.08));
+  border-color: rgb(59 130 246 / 0.35);
   color: var(--color-on-navy);
+  font-size: 15px;
   font-weight: 600;
+  box-shadow: 0 0 12px rgb(59 130 246 / 0.15);
   transition: none;
 }
 
@@ -1811,7 +1817,7 @@ a {
 }
 
 .app-sidebar-profile-menu {
-  margin-top: 4px;
+  margin-bottom: 4px;
   padding: 4px;
   border: 1px solid var(--color-nav-divider);
   border-radius: var(--radius-lg);
@@ -1841,18 +1847,21 @@ a {
   padding: 8px 12px;
   border: 0;
   border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--color-danger);
+  background: var(--color-danger);
+  color: var(--color-on-navy);
   font: inherit;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
 }
 
-.app-sidebar-logout-item:hover,
+.app-sidebar-logout-item:hover {
+  background: var(--color-danger-hover);
+}
+
 .app-sidebar-logout-collapsed:hover,
 .app-sidebar-logout-collapsed:focus-visible {
-  background: rgb(220 38 38 / 0.12);
+  background: var(--color-danger);
 }
 
 .app-sidebar-logout-collapsed {
@@ -1884,7 +1893,7 @@ a {
   width: 100%;
   height: 100%;
   opacity: 0;
-  color: var(--color-danger);
+  color: var(--color-on-navy);
   pointer-events: none;
 }
 

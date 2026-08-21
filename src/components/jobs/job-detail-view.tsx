@@ -25,9 +25,10 @@ import { Input } from "@/components/ui/input";
 import { JobTypeBadge } from "@/components/ui/job-type-badge";
 import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { WeightCt } from "@/components/ui/weight-ct";
 import { TableActions } from "@/components/ui/table-actions";
 import { useToast } from "@/components/ui/toast";
-import { formatDisplayDate, formatInr, formatThan, formatWeightCt } from "@/lib/formatters";
+import { formatDisplayDate, formatInr, formatThan } from "@/lib/formatters";
 import type { EmployeeOption } from "@/services/employees/employees-service";
 import type { JobDetail, JobSubJobRecord, JobWorkRecord } from "@/services/jobs/jobs-service";
 
@@ -157,7 +158,7 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
                 </div>
                 <div className="ui-detail-item">
                   <dt>Total Weight</dt>
-                  <dd>{formatWeightCt(job.weight)}</dd>
+                  <dd><WeightCt value={job.weight} /></dd>
                 </div>
                 <div className="ui-detail-item">
                   <dt>Unit Price</dt>
@@ -261,7 +262,7 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
                       </div>
                       <div className="ui-detail-item">
                         <dt>Weight</dt>
-                        <dd>{formatWeightCt(sub.weight)}</dd>
+                        <dd><WeightCt value={sub.weight} /></dd>
                       </div>
                     </dl>
                     {workExpanded ? (

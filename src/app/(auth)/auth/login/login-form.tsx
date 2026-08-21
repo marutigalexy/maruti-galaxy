@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { EyeIcon, EyeOffIcon, MailIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
+import { Tooltip } from "@/components/ui/tooltip";
 
 const initialState: LoginState = { error: null, email: "" };
 
@@ -90,15 +91,16 @@ export function LoginForm({ nextPath }: LoginFormProps) {
             aria-describedby={state.error ? "password-error" : undefined}
             style={{ paddingRight: "40px" }}
           />
-          <button
-            type="button"
-            className="password-toggle"
-            onClick={() => setShowPassword(!showPassword)}
-            aria-label={showPassword ? "Hide password" : "Show password"}
-            title={showPassword ? "Hide password" : "Show password"}
-          >
-            {showPassword ? <EyeOffIcon width={18} height={18} /> : <EyeIcon width={18} height={18} />}
-          </button>
+          <Tooltip label={showPassword ? "Hide password" : "Show password"}>
+            <button
+              type="button"
+              className="password-toggle"
+              onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOffIcon width={18} height={18} /> : <EyeIcon width={18} height={18} />}
+            </button>
+          </Tooltip>
         </div>
       </FormField>
       

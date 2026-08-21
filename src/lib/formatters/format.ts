@@ -33,8 +33,11 @@ export function formatThan(value: string | number): string {
 }
 
 export function formatWeightCt(value: string | number): string {
-  const amount = typeof value === "number" ? value.toFixed(3) : value;
-  return `${amount} ct`;
+  const amount = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(amount)) {
+    return "0.00 ct";
+  }
+  return `${amount.toFixed(2)} ct`;
 }
 
 export function formatMonthYear(yearMonth: string): string {
@@ -62,7 +65,7 @@ export function formatDisplayDate(value: string | Date): string {
 
   return new Intl.DateTimeFormat("en-IN", {
     day: "2-digit",
-    month: "short",
+    month: "2-digit",
     year: "numeric",
   }).format(date);
 }
@@ -78,7 +81,9 @@ export function formatBillDate(value: string | Date): string {
     return "";
   }
 
-  return `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}`;
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${day}/${month}/${date.getFullYear()}`;
 }
 
 export function formatBillNumber(value: string | number, fractionDigits = 2): string {

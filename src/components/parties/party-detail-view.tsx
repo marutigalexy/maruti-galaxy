@@ -18,8 +18,9 @@ import { EditIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { JobTypeBadge } from "@/components/ui/job-type-badge";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { WeightCt } from "@/components/ui/weight-ct";
 import { useToast } from "@/components/ui/toast";
-import { formatInr, formatThan, formatWeightCt } from "@/lib/formatters";
+import { formatInr, formatThan } from "@/lib/formatters";
 import type { AccountOption } from "@/services/accounts/accounts-service";
 import type { CategoryOption } from "@/services/categories/categories-service";
 import type { PartyInvoiceRow, PartyJobRow, PartyRecord, PartySummary } from "@/services/parties/parties-service";
@@ -150,7 +151,7 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
                 key: "weight",
                 header: "Weight",
                 numeric: true,
-                render: (row) => formatWeightCt(row.weight),
+                render: (row) => <WeightCt value={row.weight} />,
               },
               {
                 key: "billing",

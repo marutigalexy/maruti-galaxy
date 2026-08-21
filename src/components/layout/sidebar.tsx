@@ -118,6 +118,14 @@ export function Sidebar({
         ))}
       </nav>
       <div className="app-sidebar-footer">
+        {profileOpen && !collapsed ? (
+          <div id="sidebar-profile-menu" className="app-sidebar-profile-menu">
+            <button type="button" className="app-sidebar-logout-item" onClick={() => setLogoutOpen(true)}>
+              <LogOutIcon width={16} height={16} aria-hidden="true" />
+              Log out
+            </button>
+          </div>
+        ) : null}
         <button
           type="button"
           className="app-sidebar-profile"
@@ -144,14 +152,6 @@ export function Sidebar({
             />
           ) : null}
         </button>
-        {profileOpen && !collapsed ? (
-          <div id="sidebar-profile-menu" className="app-sidebar-profile-menu">
-            <button type="button" className="app-sidebar-logout-item" onClick={() => setLogoutOpen(true)}>
-              <LogOutIcon width={16} height={16} aria-hidden="true" />
-              Log out
-            </button>
-          </div>
-        ) : null}
         {collapsed ? (
           <button
             type="button"

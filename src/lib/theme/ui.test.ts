@@ -149,7 +149,7 @@ describe("formatters", () => {
     expect(formatThan("10.00")).toBe("10");
     expect(formatThan(10.5)).toBe("10.5");
     expect(formatThan("10")).not.toMatch(/Than/);
-    expect(formatWeightCt("12.500")).toBe("12.500 ct");
+    expect(formatWeightCt("12.500")).toBe("12.50 ct");
   });
 });
 

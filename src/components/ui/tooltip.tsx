@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 type TooltipProps = {
@@ -12,13 +12,15 @@ type TooltipProps = {
 
 export function Tooltip({ label, children, enabled = true, className }: TooltipProps) {
   const itemRef = useRef<HTMLDivElement>(null);
+  const tipRef = useRef<HTMLSpanElement>(null);
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
 
   function show() {
     if (!enabled) {
       return;
     }
-    const rect = itemRef.current?.getBoundingClientRect();
+    const target = (itemRef.current?.firstElementChild as HTMLElement | null) ?? itemRef.current;
+    const rect = target?.getBoundingClientRect();
     if (!rect) {
       return;
     }
@@ -29,9 +31,13 @@ export function Tooltip({ label, children, enabled = true, className }: TooltipP
     setCoords(null);
   }
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!coords) {
       return;
+    }
+    const tip = tipRef.current;
+    if (tip && typeof tip.showPopover === "function" && !tip.matches(":popover-open")) {
+      tip.showPopover();
     }
     const onReposition = () => setCoords(null);
     window.addEventListener("scroll", onReposition, true);
@@ -58,7 +64,13 @@ export function Tooltip({ label, children, enabled = true, className }: TooltipP
       {children}
       {enabled && coords
         ? createPortal(
-            <span className="ui-tooltip is-open" role="tooltip" style={{ top: coords.top, left: coords.left }}>
+            <span
+              ref={tipRef}
+              popover="manual"
+              className="ui-tooltip is-open"
+              role="tooltip"
+              style={{ top: coords.top, left: coords.left }}
+            >
               {label}
             </span>,
             document.body,

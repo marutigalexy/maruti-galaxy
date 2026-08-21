@@ -18,11 +18,12 @@ import { Pagination } from "@/components/ui/pagination";
 import { SearchInput } from "@/components/ui/search-input";
 import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { WeightCt } from "@/components/ui/weight-ct";
 import { TableActions } from "@/components/ui/table-actions";
 import { useToast } from "@/components/ui/toast";
 import { useQueryPush } from "@/hooks/use-query-push";
 import type { Paginated } from "@/lib/api/pagination";
-import { formatInr, formatThan, formatWeightCt } from "@/lib/formatters";
+import { formatInr, formatThan } from "@/lib/formatters";
 import type { ListJobsInput } from "@/lib/validation/jobs";
 import type { EmployeeOption } from "@/services/employees/employees-service";
 import type { JobDetail, JobListRecord, JobListSubJob } from "@/services/jobs/jobs-service";
@@ -321,7 +322,8 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
               if (row.kind === "empty") {
                 return "";
               }
-              return formatThan(row.kind === "job" ? row.job.than : row.sub.than);
+              const value = formatThan(row.kind === "job" ? row.job.than : row.sub.than);
+              return <strong>{value}</strong>;
             },
           },
           {
@@ -332,7 +334,8 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
               if (row.kind === "empty") {
                 return "";
               }
-              return formatThan(row.kind === "job" ? row.job.remaining_than : row.sub.remaining_than);
+              const value = formatThan(row.kind === "job" ? row.job.remaining_than : row.sub.remaining_than);
+              return <strong>{value}</strong>;
             },
           },
           {
@@ -343,7 +346,7 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
               if (row.kind === "empty") {
                 return "";
               }
-              return formatWeightCt(row.kind === "job" ? row.job.weight : row.sub.weight);
+              return <WeightCt value={row.kind === "job" ? row.job.weight : row.sub.weight} />;
             },
           },
           {

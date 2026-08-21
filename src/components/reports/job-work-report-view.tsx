@@ -10,10 +10,11 @@ import { Pagination } from "@/components/ui/pagination";
 import { SearchInput } from "@/components/ui/search-input";
 import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { WeightCt } from "@/components/ui/weight-ct";
 import { useQueryPush } from "@/hooks/use-query-push";
 import { queryHref } from "@/lib/api/query-href";
 import type { Paginated } from "@/lib/api/pagination";
-import { formatDisplayDate, formatInr, formatThan, formatWeightCt } from "@/lib/formatters";
+import { formatDisplayDate, formatInr, formatThan } from "@/lib/formatters";
 import type { JobWorkReportInput } from "@/lib/validation/reports";
 import type { PartyOption } from "@/services/parties/parties-service";
 import type { JobWorkReportRow } from "@/services/reports/reports-service";
@@ -149,16 +150,16 @@ export function JobWorkReportView({ query, result, parties }: JobWorkReportViewP
           { key: "party", header: "Party", render: (row) => row.party_name },
           { key: "type", header: "Job Type", render: (row) => <JobTypeBadge type={row.job_type} /> },
           { key: "than", header: "Than", numeric: true, render: (row) => formatThan(row.than) },
+          { key: "done", header: "Done Than", numeric: true, render: (row) => formatThan(row.done_than) },
+          { key: "weight", header: "Weight", numeric: true, render: (row) => <WeightCt value={row.weight} /> },
           { key: "price", header: "Price", numeric: true, render: (row) => formatInr(row.price) },
           { key: "kapan", header: "Kapan", render: (row) => row.kapan_number },
-          { key: "weight", header: "Weight", numeric: true, render: (row) => formatWeightCt(row.weight) },
           {
             key: "status",
             header: "Status",
             render: (row) => <StatusBadge tone={statusTone(row.status)} />,
           },
           { key: "subs", header: "Sub Jobs", numeric: true, render: (row) => String(row.sub_job_count) },
-          { key: "done", header: "Done Than", numeric: true, render: (row) => formatThan(row.done_than) },
           { key: "date", header: "Date", render: (row) => formatDisplayDate(row.created_at) },
         ]}
         rows={result.records}
