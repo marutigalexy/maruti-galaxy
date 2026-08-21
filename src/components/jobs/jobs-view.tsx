@@ -6,7 +6,6 @@ import { useEffect, useState, useTransition, type MouseEvent } from "react";
 import { getJobAction } from "@/app/actions/jobs";
 import { JobCreateForm } from "@/components/jobs/job-create-form";
 import { JobEditForm } from "@/components/jobs/job-edit-form";
-import { InvoicePrintButton } from "@/components/invoices/invoice-print-button";
 import { AddButton } from "@/components/ui/add-button";
 import { DataTable } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
@@ -90,20 +89,29 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
     if (!needle) {
       return;
     }
-    setExpandedIds((prev) => {
-      const next = new Set(prev);
-      let changed = false;
-      for (const job of result.records) {
-        if (
-          !next.has(job.id) &&
-          job.sub_jobs.some((sub) => sub.display_no.toLowerCase().includes(needle))
-        ) {
-          next.add(job.id);
-          changed = true;
-        }
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) {
+        return;
       }
-      return changed ? next : prev;
+      setExpandedIds((prev) => {
+        const next = new Set(prev);
+        let changed = false;
+        for (const job of result.records) {
+          if (
+            !next.has(job.id) &&
+            job.sub_jobs.some((sub) => sub.display_no.toLowerCase().includes(needle))
+          ) {
+            next.add(job.id);
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
     });
+    return () => {
+      cancelled = true;
+    };
   }, [query.search, result.records]);
 
   const pushQuery = (next: ListJobsInput) => {
@@ -361,9 +369,6 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
             render: (row) =>
               row.kind === "job" ? (
                 <TableActions>
-                  {row.job.invoice_id ? (
-                    <InvoicePrintButton variant="icon" invoiceId={row.job.invoice_id} />
-                  ) : null}
                   <IconButton
                     tone="edit"
                     label="Edit job"
@@ -416,7 +421,7 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
       </Dialog>
       <Dialog
         open={Boolean(editJob)}
-        title="Edit Job"
+        title={editJob ? `Edit Job • ${editJob.lot_number}` : "Edit Job"}
         onClose={() => setEditJob(null)}
         footer={null}
       >

@@ -43,12 +43,13 @@ export function InvoicePrintButton({
   const toast = useToast();
   const printRootRef = useRef<HTMLDivElement>(null);
   const [pending, startTransition] = useTransition();
-  const [fetchedDoc, setFetchedDoc] = useState<InvoiceDetail | null>(null);
-  const [shouldPrint, setShouldPrint] = useState(false);
-  const printDoc = invoice ?? fetchedDoc;
+  // activeDoc is set only while this specific button is printing.
+  // It is cleared immediately after window.print() returns so the div
+  // is removed from the DOM and cannot bleed into the next print job.
+  const [activeDoc, setActiveDoc] = useState<InvoiceDetail | null>(null);
 
   useEffect(() => {
-    if (!shouldPrint || !printDoc) {
+    if (!activeDoc) {
       return;
     }
     let cancelled = false;
@@ -57,17 +58,22 @@ export function InvoicePrintButton({
         return;
       }
       window.print();
-      setShouldPrint(false);
+      // Remove the print div immediately after printing so it is not
+      // present in the DOM when another invoice's print button is clicked.
+      setActiveDoc(null);
     });
     return () => {
       cancelled = true;
     };
-  }, [shouldPrint, printDoc]);
+  }, [activeDoc]);
 
   function printNow() {
     startTransition(async () => {
-      if (printDoc) {
-        setShouldPrint(true);
+      // If an invoice was pre-passed as a prop, use it directly.
+      // Otherwise fetch it fresh. Either way we set it as activeDoc
+      // which mounts the print div only for this single print action.
+      if (invoice) {
+        setActiveDoc(invoice);
         return;
       }
       const outcome = await getInvoiceAction({ id: invoiceId });
@@ -75,8 +81,7 @@ export function InvoicePrintButton({
         toast.error(outcome.error.message);
         return;
       }
-      setFetchedDoc(outcome.data);
-      setShouldPrint(true);
+      setActiveDoc(outcome.data);
     });
   }
 
@@ -91,9 +96,12 @@ export function InvoicePrintButton({
           {children}
         </Button>
       )}
-      {printDoc ? (
+      {/* Only mount the print div while actively printing this invoice.
+          This prevents multiple InvoicePrintButton instances on the same
+          page from all appearing in the print output simultaneously. */}
+      {activeDoc ? (
         <div ref={printRootRef} className="invoice-print-root" aria-hidden="true">
-          <InvoicePrintView invoice={printDoc} />
+          <InvoicePrintView invoice={activeDoc} />
         </div>
       ) : null}
     </>

@@ -2,9 +2,7 @@ import { asMoneyNumber } from "@/lib/api/numbers";
 import { AppError } from "@/lib/api/result";
 import { selectColumns } from "@/lib/api/select";
 import {
-  planFifoAllocations,
   planInvoiceAllocation,
-  type AllocatableInvoice,
 } from "@/lib/allocations/plan";
 import { requireActiveAdmin } from "@/lib/permissions/require-active-admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -105,16 +103,6 @@ async function hydrateOutstandingInvoices(rows: OutstandingRow[]): Promise<Outst
       outstanding: asMoneyNumber(row.outstanding),
     };
   });
-}
-
-function toAllocatableInvoice(invoice: OutstandingInvoiceOption): AllocatableInvoice {
-  return {
-    id: invoice.id,
-    invoice_number: invoice.invoice_number,
-    invoice_date: invoice.invoice_date,
-    lot_number: invoice.lot_number,
-    outstanding: invoice.outstanding,
-  };
 }
 
 async function allocatePlannedItems(entryId: string, items: Array<{ invoice_id: string; amount: number }>) {
@@ -305,12 +293,62 @@ export async function createInvoicePayment(input: CreateInvoicePaymentInput): Pr
 export async function createPartyPayment(input: CreatePartyPaymentInput): Promise<EntryDetail> {
   await requireActiveAdmin();
   await getParty(input.party_id);
-  const invoices = await listPartyOutstandingInvoices(input.party_id);
-  const plan = planFifoAllocations(
-    invoices.map(toAllocatableInvoice),
-    asMoneyNumber(input.amount),
+
+  // Compute total amount from all items
+  const totalAmount = input.items.reduce(
+    (sum, item) => sum + asMoneyNumber(item.amount),
+    0,
+  );
+  const totalAmountStr = totalAmount.toFixed(2);
+
+  // Validate each invoice belongs to this party and cap pay amount at outstanding
+  const supabase = await createSupabaseServerClient();
+  const invoiceIds = input.items.map((item) => item.invoice_id);
+
+  const { data: outstandingRows, error: outstandingError } = await supabase
+    .from("v_invoice_outstanding")
+    .select("invoice_id, outstanding, job_work_id")
+    .in("invoice_id", invoiceIds);
+
+  if (outstandingError) {
+    throw new AppError("INTERNAL", "Unable to load invoice outstanding.");
+  }
+
+  // Check all invoices belong to the party via job_work_id
+  const jobIds = (outstandingRows ?? [])
+    .map((r) => r.job_work_id)
+    .filter((id): id is string => Boolean(id));
+
+  if (jobIds.length > 0) {
+    const { data: jobRows, error: jobError } = await supabase
+      .from("job_works")
+      .select("id, party_id")
+      .in("id", jobIds);
+    if (jobError) {
+      throw new AppError("INTERNAL", "Unable to verify invoices.");
+    }
+    for (const job of jobRows ?? []) {
+      if (job.party_id !== input.party_id) {
+        throw new AppError("VALIDATION", "One or more invoices do not belong to this party.");
+      }
+    }
+  }
+
+  // Build allocation map capped at outstanding
+  const outstandingMap = new Map(
+    (outstandingRows ?? []).map((r) => [r.invoice_id as string, asMoneyNumber(r.outstanding)]),
   );
 
+  const allocationItems = input.items
+    .map((item) => {
+      const requested = asMoneyNumber(item.amount);
+      const cap = outstandingMap.get(item.invoice_id) ?? 0;
+      const allocated = Math.min(requested, cap);
+      return { invoice_id: item.invoice_id, amount: allocated };
+    })
+    .filter((item) => item.amount > 0);
+
+  // Create the accounting entry for the total amount
   const entry = await createEntry({
     entry_type: "Income",
     account_id: input.account_id,
@@ -318,17 +356,14 @@ export async function createPartyPayment(input: CreatePartyPaymentInput): Promis
     party_id: input.party_id,
     employee_id: null,
     entry_date: input.entry_date,
-    amount: input.amount,
+    amount: totalAmountStr,
     remarks: input.remarks,
   });
 
-  if (plan.items.length === 0) {
+  if (allocationItems.length === 0) {
     return entry;
   }
 
-  const allocatedEntry = await allocatePlannedItems(
-    entry.id,
-    plan.items.map((item) => ({ invoice_id: item.id, amount: item.amount })),
-  );
+  const allocatedEntry = await allocatePlannedItems(entry.id, allocationItems);
   return allocatedEntry ?? entry;
 }

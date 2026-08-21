@@ -25,6 +25,12 @@ export const invoiceIdSchema = z.object({
   id: uuidSchema,
 });
 
+export const createInvoiceSchema = z.object({
+  party_id: uuidSchema,
+  job_ids: z.array(uuidSchema).min(1, "Select at least one job."),
+  invoice_date: isoDateSchema,
+});
+
 export const listInvoicesSchema = z
   .object({
     page: pageSchema,
@@ -49,3 +55,4 @@ export const listInvoicesSchema = z
   });
 
 export type ListInvoicesInput = z.output<typeof listInvoicesSchema>;
+export type CreateInvoiceInput = z.output<typeof createInvoiceSchema>;

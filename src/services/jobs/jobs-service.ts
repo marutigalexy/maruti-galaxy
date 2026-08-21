@@ -30,11 +30,12 @@ export const JOB_LIST_COLUMNS = selectColumns([
   "price",
   "kapan_number",
   "weight",
+  "billing_amount",
   "status",
   "created_at",
 ]);
 
-const INVOICE_COLUMNS = selectColumns(["id", "invoice_number", "amount", "status", "job_work_id"]);
+const INVOICE_COLUMNS = selectColumns(["id", "amount", "status", "job_work_id"]);
 const SUB_DISPLAY_COLUMNS = selectColumns([
   "id",
   "job_id",
@@ -107,7 +108,6 @@ export type JobSubJobRecord = {
 
 export type JobInvoiceSummary = {
   id: string;
-  invoice_number: string;
   amount: number;
   status: InvoiceStatus;
 };
@@ -122,6 +122,7 @@ export type JobDetail = {
   allocated_than: number;
   remaining_than: number;
   price: number;
+  billing_amount: number | null;
   kapan_number: string;
   weight: number;
   status: JobStatus;
@@ -476,14 +477,14 @@ export async function getJob(id: string): Promise<JobDetail> {
     allocated_than: allocated,
     remaining_than: than - allocated,
     price: asMoneyNumber(job.price),
+    billing_amount: job.billing_amount != null ? asMoneyNumber(job.billing_amount) : null,
     kapan_number: job.kapan_number,
     weight: asMoneyNumber(job.weight),
     status: job.status,
     created_at: job.created_at,
     invoice: invoice
-      ? {
+        ? {
           id: invoice.id,
-          invoice_number: invoice.invoice_number,
           amount: asMoneyNumber(invoice.amount),
           status: invoice.status,
         }
@@ -495,7 +496,7 @@ export async function getJob(id: string): Promise<JobDetail> {
 export async function createJob(input: CreateJobInput): Promise<JobDetail> {
   await requireActiveAdmin();
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.rpc("create_job_with_invoice", {
+  const { data, error } = await supabase.rpc("create_job", {
     p_party_id: input.party_id,
     p_job_type: input.job_type,
     p_than: asMoneyNumber(input.than),
@@ -514,7 +515,19 @@ export async function createJob(input: CreateJobInput): Promise<JobDetail> {
     throw new AppError("INTERNAL", "Unable to create job.");
   }
 
-  return getJob(created.job_id);
+  const job = await getJob(created.job_id);
+
+  // Persist billing_amount if explicitly provided
+  if (input.billing_amount !== undefined && input.billing_amount !== "") {
+    const billingValue = asMoneyNumber(input.billing_amount);
+    await supabase.rpc("update_job_billing_amount", {
+      p_job_id: job.id,
+      p_billing_amount: billingValue,
+    });
+    job.billing_amount = billingValue;
+  }
+
+  return job;
 }
 
 export async function updateJob(input: UpdateJobInput): Promise<JobDetail> {
@@ -539,7 +552,20 @@ export async function updateJob(input: UpdateJobInput): Promise<JobDetail> {
     throw new AppError("NOT_FOUND", "Job was not found.");
   }
 
-  return getJob(updated.job_id);
+  const job = await getJob(updated.job_id);
+
+  // Update billing_amount: empty string = clear (revert to than×price), otherwise set value
+  if (input.billing_amount !== undefined) {
+    const billingValue =
+      input.billing_amount === "" ? null : asMoneyNumber(input.billing_amount);
+    await supabase.rpc("update_job_billing_amount", {
+      p_job_id: job.id,
+      p_billing_amount: billingValue,
+    });
+    job.billing_amount = billingValue;
+  }
+
+  return job;
 }
 
 export async function createSubJob(input: CreateSubJobInput): Promise<JobDetail> {

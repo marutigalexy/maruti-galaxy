@@ -90,7 +90,7 @@ describe("entry schemas", () => {
     ).toThrow(/out of range/i);
   });
 
-  it("records job and party payments without client-chosen allocation rows", () => {
+  it("records job payments and requires the selected party invoice", () => {
     const jobPayment = parseOrThrow(createInvoicePaymentSchema, {
       invoice_id: UUID,
       account_id: UUID,
@@ -119,7 +119,7 @@ describe("entry schemas", () => {
       party_id: UUID,
       amount: "500.00",
     });
-    expect(partyPayment).not.toHaveProperty("invoice_id");
+    expect(partyPayment).toMatchObject({ invoice_id: UUID_B });
 
     const employeePayment = parseOrThrow(createEmployeePaymentSchema, {
       employee_id: UUID,
@@ -218,7 +218,7 @@ describe("entry and allocation security", () => {
     expect(service).toMatch(/createEmployeePayment/);
     expect(service).toMatch(/entry_type: "Expense"/);
     expect(allocations).toMatch(/planInvoiceAllocation/);
-    expect(allocations).toMatch(/planFifoAllocations/);
+    expect(allocations).not.toMatch(/planFifoAllocations/);
   });
 
   it("blocks allocated amount/type edits and deletes", () => {
@@ -260,19 +260,20 @@ describe("entry and allocation security", () => {
     expect(view).toMatch(/Allocate/);
   });
 
-  it("auto-allocates job payments to the current invoice and party payments FIFO", () => {
+  it("allocates job and party payments to their selected invoice", () => {
     expect(invoiceDialog).toMatch(/Add Payment/);
     expect(invoiceDialog).toMatch(/Invoice Total/);
     expect(invoiceDialog).toMatch(/Remaining/);
     expect(invoiceDialog).not.toMatch(/Select invoice/);
     expect(partyDialog).toMatch(/Outstanding Payment/);
+    expect(partyDialog).toMatch(/Select invoice/);
     expect(partyDialog).not.toMatch(/Allocation preview/);
     expect(partyDialog).not.toMatch(/FIFO/);
     expect(partyDialog).toMatch(/Add Payment/);
-    expect(allocations).toMatch(/planFifoAllocations/);
+    expect(allocations).toMatch(/planInvoiceAllocation/);
     expect(employeeDialog).toMatch(/Add Payment/);
     expect(employeeDialog).toMatch(/categoryType="Expense"/);
-    expect(employeeDialog).toMatch(/remaining salary/);
+    expect(employeeDialog).toMatch(/Remaining/);
   });
 
   it("keeps account balances derived after entry CUD", () => {

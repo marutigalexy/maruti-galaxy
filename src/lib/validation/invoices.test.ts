@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { parseOrThrow } from "@/lib/validation";
-import { invoiceIdSchema, listInvoicesSchema } from "@/lib/validation/invoices";
+import { createInvoiceSchema, invoiceIdSchema, listInvoicesSchema } from "@/lib/validation/invoices";
 
 const UUID = "11111111-1111-4111-8111-111111111111";
 
@@ -51,6 +51,15 @@ describe("invoice schemas", () => {
     expect(parseOrThrow(invoiceIdSchema, { id: UUID, amount: "999" })).toEqual({ id: UUID });
     expect(() => parseOrThrow(invoiceIdSchema, { id: "INV-0001" })).toThrow();
   });
+
+  it("requires a party, main job, and valid invoice dates when creating an invoice", () => {
+    expect(parseOrThrow(createInvoiceSchema, {
+      party_id: UUID, job_work_id: UUID, invoice_date: "2026-01-01", due_date: "2026-01-15",
+    })).toMatchObject({ party_id: UUID, job_work_id: UUID });
+    expect(() => parseOrThrow(createInvoiceSchema, {
+      party_id: UUID, job_work_id: UUID, invoice_date: "2026-01-15", due_date: "2026-01-01",
+    })).toThrow(/Due Date/);
+  });
 });
 
 describe("invoice read security", () => {
@@ -65,6 +74,14 @@ describe("invoice read security", () => {
   );
   const jobDetail = readFileSync(
     path.join(process.cwd(), "src/components/jobs/job-detail-view.tsx"),
+    "utf8",
+  );
+  const partyDetail = readFileSync(
+    path.join(process.cwd(), "src/components/parties/party-detail-view.tsx"),
+    "utf8",
+  );
+  const partyInvoiceDialog = readFileSync(
+    path.join(process.cwd(), "src/components/parties/party-invoice-dialog.tsx"),
     "utf8",
   );
   const detail = readFileSync(
@@ -101,8 +118,12 @@ describe("invoice read security", () => {
     path.join(process.cwd(), "supabase/migrations/migration_01.sql"),
     "utf8",
   );
+  const invoiceMigration = readFileSync(
+    path.join(process.cwd(), "supabase/migrations/migration_05.sql"),
+    "utf8",
+  );
 
-  it("is a read-only JWT service with derived outstanding", () => {
+  it("uses a JWT service with derived outstanding and an explicit create RPC", () => {
     expect(service).toMatch(/from\("v_invoice_outstanding"\)/);
     expect(service).toMatch(/derived_status/);
     expect(service).toMatch(/from\("entry_invoice_allocations"\)/);
@@ -111,14 +132,15 @@ describe("invoice read security", () => {
     expect(service).not.toMatch(/\.insert\(/);
     expect(service).not.toMatch(/\.update\(/);
     expect(service).not.toMatch(/\.delete\(/);
-    expect(service).not.toMatch(/rpc\(/);
+    expect(service).toMatch(/rpc\("create_invoice_for_job"/);
     expect(service.match(/await requireActiveAdmin\(\)/g)?.length).toBeGreaterThanOrEqual(3);
   });
 
-  it("does not expose invoice create, update, or delete actions", () => {
+  it("exposes only invoice creation and read actions", () => {
     expect(actions).toMatch(/parseOrThrow\(listInvoicesSchema/);
     expect(actions).toMatch(/parseOrThrow\(invoiceIdSchema/);
-    expect(actions).not.toMatch(/createInvoice/);
+    expect(actions).toMatch(/parseOrThrow\(createInvoiceSchema/);
+    expect(actions).toMatch(/createInvoiceAction/);
     expect(actions).not.toMatch(/updateInvoice/);
     expect(actions).not.toMatch(/deleteInvoice/);
   });
@@ -126,13 +148,14 @@ describe("invoice read security", () => {
   it("keeps one invoice per job and stores amount as than × price", () => {
     expect(migration).toMatch(/CREATE UNIQUE INDEX invoices_job_work_id_uidx/);
     expect(migration).toMatch(/round\(v_job\.than \* v_job\.price, 2\)/);
+    expect(invoiceMigration).toMatch(/round\(v_job\.than \* v_job\.price, 2\)/);
     expect(service).toMatch(/from\("invoices"\)/);
     expect(detail).toMatch(/comes from the invoice record/);
   });
 
-  it("does not invent tax fields or DESCRIPTION copy", () => {
+  it("uses only the required invoice-specific date fields", () => {
     const ui = `${listView}\n${detail}\n${printView}\n${billView}`;
-    expect(ui).not.toMatch(/Due Date/);
+    expect(partyDetail).toMatch(/Due Date/);
     expect(ui).not.toMatch(/Discount/);
     expect(ui).not.toMatch(/Tax Amount/);
     expect(ui).not.toMatch(/Subtotal/);
@@ -158,8 +181,11 @@ describe("invoice read security", () => {
     expect(printView).toMatch(/InvoiceBillView/);
     expect(billCopy).toMatch(/MARUTI GALEXY/);
     expect(billView).toMatch(/Auth\. Signatory/);
-    expect(listView).toMatch(/InvoicePrintButton/);
-    expect(jobDetail).toMatch(/InvoicePrintButton/);
+    expect(partyDetail).toMatch(/InvoicePrintButton/);
+    expect(partyInvoiceDialog).toMatch(/Generate Invoice/);
+    expect(partyInvoiceDialog).toMatch(/Select unpaid job/);
+    expect(listView).not.toMatch(/InvoicePrintButton/);
+    expect(jobDetail).not.toMatch(/InvoicePrintButton/);
     expect(listView).not.toMatch(/\/invoices\/.*\/print/);
     expect(jobDetail).not.toMatch(/\/invoices\/.*\/print/);
     expect(detail).not.toMatch(/\/invoices\/.*\/print/);

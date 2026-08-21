@@ -8,11 +8,9 @@ import { createJobAction } from "@/app/actions/jobs";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { JobTypeBadge } from "@/components/ui/job-type-badge";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
-import { formatInr } from "@/lib/formatters";
 import type { PartyOption } from "@/services/parties/parties-service";
 
 type JobCreateFormProps = {
@@ -36,7 +34,6 @@ export function JobCreateForm({ parties, onCancel }: JobCreateFormProps) {
   useUnsavedChanges(dirty && !pending);
 
   const activeParties = useMemo(() => parties.filter((party) => party.is_active), [parties]);
-  const selectedParty = activeParties.find((party) => party.id === partyId);
 
   if (activeParties.length === 0) {
     return (
@@ -76,9 +73,7 @@ export function JobCreateForm({ parties, onCancel }: JobCreateFormProps) {
             return;
           }
           setDirty(false);
-          toast.success(
-            `Job ${outcome.data.lot_number} created. Invoice ${outcome.data.invoice?.invoice_number ?? ""}`.trim(),
-          );
+          toast.success(`Job ${outcome.data.lot_number} created.`);
           onCancel();
           router.push(`/jobs/${outcome.data.id}`);
           router.refresh();
@@ -86,7 +81,7 @@ export function JobCreateForm({ parties, onCancel }: JobCreateFormProps) {
       }}
       onChange={() => setDirty(true)}
     >
-      <FormField label="Party" htmlFor="job-party" required>
+      <FormField label="Party" htmlFor="job-party" required className="ui-job-form-full">
         <Select
           id="job-party"
           name="party_id"
@@ -110,14 +105,7 @@ export function JobCreateForm({ parties, onCancel }: JobCreateFormProps) {
           ))}
         </Select>
       </FormField>
-      <FormField label="Lot Number" htmlFor="job-lot">
-        <Input id="job-lot" value="" placeholder="Assigned on save" disabled readOnly />
-      </FormField>
-      <FormField
-        label="Job Type"
-        htmlFor="job-type"
-        required
-      >
+      <FormField label="Job Type" htmlFor="job-type" required>
         <Select
           id="job-type"
           name="job_type"
@@ -135,9 +123,16 @@ export function JobCreateForm({ parties, onCancel }: JobCreateFormProps) {
         </Select>
       </FormField>
       <FormField label="Than" htmlFor="job-than" required>
-        <Input id="job-than" name="than" inputMode="decimal" required disabled={pending} placeholder="e.g. 10.50" />
+        <Input
+          id="job-than"
+          name="than"
+          inputMode="decimal"
+          required
+          disabled={pending}
+          placeholder="e.g. 10.50"
+        />
       </FormField>
-      <FormField label="Price" htmlFor="job-price">
+      <FormField label="Price" htmlFor="job-price" required>
         <Input
           id="job-price"
           name="price"
@@ -156,7 +151,7 @@ export function JobCreateForm({ parties, onCancel }: JobCreateFormProps) {
       <FormField label="Kapan Number" htmlFor="job-kapan" required>
         <Input id="job-kapan" name="kapan_number" required disabled={pending} placeholder="e.g. KAPAN-2418" />
       </FormField>
-      <FormField label="Weight" htmlFor="job-weight">
+      <FormField label="Weight" htmlFor="job-weight" required>
         <Input id="job-weight" name="weight" inputMode="decimal" required disabled={pending} placeholder="e.g. 2.250" />
       </FormField>
       <FormField label="Status" htmlFor="job-status" required>

@@ -142,8 +142,9 @@ describe("jobs service security", () => {
   const editPage = path.join(process.cwd(), "src/app/(dashboard)/jobs/[jobId]/edit/page.tsx");
   const list = readFileSync(path.join(process.cwd(), "src/components/jobs/jobs-view.tsx"), "utf8");
 
-  it("creates jobs through the atomic invoice RPC and ignores client lot numbers", () => {
-    expect(service).toMatch(/rpc\("create_job_with_invoice"/);
+  it("creates jobs without invoices and ignores client lot numbers", () => {
+    expect(service).toMatch(/rpc\("create_job"/);
+    expect(service).not.toMatch(/rpc\("create_job_with_invoice"/);
     expect(service).toMatch(/rpc\("update_job_with_invoice_recalc"/);
     expect(service).not.toMatch(/p_lot_number/);
     expect(createForm).toMatch(/Assigned on save/);
@@ -176,7 +177,6 @@ describe("jobs service security", () => {
     expect(editForm).toMatch(/disabled readOnly/);
     expect(editForm).not.toMatch(/name="lot_number"/);
     expect(editForm).not.toMatch(/name="party_id"/);
-    expect(editForm).toMatch(/saved amount comes from the server/);
     expect(detail).toMatch(/JobEditForm/);
     expect(detail).toMatch(/setEditJobOpen\(true\)/);
     expect(list).toMatch(/JobCreateForm/);

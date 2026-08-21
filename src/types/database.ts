@@ -120,6 +120,7 @@ export type Database = {
           price: number;
           kapan_number: string;
           weight: number;
+          billing_amount: number | null;
           status: Database["public"]["Enums"]["job_status"];
           created_at: string;
           updated_at: string;
@@ -133,6 +134,7 @@ export type Database = {
           price: number;
           kapan_number: string;
           weight: number;
+          billing_amount?: number | null;
           status?: Database["public"]["Enums"]["job_status"];
           created_at?: string;
           updated_at?: string;
@@ -146,6 +148,7 @@ export type Database = {
           price?: number;
           kapan_number?: string;
           weight?: number;
+          billing_amount?: number | null;
           status?: Database["public"]["Enums"]["job_status"];
           created_at?: string;
           updated_at?: string;
@@ -156,6 +159,42 @@ export type Database = {
             columns: ["party_id"];
             isOneToOne: false;
             referencedRelation: "parties";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      invoice_jobs: {
+        Row: {
+          id: string;
+          invoice_id: string;
+          job_work_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          invoice_id: string;
+          job_work_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          invoice_id?: string;
+          job_work_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "invoice_jobs_invoice_id_fkey";
+            columns: ["invoice_id"];
+            isOneToOne: false;
+            referencedRelation: "invoices";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "invoice_jobs_job_work_id_fkey";
+            columns: ["job_work_id"];
+            isOneToOne: false;
+            referencedRelation: "job_works";
             referencedColumns: ["id"];
           },
         ];
@@ -255,6 +294,7 @@ export type Database = {
           invoice_number: string;
           job_work_id: string;
           invoice_date: string;
+          due_date: string | null;
           amount: number;
           status: Database["public"]["Enums"]["invoice_status"];
           created_at: string;
@@ -265,6 +305,7 @@ export type Database = {
           invoice_number: string;
           job_work_id: string;
           invoice_date: string;
+          due_date?: string | null;
           amount: number;
           status?: Database["public"]["Enums"]["invoice_status"];
           created_at?: string;
@@ -275,6 +316,7 @@ export type Database = {
           invoice_number?: string;
           job_work_id?: string;
           invoice_date?: string;
+          due_date?: string | null;
           amount?: number;
           status?: Database["public"]["Enums"]["invoice_status"];
           created_at?: string;
@@ -537,6 +579,30 @@ export type Database = {
           invoice_number: string;
           amount: number;
         }[];
+      };
+      create_job: {
+        Args: {
+          p_party_id: string;
+          p_job_type: Database["public"]["Enums"]["job_type"];
+          p_than: number;
+          p_price: number;
+          p_kapan_number: string;
+          p_weight: number;
+          p_status?: Database["public"]["Enums"]["job_status"];
+        };
+        Returns: { job_id: string; lot_number: string }[];
+      };
+      create_invoice_for_job: {
+        Args: { p_party_id: string; p_job_id: string; p_invoice_date?: string; p_due_date?: string };
+        Returns: { invoice_id: string; invoice_number: string; amount: number }[];
+      };
+      create_invoice_for_jobs: {
+        Args: { p_party_id: string; p_job_ids: string[]; p_invoice_date?: string };
+        Returns: { invoice_id: string; invoice_number: string; amount: number }[];
+      };
+      update_job_billing_amount: {
+        Args: { p_job_id: string; p_billing_amount: number | null };
+        Returns: undefined;
       };
       update_job_with_invoice_recalc: {
         Args: {

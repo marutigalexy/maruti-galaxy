@@ -101,15 +101,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
           </button>
         </div>
       </FormField>
-
-      <div className="login-options">
-        <label className="ui-checkbox">
-          <input type="checkbox" name="remember" />
-          <span>Remember me</span>
-        </label>
-        <Link href="#">Forgot password?</Link>
-      </div>
-
+      
       <Button type="submit" loading={pending} variant="primary">
         Sign In
       </Button>

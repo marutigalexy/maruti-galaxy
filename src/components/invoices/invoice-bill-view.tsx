@@ -1,9 +1,12 @@
 import { formatBillDate, formatBillNumber, formatInrWords } from "@/lib/formatters";
-import { INVOICE_BILL, billDateFromLines, summarizeBillLines, type InvoiceBillLine } from "@/lib/invoices/bill";
+import { INVOICE_BILL, summarizeBillLines, type InvoiceBillLine } from "@/lib/invoices/bill";
 
 type InvoiceBillViewProps = {
   partyName: string;
-  billDate?: string;
+  /** The invoice's own invoice_date — shown as "Invoice Date" in the header. */
+  invoiceDate: string;
+  /** The invoice number shown at the top of the party section. */
+  invoiceNumber: string;
   lines: InvoiceBillLine[];
 };
 
@@ -16,9 +19,8 @@ function numericCell(value: number, fractionDigits?: number) {
   return formatBillNumber(value, fractionDigits);
 }
 
-export function InvoiceBillView({ partyName, billDate, lines }: InvoiceBillViewProps) {
+export function InvoiceBillView({ partyName, invoiceDate, invoiceNumber, lines }: InvoiceBillViewProps) {
   const totals = summarizeBillLines(lines);
-  const monthDate = billDate || billDateFromLines(lines);
   const rowCount = Math.max(lines.length, INVOICE_BILL.minTableRows);
   const rowSlots = Array.from({ length: rowCount }, (_, index) => lines[index] ?? null);
 
@@ -47,11 +49,21 @@ export function InvoiceBillView({ partyName, billDate, lines }: InvoiceBillViewP
 
         <div className="invoice-bill-frame">
           <section className="invoice-bill-party" aria-label="Party">
-            <div className="invoice-bill-party-name">{partyName}</div>
-            <div className="invoice-bill-month">
-              <span>Month :</span>
-              <strong>{monthDate ? formatBillDate(monthDate) : ""}</strong>
+            {/* Invoice number — full-width row */}
+            <div className="invoice-bill-invoice-number">
+              <span>Invoice No : </span>
+              <strong>{invoiceNumber}</strong>
             </div>
+
+            {/* Party name and invoice date on the same horizontal line */}
+            <div className="invoice-bill-party-row">
+              <div className="invoice-bill-party-name">{partyName}</div>
+              <div className="invoice-bill-invoice-date">
+                <span>Invoice Date : </span>
+                <strong>{formatBillDate(invoiceDate)}</strong>
+              </div>
+            </div>
+
             <div className="invoice-bill-party-body"></div>
             <div className="invoice-bill-month-slot"></div>
             <div className="invoice-bill-month-slot"></div>

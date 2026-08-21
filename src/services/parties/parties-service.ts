@@ -32,6 +32,7 @@ const JOB_SUMMARY_COLUMNS = selectColumns([
   "price",
   "kapan_number",
   "weight",
+  "billing_amount",
   "created_at",
 ]);
 const INVOICE_SUMMARY_COLUMNS = selectColumns([
@@ -42,7 +43,6 @@ const INVOICE_SUMMARY_COLUMNS = selectColumns([
   "allocated",
   "outstanding",
   "derived_status",
-  "job_work_id",
 ]);
 
 export type PartyRecord = {
@@ -65,6 +65,7 @@ export type PartyJobRow = {
   price: number;
   kapan_number: string;
   weight: number;
+  billing_amount: number;
   created_at: string;
 };
 
@@ -72,16 +73,12 @@ export type PartyInvoiceRow = {
   id: string;
   invoice_number: string;
   invoice_date: string;
-  lot_number: string;
-  kapan_number: string;
-  weight: number;
-  than: number;
-  price: number;
+  lot_numbers: string[];
   amount: number;
   allocated: number;
   outstanding: number;
   status: string;
-  job_work_id: string;
+  job_work_ids: string[];
 };
 
 export type PartySummary = {
@@ -204,7 +201,7 @@ export async function getPartySummary(id: string): Promise<PartySummary> {
   }
 
   const jobIds = (jobs ?? []).map((row) => row.id);
-  const allocated = new Map<string, number>();
+  const subAllocated = new Map<string, number>();
 
   if (jobIds.length > 0) {
     const { data: subRows, error: subError } = await supabase
@@ -217,61 +214,114 @@ export async function getPartySummary(id: string): Promise<PartySummary> {
     }
 
     for (const sub of subRows ?? []) {
-      allocated.set(sub.job_id, (allocated.get(sub.job_id) ?? 0) + asMoneyNumber(sub.than));
+      subAllocated.set(sub.job_id, (subAllocated.get(sub.job_id) ?? 0) + asMoneyNumber(sub.than));
     }
   }
 
   const jobRows: PartyJobRow[] = (jobs ?? []).map((row) => {
     const than = asMoneyNumber(row.than);
+    const billingAmount =
+      row.billing_amount != null
+        ? asMoneyNumber(row.billing_amount)
+        : Math.round(than * asMoneyNumber(row.price) * 100) / 100;
     return {
       id: row.id,
       lot_number: row.lot_number,
       job_type: row.job_type,
       status: row.status,
       than,
-      remaining_than: than - (allocated.get(row.id) ?? 0),
+      remaining_than: than - (subAllocated.get(row.id) ?? 0),
       price: asMoneyNumber(row.price),
       kapan_number: row.kapan_number,
       weight: asMoneyNumber(row.weight),
+      billing_amount: billingAmount,
       created_at: row.created_at,
     };
   });
 
-  const jobById = new Map(jobRows.map((row) => [row.id, row]));
   let invoices: PartyInvoiceRow[] = [];
 
   if (jobIds.length > 0) {
-    const { data: invoiceRows, error: invoiceError } = await supabase
-      .from("v_invoice_outstanding")
-      .select(INVOICE_SUMMARY_COLUMNS)
-      .in("job_work_id", jobIds)
-      .order("invoice_date", { ascending: true })
-      .order("invoice_number", { ascending: true });
+    // Step 1: find all invoices whose primary job belongs to this party.
+    // invoices.job_work_id is always set (unique index) — this is the
+    // authoritative source and covers every invoice regardless of whether
+    // migration_07 has been applied yet.
+    const { data: primaryInvoiceRows, error: primaryError } = await supabase
+      .from("invoices")
+      .select("id, job_work_id")
+      .in("job_work_id", jobIds);
 
-    if (invoiceError) {
+    if (primaryError) {
       throw new AppError("INTERNAL", "Unable to load party invoices.");
     }
 
-    invoices = (invoiceRows ?? [])
-      .filter((row) => row.invoice_id && row.job_work_id)
-      .map((row) => {
-        const job = jobById.get(row.job_work_id ?? "");
-        return {
-          id: row.invoice_id as string,
-          invoice_number: row.invoice_number ?? "",
-          invoice_date: row.invoice_date ?? "",
-          lot_number: job?.lot_number ?? "—",
-          kapan_number: job?.kapan_number ?? "",
-          weight: job?.weight ?? 0,
-          than: job?.than ?? 0,
-          price: job?.price ?? 0,
-          amount: asMoneyNumber(row.amount),
-          allocated: asMoneyNumber(row.allocated),
-          outstanding: asMoneyNumber(row.outstanding),
-          status: row.derived_status ?? "Unpaid",
-          job_work_id: row.job_work_id as string,
-        };
-      });
+    const invoiceIds = [...new Set((primaryInvoiceRows ?? []).map((r) => r.id))];
+
+    if (invoiceIds.length > 0) {
+      // Step 2: load the full invoice_jobs links so we know ALL jobs on each
+      // invoice (multi-job invoices). Fall back to job_work_id for any invoice
+      // that has no invoice_jobs row yet (pre-migration gap).
+      const { data: invoiceJobLinks, error: ijError } = await supabase
+        .from("invoice_jobs")
+        .select("invoice_id, job_work_id")
+        .in("invoice_id", invoiceIds);
+
+      if (ijError) {
+        throw new AppError("INTERNAL", "Unable to load party invoices.");
+      }
+
+      // Build map: invoice_id → job_work_ids[]
+      // Seed with the primary job so invoices with no invoice_jobs rows are
+      // still represented correctly.
+      const jobsByInvoice = new Map<string, string[]>();
+      for (const row of primaryInvoiceRows ?? []) {
+        jobsByInvoice.set(row.id, [row.job_work_id]);
+      }
+      for (const link of invoiceJobLinks ?? []) {
+        const existing = jobsByInvoice.get(link.invoice_id);
+        if (existing) {
+          // Add only if not already present (avoid duplicating the primary job)
+          if (!existing.includes(link.job_work_id)) {
+            existing.push(link.job_work_id);
+          }
+        } else {
+          jobsByInvoice.set(link.invoice_id, [link.job_work_id]);
+        }
+      }
+
+      const { data: invoiceRows, error: invoiceError } = await supabase
+        .from("v_invoice_outstanding")
+        .select(INVOICE_SUMMARY_COLUMNS)
+        .in("invoice_id", invoiceIds)
+        .order("invoice_date", { ascending: true })
+        .order("invoice_number", { ascending: true });
+
+      if (invoiceError) {
+        throw new AppError("INTERNAL", "Unable to load party invoices.");
+      }
+
+      const jobById = new Map(jobRows.map((row) => [row.id, row]));
+
+      invoices = (invoiceRows ?? [])
+        .filter((row) => row.invoice_id)
+        .map((row) => {
+          const linkedJobIds = jobsByInvoice.get(row.invoice_id as string) ?? [];
+          const lotNumbers = linkedJobIds
+            .map((jid) => jobById.get(jid)?.lot_number)
+            .filter((ln): ln is string => Boolean(ln));
+          return {
+            id: row.invoice_id as string,
+            invoice_number: row.invoice_number ?? "",
+            invoice_date: row.invoice_date ?? "",
+            lot_numbers: lotNumbers,
+            amount: asMoneyNumber(row.amount),
+            allocated: asMoneyNumber(row.allocated),
+            outstanding: asMoneyNumber(row.outstanding),
+            status: row.derived_status ?? "Unpaid",
+            job_work_ids: linkedJobIds,
+          };
+        });
+    }
   }
 
   const { data: outstandingRow, error: outstandingError } = await supabase

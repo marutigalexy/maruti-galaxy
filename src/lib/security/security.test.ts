@@ -132,7 +132,7 @@ describe("IDOR: lot and invoice numbers are not authorization", () => {
     expect(invoiceService).toMatch(/export async function getInvoice\([\s\S]*?\.eq\("id", id\)/);
     expect(invoiceService).not.toMatch(/export async function getInvoice\([\s\S]*?\.eq\("invoice_number"/);
     expect(jobPage).toMatch(/parseOrThrow\(uuidSchema, jobId\)/);
-    expect(jobPage).toMatch(/getInvoice/);
+    expect(jobPage).not.toMatch(/getInvoice/);
     expect(printPage).toMatch(/parseOrThrow\(uuidSchema, invoiceId\)/);
     expect(jobPage).toMatch(/requireActiveAdmin/);
     expect(proxy).toMatch(/loginRedirectPath/);

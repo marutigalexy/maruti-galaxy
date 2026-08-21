@@ -10,9 +10,7 @@ import {
   updateEmployeeWorkAction,
   updateSubJobAction,
 } from "@/app/actions/jobs";
-import { InvoicePaymentDialog } from "@/components/invoices/invoice-payment-dialog";
 import { JobEditForm } from "@/components/jobs/job-edit-form";
-import { InvoicePrintButton } from "@/components/invoices/invoice-print-button";
 import { TopbarActions, TopbarStatus, useRecordTitle } from "@/components/layout/page-chrome";
 import { Button } from "@/components/ui/button";
 import { AddButton } from "@/components/ui/add-button";
@@ -30,18 +28,12 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { TableActions } from "@/components/ui/table-actions";
 import { useToast } from "@/components/ui/toast";
 import { formatDisplayDate, formatInr, formatThan, formatWeightCt } from "@/lib/formatters";
-import type { AccountOption } from "@/services/accounts/accounts-service";
-import type { CategoryOption } from "@/services/categories/categories-service";
 import type { EmployeeOption } from "@/services/employees/employees-service";
-import type { InvoiceDetail } from "@/services/invoices/invoices-service";
 import type { JobDetail, JobSubJobRecord, JobWorkRecord } from "@/services/jobs/jobs-service";
 
 type JobDetailViewProps = {
   job: JobDetail;
-  invoice: InvoiceDetail | null;
   employees: EmployeeOption[];
-  accounts: AccountOption[];
-  categories: CategoryOption[];
 };
 
 function statusTone(status: string) {
@@ -54,17 +46,7 @@ function statusTone(status: string) {
   return "pending" as const;
 }
 
-function invoiceTone(status: InvoiceDetail["status"]) {
-  if (status === "Paid") {
-    return "paid" as const;
-  }
-  if (status === "Partially Paid") {
-    return "partial" as const;
-  }
-  return "unpaid" as const;
-}
-
-export function JobDetailView({ job, invoice, employees, accounts, categories }: JobDetailViewProps) {
+export function JobDetailView({ job, employees }: JobDetailViewProps) {
   const router = useRouter();
   const toast = useToast();
   const [pending, startTransition] = useTransition();
@@ -118,29 +100,8 @@ export function JobDetailView({ job, invoice, employees, accounts, categories }:
     <>
       <TopbarStatus>
         <StatusBadge tone={statusTone(job.status)} />
-        {invoice ? (
-          <StatusBadge
-            tone={invoiceTone(invoice.status)}
-            label={invoice.status}
-          />
-        ) : null}
-
       </TopbarStatus>
       <TopbarActions>
-        {invoice ? (
-          <InvoicePaymentDialog
-            invoice={invoice}
-            accounts={accounts}
-            categories={categories}
-          />
-        ) : null}
-        {job.invoice ? (
-          <InvoicePrintButton
-            variant="icon"
-            invoiceId={job.invoice.id}
-            invoice={invoice ?? undefined}
-          />
-        ) : null}
         <IconButton
           tone="edit"
           label="Edit job"
@@ -202,38 +163,22 @@ export function JobDetailView({ job, invoice, employees, accounts, categories }:
                   <dt>Unit Price</dt>
                   <dd className="ui-price">{formatInr(job.price)}</dd>
                 </div>
+                <div className="ui-detail-item">
+                  <dt>Billing Amount</dt>
+                  <dd className="ui-price">
+                    {formatInr(
+                      job.billing_amount != null
+                        ? job.billing_amount
+                        : Math.round(job.than * job.price * 100) / 100,
+                    )}
+                    {job.billing_amount == null ? (
+                      <span className="ui-field-help" style={{ marginLeft: 4 }}>
+                        (Than × Price)
+                      </span>
+                    ) : null}
+                  </dd>
+                </div>
               </dl>
-            </section>
-            <section className="ui-job-details-column">
-              <h3 className="ui-card-title">Billing Details</h3>
-              {invoice ? (
-                <dl className="ui-property-list">
-                  <div className="ui-detail-item">
-                    <dt>Invoice Number</dt>
-                    <dd>{invoice.invoice_number}</dd>
-                  </div>
-                  <div className="ui-detail-item">
-                    <dt>Date</dt>
-                    <dd>{formatDisplayDate(invoice.invoice_date)}</dd>
-                  </div>
-                  <div className="ui-detail-item">
-                    <dt>Total Amount</dt>
-                    <dd>{formatInr(invoice.amount)}</dd>
-                  </div>
-                  <div className="ui-detail-item">
-                    <dt>Paid Amount</dt>
-                    <dd>{formatInr(invoice.allocated)}</dd>
-                  </div>
-                  <div className="ui-detail-item">
-                    <dt>Outstanding Amount</dt>
-                    <dd>{formatInr(invoice.outstanding)}</dd>
-                  </div>
-                </dl>
-              ) : (
-                <p className="ui-field-help">
-                  No invoice linked to this job yet.
-                </p>
-              )}
             </section>
           </div>
         </Card>
@@ -395,7 +340,7 @@ export function JobDetailView({ job, invoice, employees, accounts, categories }:
 
       <Dialog
         open={editJobOpen}
-        title="Edit Job"
+        title={`Edit Job • ${job.lot_number}`}
         onClose={() => setEditJobOpen(false)}
         footer={null}
       >
@@ -605,8 +550,7 @@ export function JobDetailView({ job, invoice, employees, accounts, categories }:
             </FormField>
             {selectedEmployee ? (
               <p className="ui-field-help">
-                Current commission {formatInr(selectedEmployee.commission)} per
-                Than (context only; the server stores the snapshot).
+                Current commission {formatInr(selectedEmployee.commission)} per Than.
               </p>
             ) : null}
             <FormField label="Done Than" htmlFor="work-done" required>
@@ -671,11 +615,6 @@ export function JobDetailView({ job, invoice, employees, accounts, categories }:
               );
             }}
           >
-            <p className="ui-field-help">
-              {editWork.employee_name}. Commission snapshot{" "}
-              {formatInr(editWork.commission)} is kept. Earning is recalculated
-              from that snapshot, not the employee&apos;s current rate.
-            </p>
             <FormField label="Done Than" htmlFor="edit-work-done" required>
               <Input
                 id="edit-work-done"

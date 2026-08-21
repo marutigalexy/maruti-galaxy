@@ -1,17 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 
 import { updateJobAction } from "@/app/actions/jobs";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { JobTypeBadge } from "@/components/ui/job-type-badge";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
-import { formatInr } from "@/lib/formatters";
 import type { JobDetail } from "@/services/jobs/jobs-service";
 
 type JobEditFormProps = {
@@ -30,15 +28,6 @@ export function JobEditForm({ job, onCancel }: JobEditFormProps) {
   const [dirty, setDirty] = useState(false);
 
   useUnsavedChanges(dirty && !pending);
-
-  const previewAmount = useMemo(() => {
-    const nextThan = Number(than);
-    const nextPrice = Number(price);
-    if (!Number.isFinite(nextThan) || !Number.isFinite(nextPrice)) {
-      return null;
-    }
-    return Math.round(nextThan * nextPrice * 100) / 100;
-  }, [than, price]);
 
   return (
     <form
@@ -63,24 +52,17 @@ export function JobEditForm({ job, onCancel }: JobEditFormProps) {
             return;
           }
           setDirty(false);
-          toast.success(`Job updated. Invoice amount is ${formatInr(outcome.data.invoice?.amount ?? 0)}.`);
+          toast.success("Job updated successfully.");
           onCancel();
           router.refresh();
         });
       }}
       onChange={() => setDirty(true)}
     >
-      <FormField label="Party" htmlFor="edit-job-party">
+      <FormField label="Party" htmlFor="edit-job-party" className="ui-job-form-full">
         <Input id="edit-job-party" value={job.party_name} disabled readOnly placeholder="Party name" />
       </FormField>
-      <FormField label="Lot Number" htmlFor="edit-job-lot">
-        <Input id="edit-job-lot" value={job.lot_number} disabled readOnly placeholder="Lot number" />
-      </FormField>
-      <FormField
-        label="Job Type"
-        htmlFor="edit-job-type"
-        required
-      >
+      <FormField label="Job Type" htmlFor="edit-job-type" required>
         <Select
           id="edit-job-type"
           name="job_type"
@@ -109,7 +91,7 @@ export function JobEditForm({ job, onCancel }: JobEditFormProps) {
           onChange={(event) => setThan(event.target.value)}
         />
       </FormField>
-      <FormField label="Price" htmlFor="edit-job-price">
+      <FormField label="Price" htmlFor="edit-job-price" required>
         <Input
           id="edit-job-price"
           name="price"
@@ -132,7 +114,7 @@ export function JobEditForm({ job, onCancel }: JobEditFormProps) {
           placeholder="e.g. KAPAN-2418"
         />
       </FormField>
-      <FormField label="Weight" htmlFor="edit-job-weight">
+      <FormField label="Weight" htmlFor="edit-job-weight" required>
         <Input
           id="edit-job-weight"
           name="weight"

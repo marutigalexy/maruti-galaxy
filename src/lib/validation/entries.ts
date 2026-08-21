@@ -173,15 +173,31 @@ export const createInvoicePaymentSchema = z
 export const createPartyPaymentSchema = z
   .object({
     party_id: uuidSchema,
-    ...paymentFields,
+    account_id: uuidSchema,
+    category_id: uuidSchema,
+    entry_date: isoDateSchema,
+    amount: z.preprocess(
+      (v) => (v === "" || v === null || v === undefined ? undefined : v),
+      moneyPositiveSchema.optional(),
+    ),
+    remarks: z.preprocess(emptyToNull, remarksSchema.nullable()),
+    items: z
+      .array(
+        z.object({
+          invoice_id: uuidSchema,
+          amount: moneyPositiveSchema,
+        }),
+      )
+      .min(1, "Add at least one payment amount.")
+      .max(50, "Too many invoices."),
   })
   .transform((value) => ({
     party_id: value.party_id,
     account_id: value.account_id,
     category_id: value.category_id,
     entry_date: value.entry_date,
-    amount: value.amount,
     remarks: value.remarks,
+    items: value.items,
   }));
 
 export const createEmployeePaymentSchema = z

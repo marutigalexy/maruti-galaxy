@@ -339,6 +339,38 @@ a {
   width: min(calc(100% - 32px), 36rem);
 }
 
+/* Generate Invoice dialog */
+.ui-dialog:has(.ui-inline-table-section) {
+  width: min(calc(100vw - 32px), 64rem);
+  max-width: 64rem;
+}
+
+/* Party + Invoice Date in one row */
+.ui-dialog:has(.ui-inline-table-section) .ui-dialog-form {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  min-width: 0;
+}
+
+/* These sections span the full dialog */
+.ui-dialog:has(.ui-inline-table-section) .ui-inline-table-section,
+.ui-dialog:has(.ui-inline-table-section) .ui-field-error,
+.ui-dialog:has(.ui-inline-table-section) .ui-dialog-actions {
+  grid-column: 1 / -1;
+}
+
+/* Don't allow the table to resize the modal */
+.ui-dialog:has(.ui-inline-table-section) .ui-inline-table-section {
+  min-width: 0;
+  width: 100%;
+}
+
+.ui-dialog:has(.ui-inline-table-section) .ui-inline-table-wrap {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
 .ui-entry-form {
   gap: var(--space-12);
 }
@@ -419,7 +451,8 @@ a {
 
   .ui-job-form > .ui-field-help,
   .ui-job-form > .ui-field-error,
-  .ui-job-form > .ui-dialog-actions {
+  .ui-job-form > .ui-dialog-actions,
+  .ui-job-form > .ui-job-form-full {
     grid-column: 1 / -1;
   }
 }
@@ -472,6 +505,30 @@ a {
   justify-content: flex-end;
   gap: var(--space-8);
   padding-top: var(--space-4);
+}
+
+/* Collect Payment dialog */
+.ui-dialog:has(.ui-collect-payment-form) {
+  width: min(calc(100vw - 32px), 64rem);
+  max-width: 64rem;
+}
+
+/* Keep the invoice table inside the wider dialog */
+.ui-collect-payment-form .ui-inline-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* Don't let the table itself shrink awkwardly */
+.ui-collect-payment-form .ui-inline-table {
+  width: max-content;
+  min-width: 100%;
+}
+
+/* Pay Now field */
+.ui-collect-payment-form .ui-pay-now-input {
+  width: 90px;
 }
 
 .ui-drawer {
@@ -2673,19 +2730,44 @@ a {
 .invoice-bill-party {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: 6.4mm 6.8mm 8.1mm minmax(12mm, 1fr);
-  min-height: 33.8mm;
+  grid-template-rows: 5.5mm 6.4mm 6.8mm 8.1mm minmax(12mm, 1fr);
+  min-height: 38mm;
   flex: 0 0 auto;
 }
 
-.invoice-bill-party-name {
-  grid-column: 1;
+/* Invoice number — spans full width, first row */
+.invoice-bill-invoice-number {
+  grid-column: 1 / 3;
   grid-row: 1;
+  display: flex;
+  align-items: center;
+  gap: 6pt;
+  border-bottom: 1px solid var(--color-invoice-rule);
+  padding: 0 8pt;
+  font-size: 8pt;
+}
+
+.invoice-bill-invoice-number strong {
+  font-size: 8.5pt;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.03em;
+}
+
+/* Party name and invoice date — same row, side by side */
+.invoice-bill-party-row {
+  grid-column: 1 / 3;
+  grid-row: 2;
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--color-invoice-rule);
+}
+
+.invoice-bill-party-name {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   border-right: 1px solid var(--color-invoice-rule);
-  border-bottom: 1px solid var(--color-invoice-rule);
   padding: 0 8pt;
   font-size: 9pt;
   font-weight: var(--font-weight-bold);
@@ -2693,26 +2775,24 @@ a {
   text-transform: uppercase;
 }
 
-.invoice-bill-month {
-  grid-column: 2;
-  grid-row: 1;
+.invoice-bill-invoice-date {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 8pt;
-  border-bottom: 1px solid var(--color-invoice-rule);
+  gap: 6pt;
   padding: 0 8pt;
   font-size: 8.2pt;
+  white-space: nowrap;
 }
 
-.invoice-bill-month strong {
-  font-size: 18pt;
+.invoice-bill-invoice-date strong {
+  font-size: 9pt;
   font-weight: var(--font-weight-bold);
-  line-height: 1;
 }
 
 .invoice-bill-party-body {
   grid-column: 1;
-  grid-row: 2 / 5;
+  grid-row: 3 / 6;
   border-right: 1px solid var(--color-invoice-rule);
 }
 
@@ -2815,14 +2895,6 @@ a {
 .invoice-bill-data .is-rate,
 .invoice-bill-data .is-total {
   font-weight: var(--font-weight-bold);
-}
-
-.invoice-bill-data .is-kapan {
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  line-height: 1.15;
-  text-align: center;
 }
 
 .invoice-bill-spacer {
@@ -3365,4 +3437,474 @@ a {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Inline table sections (Generate Invoice & Collect Payment dialogs)
+   Reuses .ui-table-wrap / .ui-table tokens for visual consistency.
+───────────────────────────────────────────────────────────────── */
+
+.ui-inline-table-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: var(--space-4);
+}
+
+/* Header row: title + badge on opposite ends */
+.ui-inline-table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 var(--space-8) 0;
+}
+
+.ui-inline-table-title {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-secondary-text);
+}
+
+/* Dynamic total / selected-amount badge */
+.ui-inline-table-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 99px;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-primary-text);
+  white-space: nowrap;
+}
+
+/* Constrain the scrollable wrap so it doesn't overflow the dialog */
+.ui-inline-table-wrap {
+  max-height: 260px;
+  overflow-y: auto;
+  box-shadow: none;   /* override the card shadow from .ui-table-wrap */
+}
+
+/* The table itself — tighter row padding than the full-page table */
+.ui-inline-table th,
+.ui-inline-table td {
+  padding: 9px 12px;
+  font-size: var(--font-size-sm);
+}
+
+.ui-inline-table th {
+  background: var(--color-page-background);
+  font-size: var(--font-size-xs);
+}
+
+/* Checkbox column — narrow, centered */
+.ui-col-check {
+  width: 36px;
+  text-align: center !important;
+  padding-left: 12px !important;
+  padding-right: 4px !important;
+}
+
+.ui-col-check input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: var(--color-accent, #1d4ed8);
+  width: 15px;
+  height: 15px;
+}
+
+/* Monospace-ish column for IDs / lot numbers */
+.ui-col-monospace {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-weight-medium);
+}
+
+/* Muted secondary text within a cell */
+.ui-col-muted {
+  color: var(--color-secondary-text);
+}
+
+/* Selected row highlight */
+.ui-inline-table-row-selected {
+  background: color-mix(in srgb, var(--color-accent, #1d4ed8) 6%, transparent) !important;
+}
+
+.ui-inline-table-row-selected:hover {
+  background: color-mix(in srgb, var(--color-accent, #1d4ed8) 10%, transparent) !important;
+}
+
+/* Empty-state inside the section (no table) */
+.ui-inline-table-empty {
+  padding: var(--space-12) var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  text-align: center;
+  margin: 0;
+}
+
+/* Pay Now input — compact width that fits inside a table cell */
+.ui-pay-now-input {
+  width: 90px;
+  min-width: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  padding-right: var(--space-8) !important;
+}
+
+/* =============================================================================
+   Dashboard — db- scoped styles
+   Matches the provided HTML card design. All classes prefixed with db- to
+   avoid collision with existing ui- classes.
+   ============================================================================= */
+
+/* ── Page wrapper ─────────────────────────────────────────────────────────── */
+.db-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── Section title ────────────────────────────────────────────────────────── */
+.db-section-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--color-dark-navy);
+  margin: 20px 0 14px;
+}
+
+/* ── Grid layouts ─────────────────────────────────────────────────────────── */
+.db-grid {
+  display: grid;
+  gap: 18px;
+}
+
+.db-jobs-grid {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.db-finance-grid {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.db-lower-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+/* ── KPI card base ────────────────────────────────────────────────────────── */
+.db-kpi {
+  position: relative;
+  overflow: hidden;
+  height: 142px;
+  padding: 25px 25px 20px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: 0 3px 12px rgba(31, 44, 69, 0.07);
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.db-kpi:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(31, 44, 69, 0.12);
+}
+
+/* Decorative circle — top-right corner */
+.db-kpi::after {
+  content: "";
+  position: absolute;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  right: -30px;
+  top: -32px;
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+/* ── KPI color variants ───────────────────────────────────────────────────── */
+.db-kpi-blue  { border-top: 3px solid #4f6cf6; }
+.db-kpi-blue::after  { background: #eef2ff; }
+
+.db-kpi-orange { border-top: 3px solid #ed9a26; }
+.db-kpi-orange::after { background: #fff5df; }
+
+.db-kpi-purple { border-top: 3px solid #8b5cf6; }
+.db-kpi-purple::after { background: #f3efff; }
+
+.db-kpi-green  { border-top: 3px solid #13a66b; }
+.db-kpi-green::after  { background: #e8f8f1; }
+
+/* ── Finance card — slightly shorter + gradient background ────────────────── */
+.db-kpi-finance {
+  height: 141px;
+}
+
+.db-finance-grid .db-kpi:nth-child(1) { background: linear-gradient(145deg, #fff, #f4f6ff); }
+.db-finance-grid .db-kpi:nth-child(2) { background: linear-gradient(145deg, #fff, #f7f2ff); }
+.db-finance-grid .db-kpi:nth-child(3) { background: linear-gradient(145deg, #fff, #f0fbf6); }
+.db-finance-grid .db-kpi:nth-child(4) { background: linear-gradient(145deg, #fff, #fff8eb); }
+.db-finance-grid .db-kpi:nth-child(5) { background: linear-gradient(145deg, #fff, #eef2ff); }
+
+/* ── KPI typography ───────────────────────────────────────────────────────── */
+.db-kpi-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 800;
+  color: #667792;
+  position: relative;
+  z-index: 1;
+  margin: 0;
+}
+
+.db-kpi-value {
+  font-size: 30px;
+  line-height: 1;
+  font-weight: 850;
+  letter-spacing: -0.045em;
+  margin: 14px 0 0;
+  position: relative;
+  z-index: 1;
+  color: var(--color-dark-navy);
+  font-variant-numeric: tabular-nums;
+}
+
+.db-kpi-finance .db-kpi-value {
+  font-size: 27px;
+}
+
+.db-kpi-helper {
+  font-size: 11px;
+  color: #667792;
+  margin: 8px 0 0;
+  position: relative;
+  z-index: 1;
+}
+
+/* Colored helper text */
+.db-text-blue   { color: #4f6cf6; }
+.db-text-orange { color: #ed9a26; }
+.db-text-purple { color: #8b5cf6; }
+.db-text-green  { color: #13a66b; }
+
+/* ── Decor line (finance cards) ───────────────────────────────────────────── */
+.db-decor-line {
+  height: 4px;
+  border-radius: 99px;
+  margin-top: auto;
+  background: #edf0f5;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+.db-decor-line span {
+  display: block;
+  width: 65%;
+  height: 100%;
+  border-radius: 99px;
+}
+
+.db-decor-blue   span { background: #4f6cf6; }
+.db-decor-purple span { background: #8b5cf6; width: 48%; }
+.db-decor-green  span { background: #13a66b; width: 80%; }
+.db-decor-orange span { background: #ed9a26; width: 25%; }
+
+/* ── Account balances card ────────────────────────────────────────────────── */
+.db-accounts-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: 0 3px 12px rgba(31, 44, 69, 0.07);
+  overflow: hidden;
+}
+
+.db-accounts-head {
+  height: 47px;
+  padding: 0 17px;
+  background: var(--color-surface-muted);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 800;
+  color: #60718e;
+}
+
+.db-account-row {
+  height: 66px;
+  padding: 0 17px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.db-account-row:last-child {
+  border-bottom: 0;
+}
+
+.db-account-info {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.db-account-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 900;
+  background: #eef2ff;
+  color: #4f6cf6;
+  flex-shrink: 0;
+}
+
+.db-account-name {
+  font-weight: 700;
+  color: var(--color-dark-navy);
+}
+
+.db-account-balance {
+  font-weight: 800;
+  color: var(--color-dark-navy);
+}
+
+.db-accounts-empty {
+  padding: 20px 17px;
+  font-size: 12px;
+  color: #667792;
+}
+
+/* ── Recent activity tables ───────────────────────────────────────────────── */
+.db-table-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: 0 3px 12px rgba(31, 44, 69, 0.07);
+  overflow: hidden;
+}
+
+.db-table-head {
+  height: 48px;
+  padding: 0 17px;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.db-table-title {
+  font-size: 14px;
+  font-weight: 6  00;
+  color: var(--color-dark-navy);
+}
+
+.db-view-all {
+  font-size: 12px;
+  font-weight: 600;
+  color: #283886;
+  text-decoration: none;
+} 
+
+.db-view-all:hover {
+  color: #2548f5;
+}
+
+.db-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.db-table th {
+  text-align: left;
+  padding: 10px 17px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #73819a;
+  background: #fbfcfe;
+  border-bottom: 1px solid var(--color-border);
+  font-weight: 800;
+}
+
+.db-table td {
+  text-align: left;
+  padding: 12px 17px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 12px;
+  color: var(--color-primary-text);
+}
+
+.db-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.db-lot   { font-weight: 700; color: var(--color-dark-navy); }
+.db-party { font-weight: 600; }
+.db-amount { font-weight: 800; text-align: right; }
+
+.db-table-empty {
+  color: #667792;
+  text-align: center;
+}
+
+/* ── Status / entry badges ────────────────────────────────────────────────── */
+.db-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 99px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.db-badge::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.db-badge-pending   { color: #dc8a10; background: #fff5df; }
+.db-badge-progress  { color: #263eb5; background: #eef2ff; }
+.db-badge-completed { color: #13a66b; background: #e8f8f1; }
+.db-badge-income    { color: #13a66b;  background: #e8f8f1; }
+.db-badge-expense   { color: #e35b68; background: #fff0f2; }
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width: 1200px) {
+  .db-jobs-grid    { grid-template-columns: repeat(2, 1fr); }
+  .db-finance-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 900px) {
+  .db-finance-grid { grid-template-columns: repeat(2, 1fr); }
+  .db-lower-grid   { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 600px) {
+  .db-jobs-grid    { grid-template-columns: 1fr; }
+  .db-finance-grid { grid-template-columns: 1fr; }
+  .db-kpi          { height: auto; min-height: 130px; }
 }

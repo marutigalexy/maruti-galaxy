@@ -39,6 +39,10 @@ export const createJobSchema = z.object({
   price: moneySchema,
   kapan_number: kapanSchema,
   weight: weightSchema,
+  billing_amount: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : v),
+    moneySchema.optional(),
+  ),
   status: jobStatusSchema.optional().default("Pending"),
 });
 
@@ -49,6 +53,10 @@ export const updateJobSchema = z.object({
   price: moneySchema,
   kapan_number: kapanSchema,
   weight: weightSchema,
+  billing_amount: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : v),
+    moneySchema.optional(),
+  ),
   status: jobStatusSchema,
 });
 

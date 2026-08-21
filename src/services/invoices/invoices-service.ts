@@ -6,7 +6,7 @@ import { AppError } from "@/lib/api/result";
 import { selectColumns } from "@/lib/api/select";
 import { requireActiveAdmin } from "@/lib/permissions/require-active-admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { ListInvoicesInput } from "@/lib/validation/invoices";
+import type { CreateInvoiceInput, ListInvoicesInput } from "@/lib/validation/invoices";
 import { EXPORT_REPORT_MAX_ROWS } from "@/lib/validation/reports";
 import type { Database } from "@/types/database";
 
@@ -32,8 +32,10 @@ const JOB_COLUMNS = selectColumns([
   "job_type",
   "than",
   "price",
+  "billing_amount",
   "kapan_number",
   "weight",
+  "created_at",
 ]);
 
 const ALLOCATION_COLUMNS = selectColumns(["id", "entry_id", "amount", "created_at"]);
@@ -69,12 +71,27 @@ export type InvoiceAllocationRow = {
   created_at: string;
 };
 
+/** One job linked to an invoice via invoice_jobs. */
+export type InvoiceJobRow = {
+  id: string;
+  lot_number: string;
+  kapan_number: string;
+  weight: number;
+  than: number;
+  price: number;
+  billing_amount: number | null;
+  job_type: JobType;
+  created_at: string;
+};
+
 export type InvoiceDetail = {
   id: string;
   invoice_number: string;
   invoice_date: string;
+  due_date: string | null;
   amount: number;
   status: InvoiceStatus;
+  // Primary job kept for backward-compat (detail view, allocations, etc.)
   job_work_id: string;
   lot_number: string;
   kapan_number: string;
@@ -87,6 +104,8 @@ export type InvoiceDetail = {
   allocated: number;
   outstanding: number;
   allocations: InvoiceAllocationRow[];
+  /** ALL jobs on this invoice, sourced from invoice_jobs. Used by print view. */
+  jobs: InvoiceJobRow[];
 };
 
 function uniqueIds(ids: Array<string | null | undefined>): string[] {
@@ -315,13 +334,101 @@ export async function getInvoiceOutstanding(id: string): Promise<InvoiceOutstand
   };
 }
 
+export async function createInvoice(input: CreateInvoiceInput): Promise<InvoiceDetail> {
+  await requireActiveAdmin();
+  const supabase = await createSupabaseServerClient();
+
+  // ── Step 1: fetch ONLY the explicitly selected jobs ──────────────────────
+  // This is the sole source of billing data. No other jobs are touched.
+  const { data: selectedJobs, error: jobsError } = await supabase
+    .from("job_works")
+    .select("id, party_id, than, price, billing_amount, lot_number")
+    .in("id", input.job_ids)
+    .eq("party_id", input.party_id);
+
+  if (jobsError) {
+    throw new AppError("INTERNAL", "Unable to load selected jobs.");
+  }
+
+  if (!selectedJobs || selectedJobs.length === 0) {
+    throw new AppError("NOT_FOUND", "No matching jobs found for this party.");
+  }
+
+  if (selectedJobs.length !== input.job_ids.length) {
+    throw new AppError(
+      "VALIDATION",
+      "One or more selected jobs do not belong to this party.",
+    );
+  }
+
+  // ── Step 2: verify none of the selected jobs already has an invoice ───────
+  // Check invoices.job_work_id (always authoritative) + invoice_jobs (multi-job links)
+  const [{ data: existingInvoices, error: eiError }, { data: existingLinks, error: elError }] =
+    await Promise.all([
+      supabase
+        .from("invoices")
+        .select("job_work_id")
+        .in("job_work_id", input.job_ids),
+      supabase
+        .from("invoice_jobs")
+        .select("job_work_id")
+        .in("job_work_id", input.job_ids),
+    ]);
+
+  if (eiError || elError) {
+    throw new AppError("INTERNAL", "Unable to verify job invoice status.");
+  }
+
+  const alreadyInvoiced = new Set([
+    ...(existingInvoices ?? []).map((r) => r.job_work_id),
+    ...(existingLinks ?? []).map((r) => r.job_work_id),
+  ]);
+
+  if (alreadyInvoiced.size > 0) {
+    throw new AppError(
+      "INTEGRITY",
+      "One or more selected jobs already have an invoice.",
+    );
+  }
+
+  // ── Step 3: calculate total from ONLY the selected jobs ───────────────────
+  // billing_amount takes priority; falls back to than × price per job.
+  const invoiceTotal = selectedJobs.reduce((sum, job) => {
+    const bill =
+      job.billing_amount != null
+        ? asMoneyNumber(job.billing_amount)
+        : Math.round(asMoneyNumber(job.than) * asMoneyNumber(job.price) * 100) / 100;
+    return sum + bill;
+  }, 0);
+
+  const primaryJobId = input.job_ids[0];
+
+  // ── Step 4: create the invoice row ────────────────────────────────────────
+  const { data: rpcData, error: rpcError } = await supabase.rpc("create_invoice_for_jobs", {
+    p_party_id: input.party_id,
+    p_job_ids: input.job_ids,
+    p_invoice_date: input.invoice_date,
+  });
+
+  if (rpcError) {
+    throw rpcError;
+  }
+
+  const row = (rpcData ?? [])[0] as { invoice_id?: string } | undefined;
+  if (!row?.invoice_id) {
+    throw new AppError("INTERNAL", "Unable to create invoice.");
+  }
+
+  return getInvoice(row.invoice_id);
+}
+
 export async function getInvoice(id: string): Promise<InvoiceDetail> {
   await requireActiveAdmin();
   const supabase = await createSupabaseServerClient();
 
   const { data: invoice, error: invoiceError } = await supabase
     .from("invoices")
-    .select("id, invoice_number, invoice_date, amount, status, job_work_id")
+    .select("id, invoice_number, invoice_date, due_date, amount, status, job_work_id")
     .eq("id", id)
     .maybeSingle();
 
@@ -333,18 +440,39 @@ export async function getInvoice(id: string): Promise<InvoiceDetail> {
     throw new AppError("NOT_FOUND", "Invoice was not found.");
   }
 
-  const [{ data: job, error: jobError }, outstanding, { data: allocationRows, error: allocationError }] =
-    await Promise.all([
-      supabase.from("job_works").select(JOB_COLUMNS).eq("id", invoice.job_work_id).maybeSingle(),
-      getInvoiceOutstanding(id),
-      supabase
-        .from("entry_invoice_allocations")
-        .select(ALLOCATION_COLUMNS)
-        .eq("invoice_id", id)
-        .order("created_at", { ascending: true }),
-    ]);
+  // ── Load all jobs linked to this invoice via invoice_jobs ────────────────
+  // This is the authoritative source for multi-job invoices.
+  // We fall back to invoices.job_work_id only if invoice_jobs has no rows
+  // (pre-migration_06 data gap).
+  const { data: invoiceJobLinks, error: ijError } = await supabase
+    .from("invoice_jobs")
+    .select("job_work_id")
+    .eq("invoice_id", id);
 
-  if (jobError || !job) {
+  if (ijError) {
+    throw new AppError("INTERNAL", "Unable to load invoice jobs.");
+  }
+
+  // Collect all job IDs: prefer invoice_jobs, fall back to primary job_work_id.
+  const linkedJobIds = invoiceJobLinks && invoiceJobLinks.length > 0
+    ? uniqueIds(invoiceJobLinks.map((r) => r.job_work_id))
+    : [invoice.job_work_id];
+
+  const [
+    { data: jobRows, error: jobsError },
+    outstanding,
+    { data: allocationRows, error: allocationError },
+  ] = await Promise.all([
+    supabase.from("job_works").select(JOB_COLUMNS).in("id", linkedJobIds),
+    getInvoiceOutstanding(id),
+    supabase
+      .from("entry_invoice_allocations")
+      .select(ALLOCATION_COLUMNS)
+      .eq("invoice_id", id)
+      .order("created_at", { ascending: true }),
+  ]);
+
+  if (jobsError || !jobRows || jobRows.length === 0) {
     throw new AppError("INTERNAL", "Unable to load invoice.");
   }
 
@@ -352,10 +480,14 @@ export async function getInvoice(id: string): Promise<InvoiceDetail> {
     throw new AppError("INTERNAL", "Unable to load invoice allocations.");
   }
 
+  // Primary job — used for backward-compat fields on InvoiceDetail.
+  // After the guard above jobRows is non-empty, so jobRows[0] is always defined.
+  const primaryJob = jobRows.find((j) => j.id === invoice.job_work_id) ?? jobRows[0]!;
+
   const { data: party } = await supabase
     .from("parties")
     .select("company_name")
-    .eq("id", job.party_id)
+    .eq("id", primaryJob.party_id)
     .maybeSingle();
 
   const entryIds = uniqueIds((allocationRows ?? []).map((row) => row.entry_id));
@@ -377,20 +509,28 @@ export async function getInvoice(id: string): Promise<InvoiceDetail> {
     }
   }
 
+  // Preserve the original insertion order: primary job first, then the rest
+  // in the order they appear in invoice_jobs.
+  const orderedJobs = [
+    primaryJob,
+    ...jobRows.filter((j) => j.id !== primaryJob.id),
+  ];
+
   return {
     id: invoice.id,
     invoice_number: invoice.invoice_number,
     invoice_date: invoice.invoice_date,
+    due_date: invoice.due_date,
     amount: asMoneyNumber(invoice.amount),
     status: outstanding.status,
     job_work_id: invoice.job_work_id,
-    lot_number: job.lot_number,
-    kapan_number: job.kapan_number,
-    weight: asMoneyNumber(job.weight),
-    than: asMoneyNumber(job.than),
-    price: asMoneyNumber(job.price),
-    job_type: job.job_type,
-    party_id: job.party_id,
+    lot_number: primaryJob.lot_number,
+    kapan_number: primaryJob.kapan_number,
+    weight: asMoneyNumber(primaryJob.weight),
+    than: asMoneyNumber(primaryJob.than),
+    price: asMoneyNumber(primaryJob.price),
+    job_type: primaryJob.job_type,
+    party_id: primaryJob.party_id,
     party_name: party?.company_name ?? "—",
     allocated: outstanding.allocated,
     outstanding: outstanding.outstanding,
@@ -406,5 +546,16 @@ export async function getInvoice(id: string): Promise<InvoiceDetail> {
         created_at: row.created_at,
       };
     }),
+    jobs: orderedJobs.map((job) => ({
+      id: job.id,
+      lot_number: job.lot_number,
+      kapan_number: job.kapan_number,
+      weight: asMoneyNumber(job.weight),
+      than: asMoneyNumber(job.than),
+      price: asMoneyNumber(job.price),
+      billing_amount: job.billing_amount != null ? asMoneyNumber(job.billing_amount) : null,
+      job_type: job.job_type,
+      created_at: job.created_at,
+    })),
   };
 }
