@@ -3,7 +3,7 @@ import { asMoneyNumber, moneyEquals } from "@/lib/api/numbers";
 import { paginated, paginationOffset, type Paginated } from "@/lib/api/pagination";
 import { AppError } from "@/lib/api/result";
 import { selectColumns } from "@/lib/api/select";
-import { toCsv } from "@/lib/api/csv";
+import { generateXlsx, type XlsxColumn } from "@/lib/api/xlsx";
 import { requireActiveAdmin } from "@/lib/permissions/require-active-admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
@@ -436,7 +436,7 @@ export async function deleteEntry(id: string): Promise<{ ok: true }> {
   return { ok: true };
 }
 
-export async function exportEntriesCsv(input: ListEntriesInput): Promise<{ csv: string; count: number }> {
+export async function exportEntriesXlsx(input: ListEntriesInput): Promise<{ buffer: Buffer; count: number }> {
   await requireActiveAdmin();
   const supabase = await createSupabaseServerClient();
 
@@ -462,19 +462,27 @@ export async function exportEntriesCsv(input: ListEntriesInput): Promise<{ csv: 
   }
 
   const records = await toListRecords(data ?? []);
-  const csv = toCsv(
-    ["Date", "Type", "Account", "Category", "Party", "Employee", "Amount", "Remarks"],
-    records.map((row) => [
-      row.entry_date,
-      row.entry_type,
-      row.account_name,
-      row.category_name,
-      row.party_name,
-      row.employee_name,
-      row.amount.toFixed(2),
-      row.remarks,
-    ]),
-  );
+  const columns: XlsxColumn[] = [
+    { header: "Date", key: "date", width: 12 },
+    { header: "Type", key: "type", width: 12 },
+    { header: "Account", key: "account", width: 20 },
+    { header: "Category", key: "category", width: 20 },
+    { header: "Party", key: "party", width: 25 },
+    { header: "Employee", key: "employee", width: 20 },
+    { header: "Amount", key: "amount", width: 18, style: { numFmt: '"₹"#,##0.00' } },
+    { header: "Remarks", key: "remarks", width: 30 },
+  ];
+  const rows = records.map((row) => ({
+    date: row.entry_date,
+    type: row.entry_type,
+    account: row.account_name,
+    category: row.category_name,
+    party: row.party_name ?? "",
+    employee: row.employee_name ?? "",
+    amount: row.amount,
+    remarks: row.remarks ?? "",
+  }));
+  const buffer = await generateXlsx([{ name: "Entries", columns, rows: rows.map((r) => Object.values(r)) }]);
 
-  return { csv: `\uFEFF${csv}`, count: records.length };
+  return { buffer, count: records.length };
 }

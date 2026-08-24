@@ -1,10 +1,10 @@
 import { escapeIlike } from "@/lib/api/ilike";
-import { toCsv } from "@/lib/api/csv";
 import { asMoneyNumber, moneyEquals } from "@/lib/api/numbers";
 import { paginated, paginationOffset, type Paginated } from "@/lib/api/pagination";
 import { isRestrictViolation, isUniqueViolation } from "@/lib/api/postgres";
 import { AppError } from "@/lib/api/result";
 import { selectColumns } from "@/lib/api/select";
+import { generateXlsx, type XlsxColumn } from "@/lib/api/xlsx";
 import { requireActiveAdmin } from "@/lib/permissions/require-active-admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type {
@@ -287,7 +287,7 @@ export async function listAccountOptions(): Promise<AccountOption[]> {
   return data ?? [];
 }
 
-export async function exportAccountsCsv(input: ListAccountsInput): Promise<{ csv: string; count: number }> {
+export async function exportAccountsXlsx(input: ListAccountsInput): Promise<{ buffer: Buffer; count: number }> {
   await requireActiveAdmin();
   const supabase = await createSupabaseServerClient();
   const search = input.search.trim();
@@ -316,17 +316,23 @@ export async function exportAccountsCsv(input: ListAccountsInput): Promise<{ csv
   }
 
   const records = (data ?? []).map(toAccount).filter((row): row is AccountRecord => row !== null);
-  const csv = toCsv(
-    ["Account Name", "Opening Balance", "Total In", "Total Out", "Current Balance", "Status"],
-    records.map((row) => [
-      row.name,
-      row.opening_balance.toFixed(2),
-      row.total_in.toFixed(2),
-      row.total_out.toFixed(2),
-      row.current_balance.toFixed(2),
-      row.is_active ? "Active" : "Inactive",
-    ]),
-  );
+  const columns: XlsxColumn[] = [
+    { header: "Account Name", key: "name", width: 30 },
+    { header: "Opening Balance", key: "openingBalance", width: 18, style: { numFmt: '"₹"#,##0.00' } },
+    { header: "Total In", key: "totalIn", width: 18, style: { numFmt: '"₹"#,##0.00' } },
+    { header: "Total Out", key: "totalOut", width: 18, style: { numFmt: '"₹"#,##0.00' } },
+    { header: "Current Balance", key: "currentBalance", width: 18, style: { numFmt: '"₹"#,##0.00' } },
+    { header: "Status", key: "status", width: 12 },
+  ];
+  const rows = records.map((row) => ({
+    name: row.name,
+    openingBalance: row.opening_balance,
+    totalIn: row.total_in,
+    totalOut: row.total_out,
+    currentBalance: row.current_balance,
+    status: row.is_active ? "Active" : "Inactive",
+  }));
+  const buffer = await generateXlsx([{ name: "Accounts", columns, rows: rows.map((r) => Object.values(r)) }]);
 
-  return { csv: `\uFEFF${csv}`, count: records.length };
+  return { buffer, count: records.length };
 }

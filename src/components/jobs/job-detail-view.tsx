@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, useEffect } from "react";
 
 import {
   addEmployeeWorkAction,
@@ -15,6 +15,7 @@ import { TopbarActions, TopbarStatus, useRecordTitle } from "@/components/layout
 import { Button } from "@/components/ui/button";
 import { AddButton } from "@/components/ui/add-button";
 import { Card } from "@/components/ui/card";
+import { ClientTabs } from "@/components/ui/client-tabs";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
@@ -61,7 +62,18 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
   const [expandedId, setExpandedId] = useState<string | null>(job.sub_jobs[0]?.id ?? null);
   const [workEmployeeId, setWorkEmployeeId] = useState("");
   const [workDoneThan, setWorkDoneThan] = useState("");
+  const [activeTab, setActiveTab] = useState<"details" | "subjobs">("details");
   useRecordTitle(job.lot_number);
+
+  // Parse fromParty and tab from URL hash (for browser back button to restore correct tab)
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (hash) {
+      const params = new URLSearchParams(hash);
+      // We don't need to store these; the browser history handles navigation back
+      // The party detail page reads the hash to restore the active tab
+    }
+  }, []);
 
   const activeEmployees = useMemo(
     () => employees.filter((employee) => employee.is_active),
@@ -72,6 +84,11 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
     selectedEmployee && Number(workDoneThan) > 0
       ? Number(workDoneThan) * selectedEmployee.commission
       : null;
+
+  const tabItems = [
+    { id: "details", label: "Job Details" },
+    { id: "subjobs", label: "Sub Jobs" },
+  ] as const;
 
   function runMutation(
     action: () => Promise<{ ok: boolean; error?: { message: string } }>,
@@ -111,93 +128,114 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
           <EditIcon width={16} height={16} />
         </IconButton>
       </TopbarActions>
-      <div className="ui-detail-stack">
-        <Card title="Job Details">
-          <div className="ui-job-details-grid">
-            <section className="ui-job-details-column">
-              <h3 className="ui-card-title">Basic Job Information</h3>
-              <dl className="ui-property-list">
-                <div className="ui-detail-item">
-                  <dt>Lot Number</dt>
-                  <dd>{job.lot_number}</dd>
-                </div>
-                <div className="ui-detail-item">
-                  <dt>Kapan Number</dt>
-                  <dd>{job.kapan_number}</dd>
-                </div>
-                <div className="ui-detail-item">
-                  <dt>Party Name</dt>
-                  <dd>{job.party_name}</dd>
-                </div>
-                <div className="ui-detail-item">
-                  <dt>Job Type</dt>
-                  <dd>
-                    <JobTypeBadge type={job.job_type} />
-                  </dd>
-                </div>
-                <div className="ui-detail-item">
-                  <dt>Sub Jobs</dt>
-                  <dd>{job.sub_jobs.length}</dd>
-                </div>
-              </dl>
-            </section>
-            <section className="ui-job-details-column">
-              <h3 className="ui-card-title">Quantity &amp; Pricing</h3>
-              <dl className="ui-property-list">
-                <div className="ui-detail-item">
-                  <dt>Total Than</dt>
-                  <dd>{formatThan(job.than)}</dd>
-                </div>
-                <div className="ui-detail-item">
-                  <dt>Allocated Than</dt>
-                  <dd>{formatThan(job.allocated_than)}</dd>
-                </div>
-                <div className="ui-detail-item">
-                  <dt>Remaining Than</dt>
-                  <dd>{formatThan(job.remaining_than)}</dd>
-                </div>
-                <div className="ui-detail-item">
-                  <dt>Total Weight</dt>
-                  <dd><WeightCt value={job.weight} /></dd>
-                </div>
-                <div className="ui-detail-item">
-                  <dt>Unit Price</dt>
-                  <dd className="ui-price">{formatInr(job.price)}</dd>
-                </div>
-                <div className="ui-detail-item">
-                  <dt>Billing Amount</dt>
-                  <dd className="ui-price">
-                    {formatInr(
-                      job.billing_amount != null
-                        ? job.billing_amount
-                        : Math.round(job.than * job.price * 100) / 100,
-                    )}
-                    {job.billing_amount == null ? (
-                      <span className="ui-field-help" style={{ marginLeft: 4 }}>
-                        (Than × Price)
-                      </span>
-                    ) : null}
-                  </dd>
-                </div>
-              </dl>
-            </section>
-          </div>
-        </Card>
+<div className="ui-detail-stack">
+        <ClientTabs
+          items={tabItems}
+          activeId={activeTab}
+          onChange={setActiveTab}
+          ariaLabel="Job details"
+        />
 
-        <Card
-          title="Sub Jobs"
-          action={
-            <AddButton
-              onClick={() => {
-                setFormError(null);
-                setSubOpen(true);
-              }}
-            >
-              Add Sub Job
-            </AddButton>
-          }
-        >
-          {job.sub_jobs.length === 0 ? (
+        <div role="tabpanel" id="details-panel" aria-labelledby="details-tab" hidden={activeTab !== "details"}>
+          <Card title="Job Details">
+            <div className="ui-job-details-grid ui-job-details-grid-3">
+              <section className="ui-job-details-column">
+                <h3 className="ui-card-title">Basic Information</h3>
+                <dl className="ui-property-list">
+                  <div className="ui-detail-item">
+                    <dt>Job Number</dt>
+                    <dd>{job.lot_number}</dd>
+                  </div>
+                  <div className="ui-detail-item">
+                    <dt>Kapan Number</dt>
+                    <dd>{job.kapan_number}</dd>
+                  </div>
+                  <div className="ui-detail-item">
+                    <dt>Party Name</dt>
+                    <dd>{job.party_name}</dd>
+                  </div>
+                  <div className="ui-detail-item">
+                    <dt>Job Type</dt>
+                    <dd>
+                      <JobTypeBadge type={job.job_type} />
+                    </dd>
+                  </div>
+                  <div className="ui-detail-item">
+                    <dt>Sub Jobs</dt>
+                    <dd>{job.sub_jobs.length}</dd>
+                  </div>
+                </dl>
+              </section>
+              <section className="ui-job-details-column">
+                <h3 className="ui-card-title">Quantity & Metrics</h3>
+                <dl className="ui-property-list">
+                  <div className="ui-detail-item">
+                    <dt>Total Taan</dt>
+                    <dd>{formatThan(job.than)}</dd>
+                  </div>
+                  <div className="ui-detail-item">
+                    <dt>Accepted Taan</dt>
+                    <dd>{formatThan(job.allocated_than)}</dd>
+                  </div>
+                  <div className="ui-detail-item">
+                    <dt>Remaining Taan</dt>
+                    <dd>{formatThan(job.remaining_than)}</dd>
+                  </div>
+                  <div className="ui-detail-item">
+                    <dt>Total Weight</dt>
+                    <dd><WeightCt value={job.weight} /></dd>
+                  </div>
+                </dl>
+              </section>
+              <section className="ui-job-details-column">
+                <h3 className="ui-card-title">Pricing & Billing</h3>
+                <dl className="ui-property-list">
+                  <div className="ui-detail-item">
+                    <dt>Unit Price</dt>
+                    <dd className="ui-price">{formatInr(job.price)}</dd>
+                  </div>
+                  <div className="ui-detail-item">
+                    <dt>Total Billing Amount</dt>
+                    <dd className="ui-price">
+                      {formatInr(
+                        job.billing_amount != null
+                          ? job.billing_amount
+                          : Math.round(job.than * job.price * 100) / 100,
+                      )}
+                      {job.billing_amount == null ? (
+                        <span className="ui-field-help" style={{ marginLeft: 4 }}>
+                          (Than × Price)
+                        </span>
+                      ) : null}
+                    </dd>
+                  </div>
+                  <div className="ui-detail-item">
+                    <dt>Payment Status</dt>
+                    <dd>
+                      <StatusBadge tone={statusTone(job.status)} />
+                    </dd>
+                  </div>
+                </dl>
+              </section>
+            </div>
+          </Card>
+        </div>
+
+<div role="tabpanel" id="subjobs-panel" aria-labelledby="subjobs-tab" hidden={activeTab !== "subjobs"}>
+          <Card
+            title="Sub Jobs"
+            action={
+              <AddButton
+                onClick={() => {
+                  setFormError(null);
+                  setSubOpen(true);
+                }}
+              >
+                Add Sub Job
+              </AddButton>
+            }
+          >
+            {job.sub_jobs.length === 0 ? (
             <p className="ui-field-help">No sub-jobs yet.</p>
           ) : (
             <div className="ui-subjob-list">
@@ -338,6 +376,7 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
           )}
         </Card>
       </div>
+    </div>
 
       <Dialog
         open={editJobOpen}

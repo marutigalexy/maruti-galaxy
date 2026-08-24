@@ -91,8 +91,23 @@ export const profitLossSchema = withDateOrder(
     })),
 );
 
+export const outstandingPartiesSchema = z
+  .object({
+    page: pageSchema,
+    pageSize: pageSizeSchema,
+    search: z.preprocess((value) => value ?? "", searchSchema),
+    status: z.enum(["all", "Unpaid", "Partially Paid", "Paid"]).optional().default("all"),
+  })
+  .transform((value) => ({
+    page: value.page,
+    pageSize: value.pageSize ?? DEFAULT_PAGE_SIZE,
+    search: value.search,
+    status: value.status,
+  }));
+
 export type JobWorkReportInput = z.output<typeof jobWorkReportSchema>;
 export type EntryReportInput = z.output<typeof entryReportSchema>;
 export type OutstandingReportInput = z.output<typeof outstandingReportSchema>;
+export type OutstandingPartiesInput = z.output<typeof outstandingPartiesSchema>;
 export type SalaryReportInput = z.output<typeof salaryReportSchema>;
 export type ProfitLossInput = z.output<typeof profitLossSchema>;

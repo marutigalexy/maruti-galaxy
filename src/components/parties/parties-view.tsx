@@ -110,7 +110,7 @@ export function PartiesView({ query, result }: PartiesViewProps) {
       <DataTable
         caption="Parties"
         columns={[
-          { key: "company", header: "Company Name", render: (row) => row.company_name },
+          { key: "company", header: "Company Name", render: (row) => <strong>{row.company_name}</strong> },
           { key: "contact", header: "Contact Person", render: (row) => row.contact_person_name ?? "—" },
           { key: "mobile", header: "Mobile", render: (row) => row.mobile_number },
           { key: "price", header: "Price", numeric: true, render: (row) => formatInr(row.price) },
@@ -211,8 +211,8 @@ export function PartiesView({ query, result }: PartiesViewProps) {
           <FormField label="Mobile Number" htmlFor="create-mobile" required>
             <Input id="create-mobile" name="mobile_number" required disabled={pending} placeholder="e.g. 9876543210" />
           </FormField>
-          <FormField label="Price" htmlFor="create-price" required>
-            <Input id="create-price" name="price" inputMode="decimal" required disabled={pending} placeholder="e.g. 1500.00" className="ui-price" />
+          <FormField label="Price" htmlFor="create-price">
+            <Input id="create-price" name="price" inputMode="decimal" disabled={pending} placeholder="e.g. 1500.00 (optional)" className="ui-price" />
           </FormField>
           {formError && createOpen ? (
             <p className="ui-field-error" role="alert">
@@ -288,16 +288,14 @@ export function PartiesView({ query, result }: PartiesViewProps) {
             <FormField
               label="Price"
               htmlFor="edit-price"
-              required
             >
               <Input
                 id="edit-price"
                 name="price"
                 inputMode="decimal"
-                required
-                defaultValue={String(editParty.price)}
+                defaultValue={editParty.price > 0 ? String(editParty.price) : ""}
                 disabled={pending}
-                placeholder="e.g. 1500.00"
+                placeholder="e.g. 1500.00 (optional)"
                 className="ui-price"
               />
             </FormField>

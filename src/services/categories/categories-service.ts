@@ -1,9 +1,9 @@
 import { escapeIlike } from "@/lib/api/ilike";
-import { toCsv } from "@/lib/api/csv";
 import { paginated, paginationOffset, type Paginated } from "@/lib/api/pagination";
 import { isRestrictViolation, isUniqueViolation } from "@/lib/api/postgres";
 import { AppError } from "@/lib/api/result";
 import { selectColumns } from "@/lib/api/select";
+import { generateXlsx, type XlsxColumn } from "@/lib/api/xlsx";
 import { requireActiveAdmin } from "@/lib/permissions/require-active-admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type {
@@ -276,7 +276,7 @@ export async function listCategoryOptions(): Promise<CategoryOption[]> {
   return data ?? [];
 }
 
-export async function exportCategoriesCsv(input: ListCategoriesInput): Promise<{ csv: string; count: number }> {
+export async function exportCategoriesXlsx(input: ListCategoriesInput): Promise<{ buffer: Buffer; count: number }> {
   await requireActiveAdmin();
   const supabase = await createSupabaseServerClient();
   const search = input.search.trim();
@@ -307,10 +307,17 @@ export async function exportCategoriesCsv(input: ListCategoriesInput): Promise<{
     throw new AppError("VALIDATION", "Too many categories to export. Narrow the filters and try again.");
   }
 
-  const csv = toCsv(
-    ["Category Name", "Type", "Status"],
-    (data ?? []).map((row) => [row.name, row.type, row.is_active ? "Active" : "Inactive"]),
-  );
+  const columns: XlsxColumn[] = [
+    { header: "Category Name", key: "name", width: 30 },
+    { header: "Type", key: "type", width: 12 },
+    { header: "Status", key: "status", width: 12 },
+  ];
+  const rows = (data ?? []).map((row) => ({
+    name: row.name,
+    type: row.type,
+    status: row.is_active ? "Active" : "Inactive",
+  }));
+  const buffer = await generateXlsx([{ name: "Categories", columns, rows: rows.map((r) => Object.values(r)) }]);
 
-  return { csv: `\uFEFF${csv}`, count: (data ?? []).length };
+  return { buffer, count: (data ?? []).length };
 }

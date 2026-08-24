@@ -81,12 +81,22 @@ export type PartyInvoiceRow = {
   job_work_ids: string[];
 };
 
+export type PartyPaymentRow = {
+  id: string;
+  entry_date: string;
+  amount: number;
+  remarks: string | null;
+  account_name: string | null;
+  category_name: string | null;
+};
+
 export type PartySummary = {
   jobsCount: number;
   invoicesCount: number;
   outstanding: number;
   jobs: PartyJobRow[];
   invoices: PartyInvoiceRow[];
+  payments: PartyPaymentRow[];
 };
 
 function toParty(row: {
@@ -324,15 +334,52 @@ export async function getPartySummary(id: string): Promise<PartySummary> {
     }
   }
 
-  const { data: outstandingRow, error: outstandingError } = await supabase
-    .from("v_party_outstanding")
-    .select("outstanding_sum")
-    .eq("party_id", id)
-    .maybeSingle();
+  const [{ data: outstandingRow, error: outstandingError }, { data: paymentRows, error: paymentError }] =
+    await Promise.all([
+      supabase
+        .from("v_party_outstanding")
+        .select("outstanding_sum")
+        .eq("party_id", id)
+        .maybeSingle(),
+      supabase
+        .from("entries")
+        .select("id, entry_date, amount, remarks, account_id, category_id")
+        .eq("entry_type", "Income")
+        .eq("party_id", id)
+        .order("entry_date", { ascending: false }),
+    ]);
 
   if (outstandingError) {
     throw new AppError("INTERNAL", "Unable to load party outstanding.");
   }
+
+  if (paymentError) {
+    throw new AppError("INTERNAL", "Unable to load party payments.");
+  }
+
+  const accountIds = [...new Set((paymentRows ?? []).map((r) => r.account_id).filter(Boolean))];
+  const categoryIds = [...new Set((paymentRows ?? []).map((r) => r.category_id).filter(Boolean))];
+
+  const [{ data: accountsData }, { data: categoriesData }] = await Promise.all([
+    accountIds.length > 0
+      ? supabase.from("accounts").select("id, name").in("id", accountIds)
+      : Promise.resolve({ data: [], error: null }),
+    categoryIds.length > 0
+      ? supabase.from("categories").select("id, name").in("id", categoryIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+
+  const accountNames = new Map((accountsData ?? []).map((a) => [a.id, a.name]));
+  const categoryNames = new Map((categoriesData ?? []).map((c) => [c.id, c.name]));
+
+  const payments: PartyPaymentRow[] = (paymentRows ?? []).map((row) => ({
+    id: row.id,
+    entry_date: row.entry_date,
+    amount: asMoneyNumber(row.amount),
+    remarks: row.remarks,
+    account_name: row.account_id ? accountNames.get(row.account_id) ?? null : null,
+    category_name: row.category_id ? categoryNames.get(row.category_id) ?? null : null,
+  }));
 
   return {
     jobsCount: jobRows.length,
@@ -340,6 +387,7 @@ export async function getPartySummary(id: string): Promise<PartySummary> {
     outstanding: asMoneyNumber(outstandingRow?.outstanding_sum),
     jobs: jobRows,
     invoices,
+    payments,
   };
 }
 

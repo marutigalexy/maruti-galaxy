@@ -1,4 +1,4 @@
-import { toCsv } from "@/lib/api/csv";
+import { generateXlsx, type XlsxColumn } from "@/lib/api/xlsx";
 import { escapeIlike } from "@/lib/api/ilike";
 import { asMoneyNumber } from "@/lib/api/numbers";
 import { paginated, paginationOffset, type Paginated } from "@/lib/api/pagination";
@@ -275,7 +275,7 @@ export async function listInvoices(input: ListInvoicesInput): Promise<Paginated<
   return loadInvoices(input, offset, offset + input.pageSize - 1);
 }
 
-export async function exportInvoicesCsv(input: ListInvoicesInput): Promise<{ csv: string; count: number }> {
+export async function exportInvoicesXlsx(input: ListInvoicesInput): Promise<{ buffer: Buffer; count: number }> {
   const result = await loadInvoices(input, 0, EXPORT_REPORT_MAX_ROWS - 1);
   if (result.totalCount > EXPORT_REPORT_MAX_ROWS) {
     throw new AppError(
@@ -284,30 +284,29 @@ export async function exportInvoicesCsv(input: ListInvoicesInput): Promise<{ csv
     );
   }
 
-  const csv = toCsv(
-    [
-      "Party",
-      "Invoice Number",
-      "Lot Number",
-      "Invoice Amount",
-      "Allocated",
-      "Outstanding",
-      "Status",
-      "Date",
-    ],
-    result.records.map((row) => [
-      row.party_name,
-      row.invoice_number,
-      row.lot_number,
-      row.amount.toFixed(2),
-      row.allocated.toFixed(2),
-      row.outstanding.toFixed(2),
-      row.status,
-      row.invoice_date,
-    ]),
-  );
+  const columns: XlsxColumn[] = [
+    { header: "Party", key: "party", width: 30 },
+    { header: "Invoice Number", key: "invoiceNumber", width: 20 },
+    { header: "Lot Number", key: "lotNumber", width: 18 },
+    { header: "Invoice Amount", key: "amount", width: 18, style: { numFmt: '"₹"#,##0.00' } },
+    { header: "Allocated", key: "allocated", width: 15, style: { numFmt: '"₹"#,##0.00' } },
+    { header: "Outstanding", key: "outstanding", width: 15, style: { numFmt: '"₹"#,##0.00' } },
+    { header: "Status", key: "status", width: 15 },
+    { header: "Date", key: "date", width: 12 },
+  ];
+  const rows = result.records.map((row) => ({
+    party: row.party_name,
+    invoiceNumber: row.invoice_number,
+    lotNumber: row.lot_number,
+    amount: row.amount,
+    allocated: row.allocated,
+    outstanding: row.outstanding,
+    status: row.status,
+    date: row.invoice_date,
+  }));
+  const buffer = await generateXlsx([{ name: "Outstanding Invoices", columns, rows: rows.map((r) => Object.values(r)) }]);
 
-  return { csv: `\uFEFF${csv}`, count: result.records.length };
+  return { buffer, count: result.records.length };
 }
 
 export async function getInvoiceOutstanding(id: string): Promise<InvoiceOutstanding> {

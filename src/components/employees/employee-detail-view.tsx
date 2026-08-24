@@ -8,6 +8,7 @@ import { EmployeePaymentDialog } from "@/components/employees/employee-payment-d
 import { TopbarActions, TopbarStatus, useRecordTitle } from "@/components/layout/page-chrome";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ClientTabs } from "@/components/ui/client-tabs";
 import { DataTable } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
 import { FormField } from "@/components/ui/form-field";
@@ -19,21 +20,42 @@ import { useToast } from "@/components/ui/toast";
 import { formatDisplayDate, formatInr, formatThan } from "@/lib/formatters";
 import type { AccountOption } from "@/services/accounts/accounts-service";
 import type { CategoryOption } from "@/services/categories/categories-service";
-import type { EmployeeRecord, EmployeeSummary } from "@/services/employees/employees-service";
+import type { EmployeeRecord, EmployeeSummary, EmployeePaymentRow } from "@/services/employees/employees-service";
 
-type EmployeeDetailViewProps = {
+type TabKey = "work" | "payments";
+
+function paymentAmountClass(row: EmployeePaymentRow) {
+  const name = row.category_name.toLowerCase();
+  if (name.includes("salary")) return "ui-amount-salary";
+  if (name.includes("advance")) return "ui-amount-advance";
+  if (name.includes("bonus")) return "ui-amount-bonus";
+  if (name.includes("deduction") || name.includes("fine") || name.includes("penalty")) return "ui-amount-deduction";
+  if (row.category_type === "Income") return "ui-amount-income";
+  return "ui-amount-expense";
+}
+
+function paymentCategoryBadge(row: EmployeePaymentRow) {
+  const name = row.category_name.toLowerCase();
+  if (name.includes("salary")) return <StatusBadge tone="paid" label="Salary" />;
+  if (name.includes("advance")) return <StatusBadge tone="pending" label="Advance" />;
+  if (name.includes("bonus")) return <StatusBadge tone="completed" label="Bonus" />;
+  if (name.includes("deduction") || name.includes("fine") || name.includes("penalty")) return <StatusBadge tone="unpaid" label="Deduction" />;
+  if (row.category_type === "Income") return <StatusBadge tone="income" label={row.category_name} />;
+  return <StatusBadge tone="expense" label={row.category_name} />;
+}
+
+export function EmployeeDetailView({ employee, summary, accounts, categories }: {
   employee: EmployeeRecord;
   summary: EmployeeSummary;
   accounts: AccountOption[];
   categories: CategoryOption[];
-};
-
-export function EmployeeDetailView({ employee, summary, accounts, categories }: EmployeeDetailViewProps) {
+}) {
   const router = useRouter();
   const toast = useToast();
   const [pending, startTransition] = useTransition();
   const [editOpen, setEditOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabKey>("work");
   useRecordTitle(employee.name, employee.mobile_number);
 
   const kpis = [
@@ -43,6 +65,11 @@ export function EmployeeDetailView({ employee, summary, accounts, categories }: 
     { label: "Paid Amount", value: formatInr(summary.total_paid) },
     { label: "Remaining Amount", value: formatInr(summary.remaining_amount) },
   ];
+
+  const tabItems = [
+    { id: "work", label: "Work History" },
+    { id: "payments", label: "Payment History" },
+  ] as const;
 
   return (
     <>
@@ -71,34 +98,80 @@ export function EmployeeDetailView({ employee, summary, accounts, categories }: 
             ))}
           </div>
         </section>
-        <Card title="Work History">
-          <DataTable
-            caption="Work history"
-            columns={[
-              {
-                key: "lot",
-                header: "Lot / Sub Job",
-                render: (row) => row.display_no ?? row.lot_number ?? "—",
-              },
-              {
-                key: "date",
-                header: "Date",
-                render: (row) => formatDisplayDate(row.created_at),
-              },
-              { key: "than", header: "Done Than", numeric: true, render: (row) => formatThan(row.done_than) },
-              {
-                key: "commission",
-                header: "Commission",
-                numeric: true,
-                render: (row) => formatInr(row.commission),
-              },
-              { key: "earning", header: "Earning", numeric: true, render: (row) => formatInr(row.earning) },
-            ]}
-            rows={summary.work}
-            rowKey={(row) => row.id}
-            emptyTitle="No work has been recorded for this employee yet."
-          />
-        </Card>
+
+        <ClientTabs
+          items={tabItems}
+          activeId={activeTab}
+          onChange={setActiveTab}
+          ariaLabel="Employee history"
+        />
+
+        <div role="tabpanel" id="work-panel" aria-labelledby="work-tab" hidden={activeTab !== "work"}>
+          <Card title="Work History">
+            <DataTable
+              caption="Work history"
+              columns={[
+                {
+                  key: "lot",
+                  header: "Lot / Sub Job",
+                  render: (row) => row.display_no ?? row.lot_number ?? "—",
+                },
+                {
+                  key: "date",
+                  header: "Date",
+                  render: (row) => formatDisplayDate(row.created_at),
+                },
+                { key: "than", header: "Done Than", numeric: true, render: (row) => formatThan(row.done_than) },
+                {
+                  key: "commission",
+                  header: "Commission",
+                  numeric: true,
+                  render: (row) => formatInr(row.commission),
+                },
+                { key: "earning", header: "Earning", numeric: true, render: (row) => formatInr(row.earning) },
+              ]}
+              rows={summary.work}
+              rowKey={(row) => row.id}
+              emptyTitle="No work has been recorded for this employee yet."
+            />
+          </Card>
+        </div>
+
+        <div role="tabpanel" id="payments-panel" aria-labelledby="payments-tab" hidden={activeTab !== "payments"}>
+          <Card title="Payment History">
+            <DataTable
+              caption="Payment history"
+              columns={[
+                {
+                  key: "date",
+                  header: "Date",
+                  render: (row) => formatDisplayDate(row.entry_date),
+                },
+                {
+                  key: "category",
+                  header: "Category",
+                  render: (row) => paymentCategoryBadge(row),
+                },
+                {
+                  key: "amount",
+                  header: "Amount",
+                  numeric: true,
+                  render: (row) => (
+                    <span className={paymentAmountClass(row)}>{formatInr(row.amount)}</span>
+                  ),
+                },
+                {
+                  key: "remarks",
+                  header: "Remarks",
+                  render: (row) => row.remarks ?? "—",
+                },
+              ]}
+              rows={summary.payments}
+              rowKey={(row) => row.id}
+              emptyTitle="No payments recorded for this employee yet."
+            />
+          </Card>
+        </div>
       </div>
       <Dialog
         open={editOpen}

@@ -18,7 +18,10 @@ export const createPartySchema = z.object({
   company_name: partyCompanyNameSchema,
   contact_person_name: optionalTextSchema.optional().transform((value) => value ?? null),
   mobile_number: mobileSchema,
-  price: moneySchema,
+  price: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : typeof v === "number" ? String(v) : v),
+    moneySchema.optional().default("0"),
+  ),
   is_active: z.boolean().optional().default(true),
 });
 
@@ -27,7 +30,10 @@ export const updatePartySchema = z.object({
   company_name: partyCompanyNameSchema,
   contact_person_name: optionalTextSchema.optional().transform((value) => value ?? null),
   mobile_number: mobileSchema,
-  price: moneySchema,
+  price: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : typeof v === "number" ? String(v) : v),
+    moneySchema.optional().default("0"),
+  ),
 });
 
 export const setPartyActiveSchema = z.object({

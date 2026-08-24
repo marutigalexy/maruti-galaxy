@@ -190,11 +190,10 @@ describe("report and dashboard security", () => {
     expect(dashView).toMatch(/Recent Entries/);
     expect(dashView).toMatch(/This month/);
     expect(dashView).toMatch(/All time/);
-    expect(dashView).toMatch(/date_from=\$\{snapshot\.month_from\}/);
+    expect(dashView).toMatch(/date_from=\$\{(snapshot\.)?month_from\}/);
     expect(dashView).toMatch(/\/reports\/outstanding/);
     expect(NAV_ITEMS.find((item) => item.label === "Reports")?.children?.map((child) => child.href)).toEqual([
       "/reports/jobs",
-      "/reports/entries",
       "/reports/outstanding",
       "/reports/salary",
       "/reports/profit-loss",

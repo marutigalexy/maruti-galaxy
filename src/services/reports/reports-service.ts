@@ -1,4 +1,4 @@
-import { toCsv } from "@/lib/api/csv";
+import { generateXlsx, type XlsxColumn } from "@/lib/api/xlsx";
 import { escapeIlike } from "@/lib/api/ilike";
 import { asMoneyNumber } from "@/lib/api/numbers";
 import { paginated, paginationOffset, type Paginated } from "@/lib/api/pagination";
@@ -11,12 +11,13 @@ import type { ListEntriesInput } from "@/lib/validation/entries";
 import type { ListInvoicesInput } from "@/lib/validation/invoices";
 import type {
   JobWorkReportInput,
+  OutstandingPartiesInput,
   ProfitLossInput,
   SalaryReportInput,
 } from "@/lib/validation/reports";
 import { EXPORT_REPORT_MAX_ROWS } from "@/lib/validation/reports";
 import { listEntries, type EntrySummary, type ListedEntries } from "@/services/entries/entries-service";
-import { exportInvoicesCsv, listInvoices, type InvoiceListRecord } from "@/services/invoices/invoices-service";
+import { exportInvoicesXlsx, listInvoices, type InvoiceListRecord } from "@/services/invoices/invoices-service";
 import type { Database } from "@/types/database";
 
 type JobType = Database["public"]["Enums"]["job_type"];
@@ -56,6 +57,7 @@ export type SalaryReportRow = {
   earned: number;
   paid: number;
   difference: number;
+  total_than: number;
 };
 
 export type { ProfitLossMonthRow };
@@ -212,9 +214,9 @@ export async function getJobWorkReport(
   return paginated(await hydrateJobWorkRows(data ?? []), count ?? 0, input.page, input.pageSize);
 }
 
-export async function exportJobWorkReportCsv(
+export async function exportJobWorkReportXlsx(
   input: JobWorkReportInput,
-): Promise<{ csv: string; count: number }> {
+): Promise<{ buffer: Buffer; count: number }> {
   await requireActiveAdmin();
   const supabase = await createSupabaseServerClient();
 
@@ -235,36 +237,35 @@ export async function exportJobWorkReportCsv(
   }
 
   const records = await hydrateJobWorkRows(data ?? []);
-  const csv = toCsv(
-    [
-      "Lot Number",
-      "Party",
-      "Job Type",
-      "Than",
-      "Price",
-      "Kapan",
-      "Weight",
-      "Status",
-      "Sub Jobs",
-      "Done Than",
-      "Date",
-    ],
-    records.map((row) => [
-      row.lot_number,
-      row.party_name,
-      row.job_type,
-      row.than,
-      row.price.toFixed(2),
-      row.kapan_number,
-      row.weight,
-      row.status,
-      row.sub_job_count,
-      row.done_than,
-      row.created_at.slice(0, 10),
-    ]),
-  );
+  const columns: XlsxColumn[] = [
+    { header: "Lot Number", key: "lotNumber", width: 18 },
+    { header: "Party", key: "party", width: 25 },
+    { header: "Job Type", key: "jobType", width: 15 },
+    { header: "Than", key: "than", width: 12, style: { numFmt: "#,##0.000" } },
+    { header: "Price", key: "price", width: 15, style: { numFmt: '"₹"#,##0.00' } },
+    { header: "Kapan", key: "kapan", width: 12 },
+    { header: "Weight", key: "weight", width: 12, style: { numFmt: "#,##0.000" } },
+    { header: "Status", key: "status", width: 15 },
+    { header: "Sub Jobs", key: "subJobs", width: 10, style: { numFmt: "#,##0" } },
+    { header: "Done Than", key: "doneThan", width: 12, style: { numFmt: "#,##0.000" } },
+    { header: "Date", key: "date", width: 12 },
+  ];
+  const rows = records.map((row) => ({
+    lotNumber: row.lot_number,
+    party: row.party_name,
+    jobType: row.job_type,
+    than: row.than,
+    price: row.price,
+    kapan: row.kapan_number,
+    weight: row.weight,
+    status: row.status,
+    subJobs: row.sub_job_count,
+    doneThan: row.done_than,
+    date: row.created_at.slice(0, 10),
+  }));
+  const buffer = await generateXlsx([{ name: "Job Work Report", columns, rows: rows.map((r) => Object.values(r)) }]);
 
-  return { csv: `\uFEFF${csv}`, count: records.length };
+  return { buffer, count: records.length };
 }
 
 export async function getEntryReport(input: ListEntriesInput): Promise<ListedEntries> {
@@ -277,10 +278,237 @@ export async function getOutstandingReport(
   return listInvoices(input);
 }
 
-export async function exportOutstandingReportCsv(
+export async function exportOutstandingReportXlsx(
   input: ListInvoicesInput,
-): Promise<{ csv: string; count: number }> {
-  return exportInvoicesCsv(input);
+): Promise<{ buffer: Buffer; count: number }> {
+  return exportInvoicesXlsx(input);
+}
+
+export type PartyOutstandingRow = {
+  id: string;
+  company_name: string;
+  mobile_number: string;
+  total_billed: number;
+  total_paid: number;
+  outstanding: number;
+  status: "Unpaid" | "Partially Paid" | "Paid";
+};
+
+async function computePartyOutstandingRows(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  partyIds: string[],
+): Promise<Map<string, PartyOutstandingRow>> {
+  const rowsMap = new Map<string, PartyOutstandingRow>();
+
+  if (partyIds.length === 0) {
+    return rowsMap;
+  }
+
+  const CHUNK_SIZE = 100;
+  const allJobs: Array<{ id: string; party_id: string }> = [];
+
+  for (let i = 0; i < partyIds.length; i += CHUNK_SIZE) {
+    const chunk = partyIds.slice(i, i + CHUNK_SIZE);
+    const { data: jobs, error: jobsError } = await supabase
+      .from("job_works")
+      .select("id, party_id")
+      .in("party_id", chunk);
+
+    if (jobsError) {
+      throw new AppError("INTERNAL", "Unable to load job works for outstanding report.");
+    }
+    if (jobs) {
+      allJobs.push(...jobs);
+    }
+  }
+
+  const jobIds = allJobs.map((j) => j.id);
+  const partyIdByJobId = new Map<string, string>();
+  for (const job of allJobs) {
+    partyIdByJobId.set(job.id, job.party_id);
+  }
+
+  if (jobIds.length > 0) {
+    for (let i = 0; i < jobIds.length; i += CHUNK_SIZE) {
+      const chunk = jobIds.slice(i, i + CHUNK_SIZE);
+      const { data: invoices, error: invError } = await supabase
+        .from("v_invoice_outstanding")
+        .select("job_work_id, amount, allocated, outstanding")
+        .in("job_work_id", chunk);
+
+      if (invError) {
+        throw new AppError("INTERNAL", "Unable to load invoice outstanding data.");
+      }
+
+      for (const inv of invoices ?? []) {
+        const jobWorkId = inv.job_work_id;
+        if (!jobWorkId) continue;
+        const partyId = partyIdByJobId.get(jobWorkId);
+        if (!partyId) continue;
+
+        const existing = rowsMap.get(partyId) ?? {
+          id: partyId,
+          company_name: "",
+          mobile_number: "",
+          total_billed: 0,
+          total_paid: 0,
+          outstanding: 0,
+          status: "Paid" as const,
+        };
+
+        existing.total_billed += asMoneyNumber(inv.amount);
+        existing.total_paid += asMoneyNumber(inv.allocated);
+        existing.outstanding += asMoneyNumber(inv.outstanding);
+        rowsMap.set(partyId, existing);
+      }
+    }
+  }
+
+  return rowsMap;
+}
+
+function deriveStatus(row: PartyOutstandingRow): PartyOutstandingRow {
+  if (row.total_billed === 0 || row.outstanding <= 0.005) {
+    return { ...row, status: "Paid" };
+  }
+  if (row.total_paid > 0) {
+    return { ...row, status: "Partially Paid" };
+  }
+  return { ...row, status: "Unpaid" };
+}
+
+export async function getPartyOutstandingReport(
+  input: OutstandingPartiesInput,
+): Promise<Paginated<PartyOutstandingRow>> {
+  await requireActiveAdmin();
+  const supabase = await createSupabaseServerClient();
+
+  let query = supabase
+    .from("parties")
+    .select("id, company_name, mobile_number", { count: "exact" })
+    .order("company_name", { ascending: true });
+
+  if (input.search.trim() !== "") {
+    query = query.ilike("company_name", `%${escapeIlike(input.search.trim())}%`);
+  }
+
+  const { data: parties, error, count } = await query;
+  if (error) {
+    throw new AppError("INTERNAL", "Unable to load parties for outstanding report.");
+  }
+
+  const partyIds = (parties ?? []).map((p) => p.id);
+  const rowsMap = await computePartyOutstandingRows(supabase, partyIds);
+
+  let allRows: PartyOutstandingRow[] = [];
+  for (const party of parties ?? []) {
+    const row = rowsMap.get(party.id) ?? {
+      id: party.id,
+      company_name: party.company_name,
+      mobile_number: party.mobile_number,
+      total_billed: 0,
+      total_paid: 0,
+      outstanding: 0,
+      status: "Paid" as const,
+    };
+    row.company_name = party.company_name;
+    row.mobile_number = party.mobile_number;
+    allRows.push(deriveStatus(row));
+  }
+
+  if (input.status !== "all") {
+    allRows = allRows.filter((r) => r.status === input.status);
+  }
+
+  allRows.sort((a, b) => {
+    if (a.outstanding !== b.outstanding) {
+      return b.outstanding - a.outstanding;
+    }
+    return a.company_name.localeCompare(b.company_name);
+  });
+
+  const totalCount = allRows.length;
+  const pageSize = input.pageSize;
+  const page = input.page;
+  const offset = (page - 1) * pageSize;
+  const paginatedRows = allRows.slice(offset, offset + pageSize);
+
+  return paginated(paginatedRows, totalCount, page, pageSize);
+}
+
+export async function exportPartyOutstandingReportXlsx(
+  input: OutstandingPartiesInput,
+): Promise<{ buffer: Buffer; count: number }> {
+  await requireActiveAdmin();
+  const supabase = await createSupabaseServerClient();
+
+  let query = supabase
+    .from("parties")
+    .select("id, company_name, mobile_number", { count: "exact" })
+    .order("company_name", { ascending: true });
+
+  if (input.search.trim() !== "") {
+    query = query.ilike("company_name", `%${escapeIlike(input.search.trim())}%`);
+  }
+
+  const { data: parties, error } = await query;
+  if (error) {
+    throw new AppError("INTERNAL", "Unable to load parties for outstanding report export.");
+  }
+
+  const partyIds = (parties ?? []).map((p) => p.id);
+  const rowsMap = await computePartyOutstandingRows(supabase, partyIds);
+
+  let allRows: PartyOutstandingRow[] = [];
+  for (const party of parties ?? []) {
+    const row = rowsMap.get(party.id) ?? {
+      id: party.id,
+      company_name: party.company_name,
+      mobile_number: party.mobile_number,
+      total_billed: 0,
+      total_paid: 0,
+      outstanding: 0,
+      status: "Paid" as const,
+    };
+    row.company_name = party.company_name;
+    row.mobile_number = party.mobile_number;
+    allRows.push(deriveStatus(row));
+  }
+
+  if (input.status !== "all") {
+    allRows = allRows.filter((r) => r.status === input.status);
+  }
+
+  allRows.sort((a, b) => {
+    if (a.outstanding !== b.outstanding) {
+      return b.outstanding - a.outstanding;
+    }
+    return a.company_name.localeCompare(b.company_name);
+  });
+
+  if (allRows.length > EXPORT_REPORT_MAX_ROWS) {
+    throw csvTooMany("parties");
+  }
+
+  const columns: XlsxColumn[] = [
+    { header: "Party", key: "party", width: 30 },
+    { header: "Mobile", key: "mobile", width: 18 },
+    { header: "Total Billed", key: "totalBilled", width: 18, style: { numFmt: '"₹"#,##0.00' } },
+    { header: "Paid Amount", key: "paidAmount", width: 18, style: { numFmt: '"₹"#,##0.00' } },
+    { header: "Outstanding Amount", key: "outstanding", width: 22, style: { numFmt: '"₹"#,##0.00' } },
+    { header: "Status", key: "status", width: 18 },
+  ];
+  const rows = allRows.map((row) => ({
+    party: row.company_name,
+    mobile: row.mobile_number,
+    totalBilled: row.total_billed,
+    paidAmount: row.total_paid,
+    outstanding: row.outstanding,
+    status: row.status,
+  }));
+  const buffer = await generateXlsx([{ name: "Outstanding Report", columns, rows: rows.map((r) => Object.values(r)) }]);
+
+  return { buffer, count: allRows.length };
 }
 
 async function salaryRowsForEmployees(
@@ -291,9 +519,10 @@ async function salaryRowsForEmployees(
   const ids = employees.map((row) => row.id);
   const earned = new Map(ids.map((id) => [id, 0]));
   const paid = new Map(ids.map((id) => [id, 0]));
+  const totalThan = new Map(ids.map((id) => [id, 0]));
 
   if (ids.length > 0) {
-    let workQuery = supabase.from("sub_job_employee_work").select("employee_id, earning, created_at").in("employee_id", ids);
+    let workQuery = supabase.from("sub_job_employee_work").select("employee_id, earning, done_than, created_at").in("employee_id", ids);
     if (input.date_from) {
       workQuery = workQuery.gte("created_at", input.date_from);
     }
@@ -306,6 +535,7 @@ async function salaryRowsForEmployees(
     }
     for (const row of workRows ?? []) {
       earned.set(row.employee_id, (earned.get(row.employee_id) ?? 0) + asMoneyNumber(row.earning));
+      totalThan.set(row.employee_id, (totalThan.get(row.employee_id) ?? 0) + asMoneyNumber(row.done_than));
     }
 
     let payQuery = supabase
@@ -334,12 +564,14 @@ async function salaryRowsForEmployees(
   return employees.map((row) => {
     const earnedAmount = earned.get(row.id) ?? 0;
     const paidAmount = paid.get(row.id) ?? 0;
+    const thanAmount = totalThan.get(row.id) ?? 0;
     return {
       id: row.id,
       name: row.name,
       earned: earnedAmount,
       paid: paidAmount,
       difference: roundMoney(earnedAmount - paidAmount),
+      total_than: thanAmount,
     };
   });
 }
@@ -369,9 +601,9 @@ export async function getSalaryReport(
   return paginated(await salaryRowsForEmployees(data ?? [], input), count ?? 0, input.page, input.pageSize);
 }
 
-export async function exportSalaryReportCsv(
+export async function exportSalaryReportXlsx(
   input: SalaryReportInput,
-): Promise<{ csv: string; count: number }> {
+): Promise<{ buffer: Buffer; count: number }> {
   await requireActiveAdmin();
   const supabase = await createSupabaseServerClient();
 
@@ -394,12 +626,23 @@ export async function exportSalaryReportCsv(
   }
 
   const records = await salaryRowsForEmployees(data ?? [], input);
-  const csv = toCsv(
-    ["Employee", "Total Earnings", "Paid Amount", "Remaining Amount"],
-    records.map((row) => [row.name, row.earned.toFixed(2), row.paid.toFixed(2), row.difference.toFixed(2)]),
-  );
+  const columns: XlsxColumn[] = [
+    { header: "Employee", key: "employee", width: 25 },
+    { header: "Total Than", key: "totalThan", width: 12, style: { numFmt: "#,##0.000" } },
+    { header: "Total Earnings", key: "earned", width: 18, style: { numFmt: '"₹"#,##0.00' } },
+    { header: "Paid Amount", key: "paid", width: 18, style: { numFmt: '"₹"#,##0.00' } },
+    { header: "Remaining Amount", key: "difference", width: 20, style: { numFmt: '"₹"#,##0.00' } },
+  ];
+  const rows = records.map((row) => ({
+    employee: row.name,
+    totalThan: row.total_than,
+    earned: row.earned,
+    paid: row.paid,
+    difference: row.difference,
+  }));
+  const buffer = await generateXlsx([{ name: "Salary Report", columns, rows: rows.map((r) => Object.values(r)) }]);
 
-  return { csv: `\uFEFF${csv}`, count: records.length };
+  return { buffer, count: records.length };
 }
 
 export async function getProfitLossReport(input: ProfitLossInput): Promise<ProfitLossReport> {
@@ -444,18 +687,29 @@ export async function getProfitLossReport(input: ProfitLossInput): Promise<Profi
   return { ...listed.summary, months };
 }
 
-export async function exportProfitLossReportCsv(
+export async function exportProfitLossReportXlsx(
   input: ProfitLossInput,
-): Promise<{ csv: string; count: number }> {
+): Promise<{ buffer: Buffer; count: number }> {
   const result = await getProfitLossReport(input);
-  const rows = result.months.map((row) => [
-    row.label,
-    row.total_income.toFixed(2),
-    row.total_expense.toFixed(2),
-    row.net.toFixed(2),
-  ]);
-  rows.push(["Total", result.total_income.toFixed(2), result.total_expense.toFixed(2), result.net.toFixed(2)]);
+  const columns: XlsxColumn[] = [
+    { header: "Month", key: "month", width: 15 },
+    { header: "Total Income", key: "totalIncome", width: 18, style: { numFmt: '"₹"#,##0.00' } },
+    { header: "Total Expense", key: "totalExpense", width: 18, style: { numFmt: '"₹"#,##0.00' } },
+    { header: "Net Profit/Loss", key: "net", width: 18, style: { numFmt: '"₹"#,##0.00' } },
+  ];
+  const rows = result.months.map((row) => ({
+    month: row.label,
+    totalIncome: row.total_income,
+    totalExpense: row.total_expense,
+    net: row.net,
+  }));
+  rows.push({
+    month: "Total",
+    totalIncome: result.total_income,
+    totalExpense: result.total_expense,
+    net: result.net,
+  });
+  const buffer = await generateXlsx([{ name: "Profit & Loss", columns, rows: rows.map((r) => Object.values(r)) }]);
 
-  const csv = toCsv(["Month", "Total Income", "Total Expense", "Net Profit/Loss"], rows);
-  return { csv: `\uFEFF${csv}`, count: result.months.length };
+  return { buffer, count: result.months.length + 1 };
 }

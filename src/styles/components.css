@@ -586,6 +586,16 @@ a {
   background: var(--color-surface-hover);
 }
 
+.ui-table tbody tr.is-clickable {
+  cursor: pointer;
+}
+
+.ui-table-link {
+  color: var(--color-link);
+  text-decoration: none;
+  font-weight: 500;
+}
+
 .ui-table tbody tr:last-child td {
   border-bottom: 0;
 }
@@ -804,6 +814,34 @@ a {
 
 .ui-export-button {
   text-decoration: none;
+}
+
+.ui-button.ui-export-button {
+  background: #0e602c;
+  color: #fff;
+  border-color: #22683b;
+}
+
+.ui-button.ui-export-button:hover,
+.ui-button.ui-export-button:focus {
+  background: #15803d;
+  border-color: #15803d;
+  color: #fff;
+}
+
+.ui-amount-unpaid {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.ui-amount-partial {
+  color: #f97316;
+  font-weight: 600;
+}
+
+.ui-amount-paid {
+  color: #16a34a;
+  font-weight: 600;
 }
 
 .ui-pagination {
@@ -1089,6 +1127,90 @@ a {
   color: var(--color-secondary-navy);
   border-bottom-color: var(--color-secondary-navy);
   font-weight: var(--font-weight-semibold);
+}
+
+.ui-tab.is-active {
+  color: var(--color-secondary-navy);
+  border-bottom-color: var(--color-secondary-navy);
+  font-weight: var(--font-weight-semibold);
+}
+
+.ui-tab-icon {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  margin-right: var(--space-6);
+  flex-shrink: 0;
+}
+
+.ui-detail-tabs {
+  margin-bottom: var(--space-16);
+  border-bottom-color: var(--color-border-light);
+}
+
+.ui-detail-tabs .ui-tab {
+  padding: var(--space-10) var(--space-16);
+  font-size: var(--font-size-base);
+}
+
+.ui-detail-tabs .ui-tab.is-active,
+.ui-detail-tabs .ui-tab[aria-selected="true"] {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+.ui-amount-salary {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.ui-amount-advance {
+  color: #f97316;
+  font-weight: 600;
+}
+
+.ui-amount-bonus {
+  color: #0ea5e9;
+  font-weight: 600;
+}
+
+.ui-amount-deduction {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.ui-amount-income {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.ui-amount-expense {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.ui-amount-earned {
+  color: #16a34a;
+  font-weight: 700;
+}
+
+.ui-amount-salary-paid {
+  color: #e15456;
+  font-weight: 700;
+}
+
+.ui-amount-positive {
+  color: #16a34a;
+  font-weight: 700;
+}
+
+.ui-amount-negative {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.ui-amount-than {
+  font-weight: 700;
 }
 
 .ui-toast-region {

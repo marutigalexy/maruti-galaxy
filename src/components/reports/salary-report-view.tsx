@@ -10,7 +10,7 @@ import { Select } from "@/components/ui/select";
 import { useQueryPush } from "@/hooks/use-query-push";
 import { queryHref } from "@/lib/api/query-href";
 import type { Paginated } from "@/lib/api/pagination";
-import { formatInr } from "@/lib/formatters";
+import { formatInr, formatThan } from "@/lib/formatters";
 import type { SalaryReportInput } from "@/lib/validation/reports";
 import type { EmployeeOption } from "@/services/employees/employees-service";
 import type { SalaryReportRow } from "@/services/reports/reports-service";
@@ -20,6 +20,13 @@ type SalaryReportViewProps = {
   result: Paginated<SalaryReportRow>;
   employees: EmployeeOption[];
 };
+
+function amountClass(key: string, row: SalaryReportRow) {
+  if (key === "earned") return "ui-amount-earned";
+  if (key === "paid") return "ui-amount-salary-paid";
+  if (key === "difference") return row.difference >= 0 ? "ui-amount-positive" : "ui-amount-negative";
+  return "";
+}
 
 function exportHref(query: SalaryReportInput): string {
   return queryHref("/api/export/salary", {
@@ -83,13 +90,29 @@ export function SalaryReportView({ query, result, employees }: SalaryReportViewP
         caption="Salary report"
         columns={[
           { key: "name", header: "Employee", render: (row) => row.name },
-          { key: "earned", header: "Total Earnings", numeric: true, render: (row) => formatInr(row.earned) },
-          { key: "paid", header: "Paid Amount", numeric: true, render: (row) => formatInr(row.paid) },
+          {
+            key: "total_than",
+            header: "Total Than",
+            numeric: true,
+            render: (row) => <span className="ui-amount-than">{formatThan(row.total_than)}</span>,
+          },
+          {
+            key: "earned",
+            header: "Total Earnings",
+            numeric: true,
+            render: (row) => <span className={amountClass("earned", row)}>{formatInr(row.earned)}</span>,
+          },
+          {
+            key: "paid",
+            header: "Paid Amount",
+            numeric: true,
+            render: (row) => <span className={amountClass("paid", row)}>{formatInr(row.paid)}</span>,
+          },
           {
             key: "difference",
             header: "Remaining Amount",
             numeric: true,
-            render: (row) => formatInr(row.difference),
+            render: (row) => <span className={amountClass("difference", row)}>{formatInr(row.difference)}</span>,
           },
         ]}
         rows={result.records}

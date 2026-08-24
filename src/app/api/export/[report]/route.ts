@@ -1,4 +1,5 @@
-import { csvAttachment, exportErrorResponse, searchParamRecord } from "@/lib/api/csv-response";
+import { exportErrorResponse, searchParamRecord } from "@/lib/api/csv-response";
+import { xlsxAttachment } from "@/lib/api/xlsx";
 import { AppError } from "@/lib/api/result";
 import { requireActiveAdmin } from "@/lib/permissions/require-active-admin";
 import { parseOrThrow } from "@/lib/validation";
@@ -8,22 +9,24 @@ import { listAccountsSchema } from "@/lib/validation/accounts";
 import { listCategoriesSchema } from "@/lib/validation/categories";
 import {
   jobWorkReportSchema,
+  outstandingPartiesSchema,
   profitLossSchema,
   salaryReportSchema,
 } from "@/lib/validation/reports";
-import { exportAccountsCsv } from "@/services/accounts/accounts-service";
-import { exportCategoriesCsv } from "@/services/categories/categories-service";
-import { exportEntriesCsv } from "@/services/entries/entries-service";
+import { exportAccountsXlsx } from "@/services/accounts/accounts-service";
+import { exportCategoriesXlsx } from "@/services/categories/categories-service";
+import { exportEntriesXlsx } from "@/services/entries/entries-service";
 import {
-  exportJobWorkReportCsv,
-  exportOutstandingReportCsv,
-  exportProfitLossReportCsv,
-  exportSalaryReportCsv,
+  exportJobWorkReportXlsx,
+  exportOutstandingReportXlsx,
+  exportPartyOutstandingReportXlsx,
+  exportProfitLossReportXlsx,
+  exportSalaryReportXlsx,
 } from "@/services/reports/reports-service";
 
 export const dynamic = "force-dynamic";
 
-const REPORT_SLUGS = ["entries", "jobs", "outstanding", "salary", "profit-loss", "accounts", "categories"] as const;
+const REPORT_SLUGS = ["entries", "jobs", "outstanding", "outstanding-parties", "salary", "profit-loss", "accounts", "categories"] as const;
 type ReportSlug = (typeof REPORT_SLUGS)[number];
 
 function isReportSlug(value: string): value is ReportSlug {
@@ -58,8 +61,8 @@ export async function GET(request: Request, { params }: ExportRouteProps) {
         page: "1",
         pageSize: "20",
       });
-      const { csv } = await exportEntriesCsv(parsed);
-      return csvAttachment(csv, "maruti-galaxy-entries.csv");
+      const { buffer } = await exportEntriesXlsx(parsed);
+      return xlsxAttachment(buffer, "maruti-galaxy-entries.xlsx");
     }
 
     if (report === "jobs") {
@@ -73,8 +76,8 @@ export async function GET(request: Request, { params }: ExportRouteProps) {
         page: "1",
         pageSize: "20",
       });
-      const { csv } = await exportJobWorkReportCsv(parsed);
-      return csvAttachment(csv, "maruti-galaxy-job-work-report.csv");
+      const { buffer } = await exportJobWorkReportXlsx(parsed);
+      return xlsxAttachment(buffer, "maruti-galaxy-job-work-report.xlsx");
     }
 
     if (report === "outstanding") {
@@ -87,8 +90,19 @@ export async function GET(request: Request, { params }: ExportRouteProps) {
         page: "1",
         pageSize: "20",
       });
-      const { csv } = await exportOutstandingReportCsv(parsed);
-      return csvAttachment(csv, "maruti-galaxy-outstanding-report.csv");
+      const { buffer } = await exportOutstandingReportXlsx(parsed);
+      return xlsxAttachment(buffer, "maruti-galaxy-outstanding-report.xlsx");
+    }
+
+    if (report === "outstanding-parties") {
+      const parsed = parseOrThrow(outstandingPartiesSchema, {
+        search: query.search ?? "",
+        status: query.status ?? "all",
+        page: "1",
+        pageSize: "20",
+      });
+      const { buffer } = await exportPartyOutstandingReportXlsx(parsed);
+      return xlsxAttachment(buffer, "maruti-galaxy-outstanding-parties-report.xlsx");
     }
 
     if (report === "salary") {
@@ -99,8 +113,8 @@ export async function GET(request: Request, { params }: ExportRouteProps) {
         page: "1",
         pageSize: "20",
       });
-      const { csv } = await exportSalaryReportCsv(parsed);
-      return csvAttachment(csv, "maruti-galaxy-salary-report.csv");
+      const { buffer } = await exportSalaryReportXlsx(parsed);
+      return xlsxAttachment(buffer, "maruti-galaxy-salary-report.xlsx");
     }
 
     if (report === "accounts") {
@@ -110,8 +124,8 @@ export async function GET(request: Request, { params }: ExportRouteProps) {
         page: "1",
         pageSize: "20",
       });
-      const { csv } = await exportAccountsCsv(parsed);
-      return csvAttachment(csv, "maruti-galaxy-accounts.csv");
+      const { buffer } = await exportAccountsXlsx(parsed);
+      return xlsxAttachment(buffer, "maruti-galaxy-accounts.xlsx");
     }
 
     if (report === "categories") {
@@ -122,16 +136,16 @@ export async function GET(request: Request, { params }: ExportRouteProps) {
         page: "1",
         pageSize: "20",
       });
-      const { csv } = await exportCategoriesCsv(parsed);
-      return csvAttachment(csv, "maruti-galaxy-categories.csv");
+      const { buffer } = await exportCategoriesXlsx(parsed);
+      return xlsxAttachment(buffer, "maruti-galaxy-categories.xlsx");
     }
 
     const parsed = parseOrThrow(profitLossSchema, {
       date_from: query.date_from,
       date_to: query.date_to,
     });
-    const { csv } = await exportProfitLossReportCsv(parsed);
-    return csvAttachment(csv, "maruti-galaxy-profit-loss-report.csv");
+    const { buffer } = await exportProfitLossReportXlsx(parsed);
+    return xlsxAttachment(buffer, "maruti-galaxy-profit-loss-report.xlsx");
   } catch (error) {
     return exportErrorResponse(error, "Unable to export report.");
   }

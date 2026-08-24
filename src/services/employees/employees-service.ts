@@ -43,12 +43,22 @@ export type EmployeeWorkRow = {
   display_no: string | null;
 };
 
+export type EmployeePaymentRow = {
+  id: string;
+  entry_date: string;
+  amount: number;
+  remarks: string | null;
+  category_name: string;
+  category_type: "Income" | "Expense";
+};
+
 export type EmployeeSummary = {
   total_done_than: number;
   total_earning: number;
   total_paid: number;
   remaining_amount: number;
   work: EmployeeWorkRow[];
+  payments: EmployeePaymentRow[];
 };
 
 function toEmployee(row: {
@@ -146,6 +156,8 @@ export async function getEmployee(id: string): Promise<EmployeeRecord> {
   return toEmployee(data);
 }
 
+const PAYMENT_COLUMNS = selectColumns(["id", "entry_date", "amount", "remarks", "category_id"]);
+
 export async function getEmployeeSummary(id: string): Promise<EmployeeSummary> {
   await requireActiveAdmin();
   const supabase = await createSupabaseServerClient();
@@ -186,7 +198,7 @@ export async function getEmployeeSummary(id: string): Promise<EmployeeSummary> {
       .select("total_done_than, total_earning")
       .eq("employee_id", id)
       .maybeSingle(),
-    supabase.from("entries").select("amount").eq("entry_type", "Expense").eq("employee_id", id),
+    supabase.from("entries").select(PAYMENT_COLUMNS).eq("entry_type", "Expense").eq("employee_id", id).order("entry_date", { ascending: false }),
   ]);
 
   if (earningsError) {
@@ -199,6 +211,22 @@ export async function getEmployeeSummary(id: string): Promise<EmployeeSummary> {
 
   const totalEarning = asMoneyNumber(earnings?.total_earning);
   const totalPaid = (payRows ?? []).reduce((sum, row) => sum + asMoneyNumber(row.amount), 0);
+
+  const categoryIds = [...new Set((payRows ?? []).map((row) => row.category_id).filter(Boolean))];
+  const categoryNames = new Map<string, { name: string; type: "Income" | "Expense" }>();
+
+  if (categoryIds.length > 0) {
+    const { data: cats, error: catError } = await supabase
+      .from("categories")
+      .select("id, name, type")
+      .in("id", categoryIds);
+    if (catError) {
+      throw new AppError("INTERNAL", "Unable to load payment categories.");
+    }
+    for (const cat of cats ?? []) {
+      categoryNames.set(cat.id, { name: cat.name, type: cat.type });
+    }
+  }
 
   return {
     total_done_than: asMoneyNumber(earnings?.total_done_than),
@@ -215,6 +243,17 @@ export async function getEmployeeSummary(id: string): Promise<EmployeeSummary> {
         created_at: row.created_at,
         lot_number: display?.lot_number ?? null,
         display_no: display?.display_no ?? null,
+      };
+    }),
+    payments: (payRows ?? []).map((row) => {
+      const cat = categoryNames.get(row.category_id ?? "");
+      return {
+        id: row.id,
+        entry_date: row.entry_date,
+        amount: asMoneyNumber(row.amount),
+        remarks: row.remarks,
+        category_name: cat?.name ?? "—",
+        category_type: cat?.type ?? "Expense",
       };
     }),
   };

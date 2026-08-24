@@ -1,13 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, useEffect } from "react";
 
 import { updatePartyAction } from "@/app/actions/parties";
 import { TopbarActions, TopbarStatus, useRecordTitle } from "@/components/layout/page-chrome";
 import { PartyPaymentDialog } from "@/components/parties/party-payment-dialog";
 import { PartyInvoiceDialog } from "@/components/parties/party-invoice-dialog";
+import { JobCreateForm } from "@/components/jobs/job-create-form";
 import { InvoicePrintButton } from "@/components/invoices/invoice-print-button";
+import { ClientTabs } from "@/components/ui/client-tabs";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
@@ -24,6 +26,7 @@ import { formatInr, formatThan } from "@/lib/formatters";
 import type { AccountOption } from "@/services/accounts/accounts-service";
 import type { CategoryOption } from "@/services/categories/categories-service";
 import type { PartyInvoiceRow, PartyJobRow, PartyRecord, PartySummary } from "@/services/parties/parties-service";
+import type { PartyOption } from "@/services/parties/parties-service";
 
 type PartyDetailViewProps = {
   party: PartyRecord;
@@ -31,6 +34,8 @@ type PartyDetailViewProps = {
   accounts: AccountOption[];
   categories: CategoryOption[];
 };
+
+type TabKey = "jobs" | "invoices" | "payments";
 
 // For the Related Jobs table we show per-job invoice status by looking up
 // whether this job appears in any invoice's job_work_ids list.
@@ -61,7 +66,21 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
   const [pending, startTransition] = useTransition();
   const [editOpen, setEditOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabKey>("jobs");
   useRecordTitle(party.company_name, partySubtitle(party));
+
+  // Sync tab from URL hash on mount
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (hash === "jobs" || hash === "invoices" || hash === "payments") {
+      setActiveTab(hash);
+    }
+  }, []);
+
+  // Update URL hash when tab changes (preserves history for back button)
+  useEffect(() => {
+    window.history.replaceState(null, "", `#${activeTab}`);
+  }, [activeTab]);
 
   const kpis = [
     { label: "Default Price", value: formatInr(party.price) },
@@ -90,20 +109,18 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
     }));
   }, [summary.invoices, summary.jobs]);
 
+  const tabItems = [
+    { id: "jobs", label: "Jobs" },
+    { id: "invoices", label: "Invoices" },
+    { id: "payments", label: "Payment History" },
+  ] as const;
+
   return (
     <>
       <TopbarStatus>
         <StatusBadge tone={party.is_active ? "active" : "inactive"} />
       </TopbarStatus>
       <TopbarActions>
-        <PartyPaymentDialog
-          partyId={party.id}
-          outstanding={summary.outstanding}
-          accounts={accounts}
-          categories={categories}
-          invoices={summary.invoices}
-        />
-
         <IconButton
           tone="edit"
           label="Edit party"
@@ -127,123 +144,186 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
           </div>
         </section>
 
-        <Card title="Related Jobs">
-          <DataTable
-            caption="Related jobs"
-            columns={[
-              {
-                key: "lot",
-                header: "Lot Number",
-                render: (row) => row.lot_number,
-              },
-              {
-                key: "type",
-                header: "Job Type",
-                render: (row) => <JobTypeBadge type={row.job_type} />,
-              },
-              {
-                key: "than",
-                header: "Than",
-                numeric: true,
-                render: (row) => formatThan(row.than),
-              },
-              {
-                key: "weight",
-                header: "Weight",
-                numeric: true,
-                render: (row) => <WeightCt value={row.weight} />,
-              },
-              {
-                key: "billing",
-                header: "Billing Amount",
-                numeric: true,
-                render: (row) => formatInr(row.billing_amount),
-              },
-              {
-                key: "status",
-                header: "Status",
-                render: (row) => <StatusBadge tone={jobTone(row.status)} />,
-              },
-            ]}
-            rows={relatedJobs}
-            rowKey={(row) => row.id}
-            onRowClick={(row) => router.push(`/jobs/${row.id}`)}
-            emptyTitle="No related jobs yet."
-          />
-        </Card>
+        <ClientTabs
+          items={tabItems}
+          activeId={activeTab}
+          onChange={setActiveTab}
+          ariaLabel="Party details"
+        />
 
-        <Card
-          title="Invoices"
-          action={
-            <PartyInvoiceDialog
-              party={party}
-              jobs={summary.jobs}
-              invoicedJobIds={invoicedJobIds}
+        <div role="tabpanel" id="jobs-panel" aria-labelledby="jobs-tab" hidden={activeTab !== "jobs"}>
+          <Card
+            title="Jobs"
+          >
+            <DataTable
+              caption="Related jobs"
+              columns={[
+                {
+                  key: "lot",
+                  header: "Lot Number",
+                  render: (row) => row.lot_number,
+                },
+                {
+                  key: "type",
+                  header: "Job Type",
+                  render: (row) => <JobTypeBadge type={row.job_type} />,
+                },
+                {
+                  key: "than",
+                  header: "Than",
+                  numeric: true,
+                  render: (row) => formatThan(row.than),
+                },
+                {
+                  key: "weight",
+                  header: "Weight",
+                  numeric: true,
+                  render: (row) => <WeightCt value={row.weight} />,
+                },
+                {
+                  key: "billing",
+                  header: "Billing Amount",
+                  numeric: true,
+                  render: (row) => formatInr(row.billing_amount),
+                },
+                {
+                  key: "status",
+                  header: "Status",
+                  render: (row) => <StatusBadge tone={jobTone(row.status)} />,
+                },
+              ]}
+              rows={relatedJobs}
+              rowKey={(row) => row.id}
+              onRowClick={(row) => router.push(`/jobs/${row.id}#fromParty=${party.id}&tab=jobs`)}
+              emptyTitle="No jobs yet for this party."
             />
-          }
-        >
-          <DataTable
-            caption="Party invoices"
-            columns={[
-              {
-                key: "number",
-                header: "Invoice Number",
-                render: (row) => row.invoice_number,
-              },
-              {
-                key: "date",
-                header: "Invoice Date",
-                render: (row) => row.invoice_date,
-              },
-              {
-                key: "jobs",
-                header: "Linked Jobs",
-                render: (row) =>
-                  row.lot_numbers.length > 0 ? row.lot_numbers.join(", ") : "—",
-              },
-              {
-                key: "amount",
-                header: "Invoice Amount",
-                numeric: true,
-                render: (row) => formatInr(row.amount),
-              },
-              {
-                key: "paid",
-                header: "Paid",
-                numeric: true,
-                render: (row) => formatInr(row.allocated),
-              },
-              {
-                key: "outstanding",
-                header: "Outstanding",
-                numeric: true,
-                render: (row) => formatInr(row.outstanding),
-              },
-              {
-                key: "status",
-                header: "Payment Status",
-                render: (row) => (
-                  <StatusBadge tone={invoiceTone(row.status)} label={row.status} />
-                ),
-              },
-              {
-                key: "actions",
-                header: "Actions",
-                render: (row) => (
-                  <div onClick={(e) => e.stopPropagation()}>
-                    <InvoicePrintButton variant="icon" invoiceId={row.id} />
-                  </div>
-                ),
-              },
-            ]}
-            rows={summary.invoices}
-            rowKey={(row) => row.id}
-            onRowClick={(row) =>
-              row.job_work_ids[0] ? router.push(`/jobs/${row.job_work_ids[0]}`) : undefined
+          </Card>
+        </div>
+
+        <div role="tabpanel" id="invoices-panel" aria-labelledby="invoices-tab" hidden={activeTab !== "invoices"}>
+          <Card
+            title="Invoices"
+            action={
+              <PartyInvoiceDialog
+                party={party}
+                jobs={summary.jobs}
+                invoicedJobIds={invoicedJobIds}
+              />
             }
-            emptyTitle="No invoices have been created for this party."
-          />
-        </Card>
+          >
+            <DataTable
+              caption="Party invoices"
+              columns={[
+                {
+                  key: "number",
+                  header: "Invoice Number",
+                  render: (row) => row.invoice_number,
+                },
+                {
+                  key: "date",
+                  header: "Invoice Date",
+                  render: (row) => row.invoice_date,
+                },
+                {
+                  key: "jobs",
+                  header: "Linked Jobs",
+                  render: (row) =>
+                    row.lot_numbers.length > 0 ? row.lot_numbers.join(", ") : "—",
+                },
+                {
+                  key: "amount",
+                  header: "Invoice Amount",
+                  numeric: true,
+                  render: (row) => formatInr(row.amount),
+                },
+                {
+                  key: "paid",
+                  header: "Paid",
+                  numeric: true,
+                  render: (row) => formatInr(row.allocated),
+                },
+                {
+                  key: "outstanding",
+                  header: "Outstanding",
+                  numeric: true,
+                  render: (row) => formatInr(row.outstanding),
+                },
+                {
+                  key: "status",
+                  header: "Payment Status",
+                  render: (row) => (
+                    <StatusBadge tone={invoiceTone(row.status)} label={row.status} />
+                  ),
+                },
+                {
+                  key: "actions",
+                  header: "Actions",
+                  render: (row) => (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <InvoicePrintButton variant="icon" invoiceId={row.id} />
+                    </div>
+                  ),
+                },
+              ]}
+              rows={summary.invoices}
+              rowKey={(row) => row.id}
+              onRowClick={(row) =>
+                row.job_work_ids[0] ? router.push(`/jobs/${row.job_work_ids[0]}#fromParty=${party.id}&tab=invoices`) : undefined
+              }
+              emptyTitle="No invoices have been created for this party."
+            />
+          </Card>
+        </div>
+
+        <div role="tabpanel" id="payments-panel" aria-labelledby="payments-tab" hidden={activeTab !== "payments"}>
+          <Card
+            title="Payment History"
+            action={
+              <PartyPaymentDialog
+                partyId={party.id}
+                outstanding={summary.outstanding}
+                accounts={accounts}
+                categories={categories}
+                invoices={summary.invoices}
+              />
+            }
+          >
+            <DataTable
+              caption="Payment history"
+              columns={[
+                {
+                  key: "date",
+                  header: "Payment Date",
+                  render: (row) => row.entry_date,
+                },
+                {
+                  key: "amount",
+                  header: "Amount",
+                  numeric: true,
+                  render: (row) => formatInr(row.amount),
+                },
+                {
+                  key: "method",
+                  header: "Account",
+                  render: (row) => row.account_name ?? "—",
+                },
+                {
+                  key: "category",
+                  header: "Category",
+                  render: (row) => row.category_name ?? "—",
+                },
+                {
+                  key: "remarks",
+                  header: "Remarks",
+                  render: (row) => row.remarks ?? "—",
+                },
+              ]}
+              rows={summary.payments ?? []}
+              rowKey={(row) => row.id}
+              emptyTitle="No payments recorded for this party yet."
+            />
+          </Card>
+        </div>
       </div>
 
       <Dialog
@@ -307,15 +387,14 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
               placeholder="e.g. 9876543210"
             />
           </FormField>
-          <FormField label="Price" htmlFor="detail-edit-price" required>
+          <FormField label="Price" htmlFor="detail-edit-price">
             <Input
               id="detail-edit-price"
               name="price"
               inputMode="decimal"
-              required
-              defaultValue={String(party.price)}
+              defaultValue={party.price > 0 ? String(party.price) : ""}
               disabled={pending}
-              placeholder="e.g. 1500.00"
+              placeholder="e.g. 1500.00 (optional)"
               className="ui-price"
             />
           </FormField>

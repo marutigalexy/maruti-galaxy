@@ -28,7 +28,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: "Reports",
     children: [
       { href: "/reports/jobs", label: "Job Work Reports" },
-      { href: "/reports/entries", label: "Payment Reports" },
       { href: "/reports/outstanding", label: "Outstanding Reports" },
       { href: "/reports/salary", label: "Salary Reports" },
       { href: "/reports/profit-loss", label: "Profit & Loss Reports" },

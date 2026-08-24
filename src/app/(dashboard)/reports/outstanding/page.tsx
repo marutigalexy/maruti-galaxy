@@ -3,18 +3,14 @@ import { ErrorState } from "@/components/ui/error-state";
 import type { Paginated } from "@/lib/api/pagination";
 import { requireActiveAdmin } from "@/lib/permissions/require-active-admin";
 import { parseOrThrow } from "@/lib/validation";
-import { listInvoicesSchema, type ListInvoicesInput } from "@/lib/validation/invoices";
-import type { InvoiceListRecord } from "@/services/invoices/invoices-service";
-import { listPartyOptions } from "@/services/parties/parties-service";
-import { getOutstandingReport } from "@/services/reports/reports-service";
+import { getPartyOutstandingReport } from "@/services/reports/reports-service";
+import { outstandingPartiesSchema, type OutstandingPartiesInput } from "@/lib/validation/reports";
+import type { PartyOutstandingRow } from "@/services/reports/reports-service";
 
 type OutstandingReportPageProps = {
   searchParams: Promise<{
     search?: string;
     status?: string;
-    party_id?: string;
-    date_from?: string;
-    date_to?: string;
     page?: string;
     pageSize?: string;
   }>;
@@ -24,20 +20,16 @@ export default async function OutstandingReportPage({ searchParams }: Outstandin
   await requireActiveAdmin();
   const params = await searchParams;
 
-  let query: ListInvoicesInput;
-  let result: Paginated<InvoiceListRecord>;
-  let parties;
+  let query: OutstandingPartiesInput;
+  let result: Paginated<PartyOutstandingRow>;
   try {
-    query = parseOrThrow(listInvoicesSchema, {
+    query = parseOrThrow(outstandingPartiesSchema, {
       search: params.search ?? "",
       status: params.status ?? "all",
-      party_id: params.party_id,
-      date_from: params.date_from,
-      date_to: params.date_to,
       page: params.page,
       pageSize: params.pageSize,
     });
-    [result, parties] = await Promise.all([getOutstandingReport(query), listPartyOptions()]);
+    result = await getPartyOutstandingReport(query);
   } catch {
     return (
       <ErrorState
@@ -47,5 +39,5 @@ export default async function OutstandingReportPage({ searchParams }: Outstandin
     );
   }
 
-  return <OutstandingReportView query={query} result={result} parties={parties} />;
+  return <OutstandingReportView query={query} result={result} />;
 }
