@@ -21,19 +21,24 @@ BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.columns 
     WHERE table_schema = 'public' AND table_name = 'job_works' AND column_name = 'stages'
+  ) AND EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' AND table_name = 'job_works' AND column_name = 'current_stage'
   ) THEN
-    UPDATE public.sub_jobs sj
-    SET
-      stages = COALESCE(jw.stages, ARRAY[sj.stage]::text[], ARRAY['Sarin']::text[]),
-      current_stage = COALESCE(sj.stage, jw.current_stage, 'Sarin')
-    FROM public.job_works jw
-    WHERE jw.id = sj.job_id;
+    EXECUTE $sql$
+      UPDATE public.sub_jobs sj
+      SET
+        stages = COALESCE(jw.stages, ARRAY[sj.stage]::text[], ARRAY['Sarin']::text[]),
+        current_stage = COALESCE(sj.stage, jw.current_stage, 'Sarin')
+      FROM public.job_works jw
+      WHERE jw.id = sj.job_id;
+    $sql$;
   ELSE
     UPDATE public.sub_jobs
     SET
-      stages = ARRAY[stage]::text[],
-      current_stage = stage
-    WHERE stage IS NOT NULL;
+      stages = ARRAY[COALESCE(stage, 'Sarin')]::text[],
+      current_stage = COALESCE(stage, 'Sarin')
+    WHERE stages IS NULL OR current_stage IS NULL;
   END IF;
 END $$;
 

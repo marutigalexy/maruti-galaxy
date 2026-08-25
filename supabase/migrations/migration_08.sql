@@ -16,16 +16,31 @@ ALTER TABLE public.employees
 CREATE INDEX IF NOT EXISTS employees_employee_type_idx ON public.employees (employee_type);
 
 -- 3. Add stages array and current_stage to job_works table
-ALTER TABLE public.job_works
-  ADD COLUMN IF NOT EXISTS stages text[] NOT NULL DEFAULT ARRAY['Sarin']::text[],
-  ADD COLUMN IF NOT EXISTS current_stage text NOT NULL DEFAULT 'Sarin';
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' AND table_name = 'job_works' AND column_name = 'stages'
+  ) THEN
+    ALTER TABLE public.job_works ADD COLUMN stages text[] NOT NULL DEFAULT ARRAY['Sarin']::text[];
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' AND table_name = 'job_works' AND column_name = 'current_stage'
+  ) THEN
+    ALTER TABLE public.job_works ADD COLUMN current_stage text NOT NULL DEFAULT 'Sarin';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' AND table_name = 'sub_jobs' AND column_name = 'stage'
+  ) THEN
+    ALTER TABLE public.sub_jobs ADD COLUMN stage text NOT NULL DEFAULT 'Sarin';
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS job_works_current_stage_idx ON public.job_works (current_stage);
-
--- 4. Add stage to sub_jobs table
-ALTER TABLE public.sub_jobs
-  ADD COLUMN IF NOT EXISTS stage text NOT NULL DEFAULT 'Sarin';
-
 CREATE INDEX IF NOT EXISTS sub_jobs_stage_idx ON public.sub_jobs (stage);
 
 DROP VIEW IF EXISTS public.v_sub_jobs_display CASCADE;
@@ -52,27 +67,43 @@ GRANT SELECT ON public.v_sub_jobs_display TO authenticated;
 GRANT SELECT ON public.v_sub_jobs_display TO anon;
 
 -- 5. Backfill existing jobs and sub-jobs
-UPDATE public.job_works
-SET
-  stages = CASE
-    WHEN job_type::text = 'Dropping' THEN ARRAY['Dropping']::text[]
-    WHEN job_type::text = 'Galaxy' THEN ARRAY['Galaxy']::text[]
-    ELSE ARRAY['Sarin']::text[]
-  END,
-  current_stage = CASE
-    WHEN status = 'Completed' THEN 'Completed'
-    WHEN job_type::text = 'Dropping' THEN 'Dropping'
-    WHEN job_type::text = 'Galaxy' THEN 'Galaxy'
-    ELSE 'Sarin'
-  END
-WHERE stages IS NULL OR stages = ARRAY['Sarin']::text[];
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' AND table_name = 'job_works' AND column_name = 'current_stage'
+  ) THEN
+    EXECUTE $sql$
+      UPDATE public.job_works
+      SET
+        stages = CASE
+          WHEN job_type::text = 'Dropping' THEN ARRAY['Dropping']::text[]
+          WHEN job_type::text = 'Galaxy' THEN ARRAY['Galaxy']::text[]
+          ELSE ARRAY['Sarin']::text[]
+        END,
+        current_stage = CASE
+          WHEN status = 'Completed' THEN 'Completed'
+          WHEN job_type::text = 'Dropping' THEN 'Dropping'
+          WHEN job_type::text = 'Galaxy' THEN 'Galaxy'
+          ELSE 'Sarin'
+        END
+      WHERE stages IS NULL OR stages = ARRAY['Sarin']::text[];
+    $sql$;
 
-UPDATE public.sub_jobs sj
-SET stage = COALESCE(
-  (SELECT current_stage FROM public.job_works jw WHERE jw.id = sj.job_id),
-  'Sarin'
-)
-WHERE stage IS NULL OR stage = 'Sarin';
+    EXECUTE $sql$
+      UPDATE public.sub_jobs sj
+      SET stage = COALESCE(
+        (SELECT current_stage FROM public.job_works jw WHERE jw.id = sj.job_id),
+        'Sarin'
+      )
+      WHERE stage IS NULL OR stage = 'Sarin';
+    $sql$;
+  ELSE
+    UPDATE public.sub_jobs
+    SET stage = 'Sarin'
+    WHERE stage IS NULL;
+  END IF;
+END $$;
 
 -- 6. RPC: create_job supporting stages array
 CREATE OR REPLACE FUNCTION public.create_job(
