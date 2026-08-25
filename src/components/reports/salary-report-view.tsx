@@ -10,7 +10,7 @@ import { SearchInput } from "@/components/ui/search-input";
 import { useQueryPush } from "@/hooks/use-query-push";
 import { queryHref } from "@/lib/api/query-href";
 import type { Paginated } from "@/lib/api/pagination";
-import { formatSignedInr, formatThan } from "@/lib/formatters";
+import { formatInr, formatThan } from "@/lib/formatters";
 import type { SalaryReportInput } from "@/lib/validation/reports";
 import type { EmployeeOption } from "@/services/employees/employees-service";
 import type { SalaryReportRow } from "@/services/reports/reports-service";
@@ -86,21 +86,13 @@ export function SalaryReportView({ query, result }: SalaryReportViewProps) {
             key: "earned",
             header: "Total Earnings",
             numeric: true,
-            render: (row) => (
-              <span className="ui-amount-income">
-                {formatSignedInr("Income", row.earned)}
-              </span>
-            ),
+            render: (row) => <span className="ui-amount-income">{formatInr(row.earned)}</span>,
           },
           {
             key: "paid",
             header: "Paid Amount",
             numeric: true,
-            render: (row) => (
-              <span className="ui-amount-expense">
-                {formatSignedInr("Expense", row.paid)}
-              </span>
-            ),
+            render: (row) => <span className="ui-amount-expense">{formatInr(row.paid)}</span>,
           },
           {
             key: "difference",
@@ -108,9 +100,7 @@ export function SalaryReportView({ query, result }: SalaryReportViewProps) {
             numeric: true,
             render: (row) => (
               <span className={row.difference < 0 ? "ui-amount-negative" : "ui-amount-positive"}>
-                {row.difference < 0
-                  ? formatSignedInr("Expense", Math.abs(row.difference))
-                  : formatSignedInr("Income", row.difference)}
+                {formatInr(Math.abs(row.difference))}
               </span>
             ),
           },

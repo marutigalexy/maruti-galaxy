@@ -9,11 +9,12 @@ import type { ActionResult } from "@/lib/api/result";
 import { parseOrThrow } from "@/lib/validation";
 import {
   addEmployeeWorkSchema,
-  advanceJobStageSchema,
+  advanceSubJobStageSchema,
   createJobSchema,
   createSubJobSchema,
   jobIdSchema,
   listJobsSchema,
+  subJobIdSchema,
   updateEmployeeWorkSchema,
   updateJobSchema,
   updateSubJobSchema,
@@ -21,10 +22,12 @@ import {
 } from "@/lib/validation/jobs";
 import {
   addEmployeeWork,
-  advanceJobStage,
+  advanceSubJobStage,
   createJob,
   createSubJob,
   deleteEmployeeWork,
+  deleteJob,
+  deleteSubJob,
   getJob,
   listJobs,
   updateEmployeeWork,
@@ -75,6 +78,15 @@ export async function updateJobAction(input: unknown): Promise<ActionResult<JobD
   });
 }
 
+export async function deleteJobAction(input: unknown): Promise<ActionResult<{ ok: true }>> {
+  return runAction(async () => {
+    const parsed = parseOrThrow(jobIdSchema, input);
+    const result = await deleteJob(parsed.id);
+    revalidateJobs();
+    return result;
+  });
+}
+
 export async function createSubJobAction(input: unknown): Promise<ActionResult<JobDetail>> {
   return runAction(async () => {
     const parsed = parseOrThrow(createSubJobSchema, input);
@@ -88,6 +100,15 @@ export async function updateSubJobAction(input: unknown): Promise<ActionResult<J
   return runAction(async () => {
     const parsed = parseOrThrow(updateSubJobSchema, input);
     const job = await updateSubJob(parsed);
+    revalidateJobs();
+    return job;
+  });
+}
+
+export async function deleteSubJobAction(input: unknown): Promise<ActionResult<JobDetail>> {
+  return runAction(async () => {
+    const parsed = parseOrThrow(subJobIdSchema, input);
+    const job = await deleteSubJob(parsed.id);
     revalidateJobs();
     return job;
   });
@@ -120,12 +141,11 @@ export async function deleteEmployeeWorkAction(input: unknown): Promise<ActionRe
   });
 }
 
-export async function advanceJobStageAction(input: unknown): Promise<ActionResult<JobDetail>> {
+export async function advanceSubJobStageAction(input: unknown): Promise<ActionResult<JobDetail>> {
   return runAction(async () => {
-    const parsed = parseOrThrow(advanceJobStageSchema, input);
-    const job = await advanceJobStage(parsed);
+    const parsed = parseOrThrow(advanceSubJobStageSchema, input);
+    const job = await advanceSubJobStage(parsed);
     revalidateJobs();
     return job;
   });
 }
-

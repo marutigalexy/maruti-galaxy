@@ -3,10 +3,7 @@ import { z } from "zod";
 import { DEFAULT_PAGE_SIZE } from "@/lib/api/pagination";
 import { listEntriesSchema } from "@/lib/validation/entries";
 import { listInvoicesSchema } from "@/lib/validation/invoices";
-import {
-  jobStatusFilterSchema,
-  jobTypeFilterSchema,
-} from "@/lib/validation/jobs";
+import { jobStatusFilterSchema } from "@/lib/validation/jobs";
 import {
   isoDateSchema,
   pageSchema,
@@ -46,7 +43,6 @@ export const jobWorkReportSchema = withDateOrder(
       pageSize: pageSizeSchema,
       search: z.preprocess((value) => value ?? "", searchSchema),
       status: jobStatusFilterSchema.optional().default("all"),
-      job_type: jobTypeFilterSchema.optional().default("all"),
       party_id: z.preprocess(emptyToUndefined, uuidSchema.optional()),
       ...dateRangeFields,
     })
@@ -55,7 +51,6 @@ export const jobWorkReportSchema = withDateOrder(
       pageSize: DEFAULT_PAGE_SIZE,
       search: value.search,
       status: value.status,
-      job_type: value.job_type,
       party_id: value.party_id,
       date_from: value.date_from,
       date_to: value.date_to,

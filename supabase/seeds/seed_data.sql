@@ -1,6 +1,6 @@
 -- =============================================================================
 -- Maruti Galaxy: Complete Comprehensive Seed Data
--- Stage-Based Job Workflow, Master Data, Invoicing, Allocations & Accounting
+-- Sub-Job Pipeline Architecture, Master Data, Invoicing, Allocations & Accounting
 -- =============================================================================
 
 DO $$
@@ -13,10 +13,12 @@ DECLARE
 
   -- Categories
   v_cat_job_work uuid;
+  v_cat_party_pmt uuid;
   v_cat_rough_proc uuid;
   v_cat_laser_serv uuid;
   v_cat_scrap uuid;
   v_cat_salary uuid;
+  v_cat_emp_salary uuid;
   v_cat_maintenance uuid;
   v_cat_electricity uuid;
   v_cat_rent uuid;
@@ -111,6 +113,13 @@ BEGIN
   -- 2. CATEGORIES
   -- ---------------------------------------------------------------------------
   -- Income Categories
+  SELECT id INTO v_cat_party_pmt FROM public.categories WHERE name = 'Party Payment' AND type = 'Income' LIMIT 1;
+  IF v_cat_party_pmt IS NULL THEN
+    INSERT INTO public.categories (name, type, is_active)
+    VALUES ('Party Payment', 'Income', true)
+    RETURNING id INTO v_cat_party_pmt;
+  END IF;
+
   SELECT id INTO v_cat_job_work FROM public.categories WHERE name = 'Job Work Billing' AND type = 'Income' LIMIT 1;
   IF v_cat_job_work IS NULL THEN
     INSERT INTO public.categories (name, type, is_active)
@@ -140,6 +149,13 @@ BEGIN
   END IF;
 
   -- Expense Categories
+  SELECT id INTO v_cat_emp_salary FROM public.categories WHERE name = 'Employee Salary' AND type = 'Expense' LIMIT 1;
+  IF v_cat_emp_salary IS NULL THEN
+    INSERT INTO public.categories (name, type, is_active)
+    VALUES ('Employee Salary', 'Expense', true)
+    RETURNING id INTO v_cat_emp_salary;
+  END IF;
+
   SELECT id INTO v_cat_salary FROM public.categories WHERE name = 'Employee Salary & Commission' AND type = 'Expense' LIMIT 1;
   IF v_cat_salary IS NULL THEN
     INSERT INTO public.categories (name, type, is_active)
@@ -297,181 +313,237 @@ BEGIN
   END IF;
 
   -- ---------------------------------------------------------------------------
-  -- 5. JOBS (Stage-Based Pipelines)
+  -- 5. JOBS & SUB-JOBS (Sub-Job Stage Pipeline Architecture)
   -- ---------------------------------------------------------------------------
   PERFORM set_config('maruti.via_job_rpc', 'on', true);
 
-  -- Job 1: 3-Stage Pipeline (Sarin -> Dropping -> Galaxy) -> Completed
+  -- ---------------------------------------------------------------------------
+  -- Job 1: 3 Sub-Jobs with Multi-Stage Pipeline (Sarin -> Dropping -> Galaxy) -> Completed
+  -- ---------------------------------------------------------------------------
   SELECT id INTO v_job_1 FROM public.job_works WHERE kapan_number = 'KAPAN-2026-A1' LIMIT 1;
   IF v_job_1 IS NULL THEN
     INSERT INTO public.job_works (
-      lot_number, party_id, job_type, stages, current_stage,
+      lot_number, party_id, job_type,
       than, price, kapan_number, weight, status, billing_amount, created_at
     )
     VALUES (
-      public.next_lot_number(), v_pty_shree_ram, 'Sarin', ARRAY['Sarin', 'Dropping', 'Galaxy'], 'Completed',
+      public.next_lot_number(), v_pty_shree_ram, 'Sarin',
       24.000, 1500.00, 'KAPAN-2026-A1', 4.850, 'Completed', 36000.00, CURRENT_TIMESTAMP - INTERVAL '15 days'
     )
     RETURNING id INTO v_job_1;
 
-    -- Sub-jobs for Job 1
-    INSERT INTO public.sub_jobs (job_id, sequence_no, stage, than, weight, status)
-    VALUES (v_job_1, 1, 'Sarin', 8.000, 1.600, 'Completed')
+    -- Sub-Job 1A (Seq 1: 8 Than, Completed all 3 stages)
+    INSERT INTO public.sub_jobs (job_id, sequence_no, stages, current_stage, than, weight, status, created_at)
+    VALUES (v_job_1, 1, ARRAY['Sarin', 'Dropping', 'Galaxy'], 'Completed', 8.000, 1.600, 'Completed', CURRENT_TIMESTAMP - INTERVAL '15 days')
     RETURNING id INTO v_sub_1a;
 
-    INSERT INTO public.sub_jobs (job_id, sequence_no, stage, than, weight, status)
-    VALUES (v_job_1, 2, 'Dropping', 8.000, 1.600, 'Completed')
+    INSERT INTO public.sub_job_stage_history (sub_job_id, stage, started_at, completed_at) VALUES
+      (v_sub_1a, 'Sarin', CURRENT_TIMESTAMP - INTERVAL '15 days', CURRENT_TIMESTAMP - INTERVAL '14 days'),
+      (v_sub_1a, 'Dropping', CURRENT_TIMESTAMP - INTERVAL '14 days', CURRENT_TIMESTAMP - INTERVAL '13 days'),
+      (v_sub_1a, 'Galaxy', CURRENT_TIMESTAMP - INTERVAL '13 days', CURRENT_TIMESTAMP - INTERVAL '12 days');
+
+    INSERT INTO public.sub_job_employee_work (sub_job_id, employee_id, done_than, commission, earning, created_at)
+    VALUES (v_sub_1a, v_emp_ramesh, 8.000, 120.00, 960.00, CURRENT_TIMESTAMP - INTERVAL '15 days');
+
+    -- Sub-Job 1B (Seq 2: 8 Than, Completed all 3 stages)
+    INSERT INTO public.sub_jobs (job_id, sequence_no, stages, current_stage, than, weight, status, created_at)
+    VALUES (v_job_1, 2, ARRAY['Sarin', 'Dropping', 'Galaxy'], 'Completed', 8.000, 1.600, 'Completed', CURRENT_TIMESTAMP - INTERVAL '14 days')
     RETURNING id INTO v_sub_1b;
 
-    INSERT INTO public.sub_jobs (job_id, sequence_no, stage, than, weight, status)
-    VALUES (v_job_1, 3, 'Galaxy', 8.000, 1.650, 'Completed')
+    INSERT INTO public.sub_job_stage_history (sub_job_id, stage, started_at, completed_at) VALUES
+      (v_sub_1b, 'Sarin', CURRENT_TIMESTAMP - INTERVAL '14 days', CURRENT_TIMESTAMP - INTERVAL '13 days'),
+      (v_sub_1b, 'Dropping', CURRENT_TIMESTAMP - INTERVAL '13 days', CURRENT_TIMESTAMP - INTERVAL '12 days'),
+      (v_sub_1b, 'Galaxy', CURRENT_TIMESTAMP - INTERVAL '12 days', CURRENT_TIMESTAMP - INTERVAL '11 days');
+
+    INSERT INTO public.sub_job_employee_work (sub_job_id, employee_id, done_than, commission, earning, created_at)
+    VALUES (v_sub_1b, v_emp_mahesh, 8.000, 80.00, 640.00, CURRENT_TIMESTAMP - INTERVAL '13 days');
+
+    -- Sub-Job 1C (Seq 3: 8 Than, Completed all 3 stages)
+    INSERT INTO public.sub_jobs (job_id, sequence_no, stages, current_stage, than, weight, status, created_at)
+    VALUES (v_job_1, 3, ARRAY['Sarin', 'Dropping', 'Galaxy'], 'Completed', 8.000, 1.650, 'Completed', CURRENT_TIMESTAMP - INTERVAL '13 days')
     RETURNING id INTO v_sub_1c;
 
-    -- Work records for Job 1
-    INSERT INTO public.sub_job_employee_work (sub_job_id, employee_id, done_than, commission, earning)
-    VALUES (v_sub_1a, v_emp_ramesh, 8.000, 120.00, 960.00);
+    INSERT INTO public.sub_job_stage_history (sub_job_id, stage, started_at, completed_at) VALUES
+      (v_sub_1c, 'Sarin', CURRENT_TIMESTAMP - INTERVAL '13 days', CURRENT_TIMESTAMP - INTERVAL '12 days'),
+      (v_sub_1c, 'Dropping', CURRENT_TIMESTAMP - INTERVAL '12 days', CURRENT_TIMESTAMP - INTERVAL '11 days'),
+      (v_sub_1c, 'Galaxy', CURRENT_TIMESTAMP - INTERVAL '11 days', CURRENT_TIMESTAMP - INTERVAL '10 days');
 
-    INSERT INTO public.sub_job_employee_work (sub_job_id, employee_id, done_than, commission, earning)
-    VALUES (v_sub_1b, v_emp_mahesh, 8.000, 80.00, 640.00);
-
-    INSERT INTO public.sub_job_employee_work (sub_job_id, employee_id, done_than, commission, earning)
-    VALUES (v_sub_1c, v_emp_alpesh, 8.000, 180.00, 1440.00);
+    INSERT INTO public.sub_job_employee_work (sub_job_id, employee_id, done_than, commission, earning, created_at)
+    VALUES (v_sub_1c, v_emp_alpesh, 8.000, 180.00, 1440.00, CURRENT_TIMESTAMP - INTERVAL '11 days');
   END IF;
 
-  -- Job 2: 2-Stage Pipeline (Sarin -> Galaxy) -> Active at Galaxy
+  -- ---------------------------------------------------------------------------
+  -- Job 2: 2 Sub-Jobs (Sarin -> Galaxy) -> Active at Galaxy stage
+  -- ---------------------------------------------------------------------------
   SELECT id INTO v_job_2 FROM public.job_works WHERE kapan_number = 'KAPAN-2026-B4' LIMIT 1;
   IF v_job_2 IS NULL THEN
     INSERT INTO public.job_works (
-      lot_number, party_id, job_type, stages, current_stage,
+      lot_number, party_id, job_type,
       than, price, kapan_number, weight, status, billing_amount, created_at
     )
     VALUES (
-      public.next_lot_number(), v_pty_dharmanandan, 'Sarin', ARRAY['Sarin', 'Galaxy'], 'Galaxy',
+      public.next_lot_number(), v_pty_dharmanandan, 'Sarin',
       18.000, 1650.00, 'KAPAN-2026-B4', 6.200, 'Progress', 29700.00, CURRENT_TIMESTAMP - INTERVAL '10 days'
     )
     RETURNING id INTO v_job_2;
 
-    -- Sub-jobs for Job 2
-    INSERT INTO public.sub_jobs (job_id, sequence_no, stage, than, weight, status)
-    VALUES (v_job_2, 1, 'Sarin', 10.000, 3.400, 'Completed')
+    -- Sub-Job 2A (Seq 1: 10 Than, Completed)
+    INSERT INTO public.sub_jobs (job_id, sequence_no, stages, current_stage, than, weight, status, created_at)
+    VALUES (v_job_2, 1, ARRAY['Sarin', 'Galaxy'], 'Completed', 10.000, 3.400, 'Completed', CURRENT_TIMESTAMP - INTERVAL '10 days')
     RETURNING id INTO v_sub_2a;
 
-    INSERT INTO public.sub_jobs (job_id, sequence_no, stage, than, weight, status)
-    VALUES (v_job_2, 2, 'Galaxy', 8.000, 2.800, 'Progress')
+    INSERT INTO public.sub_job_stage_history (sub_job_id, stage, started_at, completed_at) VALUES
+      (v_sub_2a, 'Sarin', CURRENT_TIMESTAMP - INTERVAL '10 days', CURRENT_TIMESTAMP - INTERVAL '8 days'),
+      (v_sub_2a, 'Galaxy', CURRENT_TIMESTAMP - INTERVAL '8 days', CURRENT_TIMESTAMP - INTERVAL '7 days');
+
+    INSERT INTO public.sub_job_employee_work (sub_job_id, employee_id, done_than, commission, earning, created_at)
+    VALUES (v_sub_2a, v_emp_ketan, 10.000, 130.00, 1300.00, CURRENT_TIMESTAMP - INTERVAL '10 days');
+
+    -- Sub-Job 2B (Seq 2: 8 Than, In Progress at Galaxy)
+    INSERT INTO public.sub_jobs (job_id, sequence_no, stages, current_stage, than, weight, status, created_at)
+    VALUES (v_job_2, 2, ARRAY['Sarin', 'Galaxy'], 'Galaxy', 8.000, 2.800, 'Progress', CURRENT_TIMESTAMP - INTERVAL '9 days')
     RETURNING id INTO v_sub_2b;
 
-    -- Work records for Job 2
-    INSERT INTO public.sub_job_employee_work (sub_job_id, employee_id, done_than, commission, earning)
-    VALUES (v_sub_2a, v_emp_ketan, 10.000, 130.00, 1300.00);
+    INSERT INTO public.sub_job_stage_history (sub_job_id, stage, started_at, completed_at) VALUES
+      (v_sub_2b, 'Sarin', CURRENT_TIMESTAMP - INTERVAL '9 days', CURRENT_TIMESTAMP - INTERVAL '6 days'),
+      (v_sub_2b, 'Galaxy', CURRENT_TIMESTAMP - INTERVAL '6 days', NULL);
 
-    INSERT INTO public.sub_job_employee_work (sub_job_id, employee_id, done_than, commission, earning)
-    VALUES (v_sub_2b, v_emp_nilesh, 5.000, 190.00, 950.00);
+    INSERT INTO public.sub_job_employee_work (sub_job_id, employee_id, done_than, commission, earning, created_at)
+    VALUES (v_sub_2b, v_emp_nilesh, 5.000, 190.00, 950.00, CURRENT_TIMESTAMP - INTERVAL '5 days');
   END IF;
 
-  -- Job 3: 2-Stage Pipeline (Dropping -> Galaxy) -> Active at Dropping
+  -- ---------------------------------------------------------------------------
+  -- Job 3: 2 Sub-Jobs (Dropping -> Galaxy) -> Active at Dropping stage
+  -- ---------------------------------------------------------------------------
   SELECT id INTO v_job_3 FROM public.job_works WHERE kapan_number = 'KAPAN-2026-C9' LIMIT 1;
   IF v_job_3 IS NULL THEN
     INSERT INTO public.job_works (
-      lot_number, party_id, job_type, stages, current_stage,
+      lot_number, party_id, job_type,
       than, price, kapan_number, weight, status, billing_amount, created_at
     )
     VALUES (
-      public.next_lot_number(), v_pty_hari_krishna, 'Dropping', ARRAY['Dropping', 'Galaxy'], 'Dropping',
+      public.next_lot_number(), v_pty_hari_krishna, 'Dropping',
       15.000, 1800.00, 'KAPAN-2026-C9', 3.450, 'Progress', 27000.00, CURRENT_TIMESTAMP - INTERVAL '7 days'
     )
     RETURNING id INTO v_job_3;
 
-    -- Sub-jobs for Job 3
-    INSERT INTO public.sub_jobs (job_id, sequence_no, stage, than, weight, status)
-    VALUES (v_job_3, 1, 'Dropping', 8.000, 1.800, 'Completed')
+    -- Sub-Job 3A (Seq 1: 8 Than, Completed)
+    INSERT INTO public.sub_jobs (job_id, sequence_no, stages, current_stage, than, weight, status, created_at)
+    VALUES (v_job_3, 1, ARRAY['Dropping', 'Galaxy'], 'Completed', 8.000, 1.800, 'Completed', CURRENT_TIMESTAMP - INTERVAL '7 days')
     RETURNING id INTO v_sub_3a;
 
-    INSERT INTO public.sub_jobs (job_id, sequence_no, stage, than, weight, status)
-    VALUES (v_job_3, 2, 'Dropping', 7.000, 1.650, 'Progress')
+    INSERT INTO public.sub_job_stage_history (sub_job_id, stage, started_at, completed_at) VALUES
+      (v_sub_3a, 'Dropping', CURRENT_TIMESTAMP - INTERVAL '7 days', CURRENT_TIMESTAMP - INTERVAL '5 days'),
+      (v_sub_3a, 'Galaxy', CURRENT_TIMESTAMP - INTERVAL '5 days', CURRENT_TIMESTAMP - INTERVAL '4 days');
+
+    INSERT INTO public.sub_job_employee_work (sub_job_id, employee_id, done_than, commission, earning, created_at)
+    VALUES (v_sub_3a, v_emp_suresh, 8.000, 85.00, 680.00, CURRENT_TIMESTAMP - INTERVAL '7 days');
+
+    -- Sub-Job 3B (Seq 2: 7 Than, In Progress at Dropping)
+    INSERT INTO public.sub_jobs (job_id, sequence_no, stages, current_stage, than, weight, status, created_at)
+    VALUES (v_job_3, 2, ARRAY['Dropping', 'Galaxy'], 'Dropping', 7.000, 1.650, 'Progress', CURRENT_TIMESTAMP - INTERVAL '6 days')
     RETURNING id INTO v_sub_3b;
 
-    -- Work records for Job 3
-    INSERT INTO public.sub_job_employee_work (sub_job_id, employee_id, done_than, commission, earning)
-    VALUES (v_sub_3a, v_emp_suresh, 8.000, 85.00, 680.00);
+    INSERT INTO public.sub_job_stage_history (sub_job_id, stage, started_at, completed_at) VALUES
+      (v_sub_3b, 'Dropping', CURRENT_TIMESTAMP - INTERVAL '6 days', NULL);
 
-    INSERT INTO public.sub_job_employee_work (sub_job_id, employee_id, done_than, commission, earning)
-    VALUES (v_sub_3b, v_emp_dinesh, 4.000, 90.00, 360.00);
+    INSERT INTO public.sub_job_employee_work (sub_job_id, employee_id, done_than, commission, earning, created_at)
+    VALUES (v_sub_3b, v_emp_dinesh, 4.000, 90.00, 360.00, CURRENT_TIMESTAMP - INTERVAL '4 days');
   END IF;
 
-  -- Job 4: Single Stage Pipeline (Sarin) -> Completed
+  -- ---------------------------------------------------------------------------
+  -- Job 4: Single Stage Sub-Job (Sarin) -> Completed
+  -- ---------------------------------------------------------------------------
   SELECT id INTO v_job_4 FROM public.job_works WHERE kapan_number = 'KAPAN-2026-D2' LIMIT 1;
   IF v_job_4 IS NULL THEN
     INSERT INTO public.job_works (
-      lot_number, party_id, job_type, stages, current_stage,
+      lot_number, party_id, job_type,
       than, price, kapan_number, weight, status, billing_amount, created_at
     )
     VALUES (
-      public.next_lot_number(), v_pty_kiran, 'Sarin', ARRAY['Sarin'], 'Completed',
+      public.next_lot_number(), v_pty_kiran, 'Sarin',
       12.000, 1400.00, 'KAPAN-2026-D2', 2.100, 'Completed', 16800.00, CURRENT_TIMESTAMP - INTERVAL '5 days'
     )
     RETURNING id INTO v_job_4;
 
-    -- Sub-job & Work for Job 4
-    INSERT INTO public.sub_jobs (job_id, sequence_no, stage, than, weight, status)
-    VALUES (v_job_4, 1, 'Sarin', 12.000, 2.100, 'Completed')
+    INSERT INTO public.sub_jobs (job_id, sequence_no, stages, current_stage, than, weight, status, created_at)
+    VALUES (v_job_4, 1, ARRAY['Sarin'], 'Completed', 12.000, 2.100, 'Completed', CURRENT_TIMESTAMP - INTERVAL '5 days')
     RETURNING id INTO v_sub_4a;
 
-    INSERT INTO public.sub_job_employee_work (sub_job_id, employee_id, done_than, commission, earning)
-    VALUES (v_sub_4a, v_emp_pravin, 12.000, 125.00, 1500.00);
+    INSERT INTO public.sub_job_stage_history (sub_job_id, stage, started_at, completed_at) VALUES
+      (v_sub_4a, 'Sarin', CURRENT_TIMESTAMP - INTERVAL '5 days', CURRENT_TIMESTAMP - INTERVAL '3 days');
+
+    INSERT INTO public.sub_job_employee_work (sub_job_id, employee_id, done_than, commission, earning, created_at)
+    VALUES (v_sub_4a, v_emp_pravin, 12.000, 125.00, 1500.00, CURRENT_TIMESTAMP - INTERVAL '5 days');
   END IF;
 
-  -- Job 5: Single Stage Pipeline (Galaxy) -> Pending
+  -- ---------------------------------------------------------------------------
+  -- Job 5: Single Stage Sub-Job (Galaxy) -> Pending
+  -- ---------------------------------------------------------------------------
   SELECT id INTO v_job_5 FROM public.job_works WHERE kapan_number = 'KAPAN-2026-E5' LIMIT 1;
   IF v_job_5 IS NULL THEN
     INSERT INTO public.job_works (
-      lot_number, party_id, job_type, stages, current_stage,
+      lot_number, party_id, job_type,
       than, price, kapan_number, weight, status, billing_amount, created_at
     )
     VALUES (
-      public.next_lot_number(), v_pty_venus, 'Galaxy', ARRAY['Galaxy'], 'Galaxy',
+      public.next_lot_number(), v_pty_venus, 'Galaxy',
       20.000, 1550.00, 'KAPAN-2026-E5', 5.750, 'Pending', 31000.00, CURRENT_TIMESTAMP - INTERVAL '2 days'
     )
     RETURNING id INTO v_job_5;
 
-    INSERT INTO public.sub_jobs (job_id, sequence_no, stage, than, weight, status)
-    VALUES (v_job_5, 1, 'Galaxy', 10.000, 2.850, 'Pending')
+    INSERT INTO public.sub_jobs (job_id, sequence_no, stages, current_stage, than, weight, status, created_at)
+    VALUES (v_job_5, 1, ARRAY['Galaxy'], 'Galaxy', 10.000, 2.850, 'Pending', CURRENT_TIMESTAMP - INTERVAL '2 days')
     RETURNING id INTO v_sub_5a;
+
+    INSERT INTO public.sub_job_stage_history (sub_job_id, stage, started_at, completed_at) VALUES
+      (v_sub_5a, 'Galaxy', CURRENT_TIMESTAMP - INTERVAL '2 days', NULL);
   END IF;
 
-  -- Job 6: 3-Stage Pipeline (Sarin -> Dropping -> Galaxy) -> Active at Sarin
+  -- ---------------------------------------------------------------------------
+  -- Job 6: 2 Sub-Jobs (Sarin -> Dropping -> Galaxy) -> Active at Sarin stage
+  -- ---------------------------------------------------------------------------
   SELECT id INTO v_job_6 FROM public.job_works WHERE kapan_number = 'KAPAN-2026-F8' LIMIT 1;
   IF v_job_6 IS NULL THEN
     INSERT INTO public.job_works (
-      lot_number, party_id, job_type, stages, current_stage,
+      lot_number, party_id, job_type,
       than, price, kapan_number, weight, status, billing_amount, created_at
     )
     VALUES (
-      public.next_lot_number(), v_pty_laxmi, 'Sarin', ARRAY['Sarin', 'Dropping', 'Galaxy'], 'Sarin',
+      public.next_lot_number(), v_pty_laxmi, 'Sarin',
       30.000, 1450.00, 'KAPAN-2026-F8', 8.300, 'Progress', 43500.00, CURRENT_TIMESTAMP - INTERVAL '1 day'
     )
     RETURNING id INTO v_job_6;
 
-    -- Sub-jobs for Job 6
-    INSERT INTO public.sub_jobs (job_id, sequence_no, stage, than, weight, status)
-    VALUES (v_job_6, 1, 'Sarin', 15.000, 4.100, 'Completed')
+    -- Sub-Job 6A (Seq 1: 15 Than, Completed all 3 stages)
+    INSERT INTO public.sub_jobs (job_id, sequence_no, stages, current_stage, than, weight, status, created_at)
+    VALUES (v_job_6, 1, ARRAY['Sarin', 'Dropping', 'Galaxy'], 'Completed', 15.000, 4.100, 'Completed', CURRENT_TIMESTAMP - INTERVAL '1 day')
     RETURNING id INTO v_sub_6a;
 
-    INSERT INTO public.sub_jobs (job_id, sequence_no, stage, than, weight, status)
-    VALUES (v_job_6, 2, 'Sarin', 15.000, 4.200, 'Progress')
+    INSERT INTO public.sub_job_stage_history (sub_job_id, stage, started_at, completed_at) VALUES
+      (v_sub_6a, 'Sarin', CURRENT_TIMESTAMP - INTERVAL '1 day', CURRENT_TIMESTAMP - INTERVAL '20 hours'),
+      (v_sub_6a, 'Dropping', CURRENT_TIMESTAMP - INTERVAL '20 hours', CURRENT_TIMESTAMP - INTERVAL '12 hours'),
+      (v_sub_6a, 'Galaxy', CURRENT_TIMESTAMP - INTERVAL '12 hours', CURRENT_TIMESTAMP - INTERVAL '4 hours');
+
+    INSERT INTO public.sub_job_employee_work (sub_job_id, employee_id, done_than, commission, earning, created_at)
+    VALUES (v_sub_6a, v_emp_ramesh, 15.000, 120.00, 1800.00, CURRENT_TIMESTAMP - INTERVAL '1 day');
+
+    -- Sub-Job 6B (Seq 2: 15 Than, In Progress at Sarin)
+    INSERT INTO public.sub_jobs (job_id, sequence_no, stages, current_stage, than, weight, status, created_at)
+    VALUES (v_job_6, 2, ARRAY['Sarin', 'Dropping', 'Galaxy'], 'Sarin', 15.000, 4.200, 'Progress', CURRENT_TIMESTAMP - INTERVAL '1 day')
     RETURNING id INTO v_sub_6b;
 
-    -- Work records for Job 6
-    INSERT INTO public.sub_job_employee_work (sub_job_id, employee_id, done_than, commission, earning)
-    VALUES (v_sub_6a, v_emp_ramesh, 15.000, 120.00, 1800.00);
+    INSERT INTO public.sub_job_stage_history (sub_job_id, stage, started_at, completed_at) VALUES
+      (v_sub_6b, 'Sarin', CURRENT_TIMESTAMP - INTERVAL '1 day', NULL);
 
-    INSERT INTO public.sub_job_employee_work (sub_job_id, employee_id, done_than, commission, earning)
-    VALUES (v_sub_6b, v_emp_ketan, 10.000, 130.00, 1300.00);
+    INSERT INTO public.sub_job_employee_work (sub_job_id, employee_id, done_than, commission, earning, created_at)
+    VALUES (v_sub_6b, v_emp_ketan, 10.000, 130.00, 1300.00, CURRENT_TIMESTAMP - INTERVAL '18 hours');
   END IF;
 
   -- ---------------------------------------------------------------------------
   -- 6. INVOICES
   -- ---------------------------------------------------------------------------
-  PERFORM set_config('maruti.via_invoice_rpc', 'on', true);
+  PERFORM set_config('maruti.via_job_rpc', 'on', true);
 
   -- Invoice 1 for Job 1 (₹36,000)
   IF v_job_1 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.invoices WHERE job_work_id = v_job_1) THEN
@@ -562,7 +634,7 @@ BEGIN
       party_id, account_id, category_id, entry_type, entry_date, amount, remarks
     )
     VALUES (
-      v_pty_shree_ram, v_acc_hdfc, v_cat_job_work, 'Income', CURRENT_DATE - 12, 36000.00, 'Full payment for KAPAN-2026-A1'
+      v_pty_shree_ram, v_acc_hdfc, v_cat_party_pmt, 'Income', CURRENT_DATE - 12, 36000.00, 'Full payment for KAPAN-2026-A1'
     )
     RETURNING id INTO v_ent_pay_1;
 
@@ -576,7 +648,7 @@ BEGIN
       party_id, account_id, category_id, entry_type, entry_date, amount, remarks
     )
     VALUES (
-      v_pty_dharmanandan, v_acc_icici, v_cat_job_work, 'Income', CURRENT_DATE - 7, 15000.00, 'Part payment for KAPAN-2026-B4'
+      v_pty_dharmanandan, v_acc_icici, v_cat_party_pmt, 'Income', CURRENT_DATE - 7, 15000.00, 'Part payment for KAPAN-2026-B4'
     )
     RETURNING id INTO v_ent_pay_2;
 
@@ -590,7 +662,7 @@ BEGIN
       party_id, account_id, category_id, entry_type, entry_date, amount, remarks
     )
     VALUES (
-      v_pty_kiran, v_acc_hdfc, v_cat_job_work, 'Income', CURRENT_DATE - 3, 16800.00, 'NEFT payment for KAPAN-2026-D2'
+      v_pty_kiran, v_acc_hdfc, v_cat_party_pmt, 'Income', CURRENT_DATE - 3, 16800.00, 'NEFT payment for KAPAN-2026-D2'
     )
     RETURNING id INTO v_ent_pay_4;
 
@@ -604,7 +676,7 @@ BEGIN
       party_id, account_id, category_id, entry_type, entry_date, amount, remarks
     )
     VALUES (
-      v_pty_laxmi, v_acc_sbi, v_cat_job_work, 'Income', CURRENT_DATE, 20000.00, 'Cheque clearance advance'
+      v_pty_laxmi, v_acc_sbi, v_cat_party_pmt, 'Income', CURRENT_DATE, 20000.00, 'Cheque clearance advance'
     )
     RETURNING id INTO v_ent_pay_6;
 
@@ -618,7 +690,7 @@ BEGIN
       employee_id, account_id, category_id, entry_type, entry_date, amount, remarks
     )
     VALUES (
-      v_emp_ramesh, v_acc_cash, v_cat_salary, 'Expense', CURRENT_DATE - 5, 2500.00, 'Sarin work payout'
+      v_emp_ramesh, v_acc_cash, v_cat_emp_salary, 'Expense', CURRENT_DATE - 5, 2500.00, 'Sarin work payout'
     );
   END IF;
 
@@ -628,7 +700,7 @@ BEGIN
       employee_id, account_id, category_id, entry_type, entry_date, amount, remarks
     )
     VALUES (
-      v_emp_ketan, v_acc_hdfc, v_cat_salary, 'Expense', CURRENT_DATE - 5, 2000.00, 'Sarin work payout'
+      v_emp_ketan, v_acc_hdfc, v_cat_emp_salary, 'Expense', CURRENT_DATE - 5, 2000.00, 'Sarin work payout'
     );
   END IF;
 
@@ -638,7 +710,7 @@ BEGIN
       employee_id, account_id, category_id, entry_type, entry_date, amount, remarks
     )
     VALUES (
-      v_emp_mahesh, v_acc_cash, v_cat_salary, 'Expense', CURRENT_DATE - 5, 600.00, 'Dropping work payout'
+      v_emp_mahesh, v_acc_cash, v_cat_emp_salary, 'Expense', CURRENT_DATE - 5, 600.00, 'Dropping work payout'
     );
   END IF;
 
@@ -648,7 +720,7 @@ BEGIN
       employee_id, account_id, category_id, entry_type, entry_date, amount, remarks
     )
     VALUES (
-      v_emp_alpesh, v_acc_icici, v_cat_salary, 'Expense', CURRENT_DATE - 5, 1400.00, 'Galaxy work payout'
+      v_emp_alpesh, v_acc_icici, v_cat_emp_salary, 'Expense', CURRENT_DATE - 5, 1400.00, 'Galaxy work payout'
     );
   END IF;
 
@@ -658,7 +730,7 @@ BEGIN
       employee_id, account_id, category_id, entry_type, entry_date, amount, remarks
     )
     VALUES (
-      v_emp_pravin, v_acc_hdfc, v_cat_salary, 'Expense', CURRENT_DATE - 2, 1500.00, 'Sarin work payout'
+      v_emp_pravin, v_acc_hdfc, v_cat_emp_salary, 'Expense', CURRENT_DATE - 2, 1500.00, 'Sarin work payout'
     );
   END IF;
 

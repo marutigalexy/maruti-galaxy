@@ -124,12 +124,11 @@ BEGIN
   PERFORM set_config('maruti.via_job_rpc', 'on', true);
 
   INSERT INTO public.invoices (
-    invoice_number, job_work_id, invoice_date, due_date, amount, status
+    invoice_number, job_work_id, invoice_date, amount, status
   )
   VALUES (
     public.next_invoice_number(),
     v_primary_id,
-    COALESCE(p_invoice_date, CURRENT_DATE),
     COALESCE(p_invoice_date, CURRENT_DATE),
     v_total,
     'Unpaid'

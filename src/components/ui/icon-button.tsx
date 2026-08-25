@@ -32,6 +32,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
   ref,
 ) {
   const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const tipRef = useRef<HTMLSpanElement | null>(null);
   const [coords, setCoords] = useState<{ top: number; left: number; placement: "above" | "below" } | null>(
     null,
   );
@@ -66,6 +67,14 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
     if (!coords) {
       return;
     }
+    const tip = tipRef.current;
+    if (tip && typeof tip.showPopover === "function" && !tip.matches(":popover-open")) {
+      try {
+        tip.showPopover();
+      } catch {
+        // Fallback for browsers or environments without popover support
+      }
+    }
     const onReposition = () => setCoords(null);
     window.addEventListener("scroll", onReposition, true);
     window.addEventListener("resize", onReposition);
@@ -74,6 +83,11 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
       window.removeEventListener("resize", onReposition);
     };
   }, [coords]);
+
+  const targetContainer =
+    typeof document !== "undefined"
+      ? (buttonRef.current?.closest("dialog") ?? document.body)
+      : null;
 
   return (
     <>
@@ -104,16 +118,18 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
       >
         {loading ? <SpinnerIcon width={16} height={16} aria-hidden="true" /> : children}
       </button>
-      {coords
+      {coords && targetContainer
         ? createPortal(
             <span
+              ref={tipRef}
+              popover="manual"
               className={["ui-tooltip", "is-open", coords.placement === "below" ? "is-below" : "is-above"].join(" ")}
               role="tooltip"
               style={{ top: coords.top, left: coords.left }}
             >
               {label}
             </span>,
-            document.body,
+            targetContainer,
           )
         : null}
     </>

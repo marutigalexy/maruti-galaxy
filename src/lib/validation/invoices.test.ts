@@ -162,7 +162,7 @@ describe("invoice read security", () => {
     expect(billView).toMatch(/INVOICE_BILL\.minTableRows/);
     expect(billView).not.toMatch(/invoice-bill-empty/);
     expect(billView).not.toMatch(/paddedBillRowCount/);
-    expect(jobDetail).toMatch(/<dt>Current Stage<\/dt>|<dt>Job Type<\/dt>/);
+    expect(jobDetail).toMatch(/<dt>Party Name<\/dt>|<dt>Job Number<\/dt>/);
     expect(`${listView}\n${detail}`).not.toMatch(/>Allocate</);
   });
 

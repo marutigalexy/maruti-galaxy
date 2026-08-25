@@ -69,7 +69,6 @@ export async function GET(request: Request, { params }: ExportRouteProps) {
       const parsed = parseOrThrow(jobWorkReportSchema, {
         search: query.search ?? "",
         status: query.status ?? "all",
-        job_type: query.job_type ?? "all",
         party_id: query.party_id,
         date_from: query.date_from,
         date_to: query.date_to,

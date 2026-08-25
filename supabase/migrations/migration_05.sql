@@ -1,8 +1,5 @@
 -- Invoice creation is intentionally separate from job creation. Apply after migration_04.sql.
 
-ALTER TABLE public.invoices
-  ADD COLUMN IF NOT EXISTS due_date date;
-
 DROP TRIGGER IF EXISTS invoices_require_rpc_trg ON public.invoices;
 REVOKE ALL ON FUNCTION public.create_job_with_invoice(uuid, public.job_type, numeric, numeric, text, numeric, public.job_status, date) FROM PUBLIC, anon, authenticated;
 
@@ -30,8 +27,11 @@ BEGIN
 END;
 $$;
 
+DROP FUNCTION IF EXISTS public.create_invoice_for_job(uuid, uuid, date, date);
+DROP FUNCTION IF EXISTS public.create_invoice_for_job(uuid, uuid, date);
+
 CREATE OR REPLACE FUNCTION public.create_invoice_for_job(
-  p_party_id uuid, p_job_id uuid, p_invoice_date date DEFAULT CURRENT_DATE, p_due_date date DEFAULT NULL
+  p_party_id uuid, p_job_id uuid, p_invoice_date date DEFAULT CURRENT_DATE
 )
 RETURNS TABLE (invoice_id uuid, invoice_number text, amount numeric)
 LANGUAGE plpgsql SECURITY INVOKER SET search_path = public AS $$
@@ -42,9 +42,9 @@ BEGIN
   IF EXISTS (SELECT 1 FROM public.invoices WHERE job_work_id = p_job_id) THEN
     RAISE EXCEPTION 'INVOICE_ALREADY_EXISTS' USING ERRCODE = 'P0001';
   END IF;
-  INSERT INTO public.invoices (invoice_number, job_work_id, invoice_date, due_date, amount, status)
+  INSERT INTO public.invoices (invoice_number, job_work_id, invoice_date, amount, status)
   VALUES (public.next_invoice_number(), v_job.id, COALESCE(p_invoice_date, CURRENT_DATE),
-          COALESCE(p_due_date, p_invoice_date, CURRENT_DATE), round(v_job.than * v_job.price, 2), 'Unpaid')
+          round(v_job.than * v_job.price, 2), 'Unpaid')
   RETURNING * INTO v_invoice;
   invoice_id := v_invoice.id; invoice_number := v_invoice.invoice_number; amount := v_invoice.amount; RETURN NEXT;
 END;
@@ -81,6 +81,6 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION public.create_job(uuid, public.job_type, numeric, numeric, text, numeric, public.job_status) FROM PUBLIC, anon;
-REVOKE ALL ON FUNCTION public.create_invoice_for_job(uuid, uuid, date, date) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.create_invoice_for_job(uuid, uuid, date) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.create_job(uuid, public.job_type, numeric, numeric, text, numeric, public.job_status) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.create_invoice_for_job(uuid, uuid, date, date) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.create_invoice_for_job(uuid, uuid, date) TO authenticated;

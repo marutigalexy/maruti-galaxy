@@ -43,10 +43,9 @@ describe("report schemas", () => {
   });
 
   it("parses job work lot number search with other filters", () => {
-    expect(parseOrThrow(jobWorkReportSchema, { search: " J01 ", job_type: "Sarin" })).toMatchObject({
+    expect(parseOrThrow(jobWorkReportSchema, { search: " J01 ", status: "Progress" })).toMatchObject({
       search: "J01",
-      job_type: "Sarin",
-      status: "all",
+      status: "Progress",
     });
   });
 });

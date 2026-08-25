@@ -20,7 +20,7 @@ ALTER TABLE public.job_works
   ADD COLUMN IF NOT EXISTS stages text[] NOT NULL DEFAULT ARRAY['Sarin']::text[],
   ADD COLUMN IF NOT EXISTS current_stage text NOT NULL DEFAULT 'Sarin';
 
-CREATE INDEX IF NOT EXISTS job_works_current_stage_idx ON public.job_works (current_st  age);
+CREATE INDEX IF NOT EXISTS job_works_current_stage_idx ON public.job_works (current_stage);
 
 -- 4. Add stage to sub_jobs table
 ALTER TABLE public.sub_jobs

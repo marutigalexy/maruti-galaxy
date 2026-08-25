@@ -12,6 +12,8 @@ type DialogProps = {
   onClose: () => void;
   disableClose?: boolean;
   footer?: ReactNode;
+  className?: string;
+  headerActions?: ReactNode;
 };
 
 export function Dialog({
@@ -21,6 +23,8 @@ export function Dialog({
   onClose,
   disableClose = false,
   footer,
+  className = "",
+  headerActions,
 }: DialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -47,7 +51,7 @@ export function Dialog({
   return (
     <dialog
       ref={dialogRef}
-      className="ui-dialog"
+      className={`ui-dialog ${className}`.trim()}
       aria-labelledby={titleId}
       onCancel={(event) => {
         event.preventDefault();
@@ -58,16 +62,19 @@ export function Dialog({
     >
       <div className="ui-dialog-header">
         <h2 id={titleId}>{title}</h2>
-        <Button
-          variant="ghost"
-          className="ui-dialog-close"
-          aria-label="Close"
-          title="Close"
-          disabled={disableClose}
-          onClick={onClose}
-        >
-          <CloseIcon />
-        </Button>
+        <div className="ui-dialog-header-actions">
+          {headerActions}
+          <Button
+            variant="ghost"
+            className="ui-dialog-close"
+            aria-label="Close"
+            title="Close"
+            disabled={disableClose}
+            onClick={onClose}
+          >
+            <CloseIcon />
+          </Button>
+        </div>
       </div>
       {children}
       {footer !== undefined ? (

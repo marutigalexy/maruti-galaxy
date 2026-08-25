@@ -482,6 +482,13 @@ a {
   color: var(--color-dark-navy);
 }
 
+.ui-dialog-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  flex-shrink: 0;
+}
+
 .ui-dialog-close {
   min-width: 32px;
   min-height: 32px;
@@ -560,7 +567,7 @@ a {
 
 .ui-table th,
 .ui-table td {
-  padding: 14px 16px;
+  padding: 8px 14px;
   border-bottom: 1px solid var(--color-border);
   text-align: left;
   white-space: nowrap;
@@ -705,10 +712,21 @@ a {
   background: var(--color-surface-hover);
 }
 
-.ui-table tbody tr.is-nested td {
+.ui-table tbody tr.ui-subjob-row,
+.ui-table tbody tr.is-nested.ui-subjob-row {
+  background: #f9fbfd;
+}
+
+.ui-table tbody tr.ui-subjob-row:hover,
+.ui-table tbody tr.is-nested.ui-subjob-row:hover {
+  background: #f1f5f9;
+}
+
+.ui-table tbody tr.ui-subjob-row td,
+.ui-table tbody tr.is-nested.ui-subjob-row td {
+  background: inherit;
   padding-top: var(--space-10);
   padding-bottom: var(--space-10);
-  color: var(--color-secondary-text);
   font-size: var(--font-size-small);
 }
 
@@ -852,7 +870,7 @@ a {
   justify-content: space-between;
   gap: var(--space-12) var(--space-16);
   margin: 0;
-  padding: var(--space-12) var(--space-16);
+  padding: 10px 14px;
   background: var(--color-page-background);
   border: 0;
   border-top: 1px solid var(--color-border);
@@ -891,15 +909,16 @@ a {
 }
 
 .ui-pagination-btn {
-  width: 32px;
-  height: 32px;
-  min-height: 32px;
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
   padding: 0;
+  font-size: 12px;
   border-radius: var(--radius-pill);
 }
 
 .ui-pagination-page-info {
-  font-size: var(--font-size-small);
+  font-size: 12px;
   color: var(--color-primary-text);
   font-weight: var(--font-weight-medium);
 }
@@ -922,8 +941,8 @@ a {
   flex-wrap: wrap;
   align-items: end;
   justify-content: space-between;
-  gap: var(--space-10);
-  margin-bottom: 15px;
+  gap: 8px;
+  margin-bottom: 6px;
 }
 
 .ui-page-lede {
@@ -944,7 +963,7 @@ a {
 .ui-filter-bar {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-8);
+  gap: 6px 8px;
   align-items: end;
   flex: 1;
   min-width: 0;
@@ -956,8 +975,8 @@ a {
 
 .ui-search-wrap {
   position: relative;
-  min-width: min(100%, 200px);
-  max-width: 320px;
+  min-width: min(100%, 180px);
+  max-width: 280px;
   flex: 1;
 }
 
@@ -1104,7 +1123,7 @@ a {
 .ui-tabs {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 5px;
   padding: 3px;
   background: var(--color-surface-hover, #f1f5f9);
   border: 1px solid var(--color-border);
@@ -1125,15 +1144,15 @@ a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-8, 8px);
+  gap: var(--space-10, 10px);
   min-height: 32px;
-  padding: 5px 14px;
+  padding: 5px 10px;
   border: 0;
   border-radius: calc(var(--radius-lg, 10px) - 3px);
-  background: transparent;
-  color: var(--color-secondary-text, #64748b);
-  font-size: 13px;
-  font-weight: 500;
+  background: #ffffff;
+  color: var(--color-primary-text, #64748b);
+  font-size: 14px;
+  font-weight: 600;
   line-height: 1.25;
   white-space: nowrap;
   text-decoration: none;
@@ -1144,7 +1163,7 @@ a {
 
 .ui-tab:hover {
   color: var(--color-dark-navy, #0f172a);
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.536);
 }
 
 .ui-tab:focus-visible {
@@ -1155,10 +1174,17 @@ a {
 .ui-tab[aria-current="page"],
 .ui-tab.is-active,
 .ui-tab[aria-selected="true"] {
-  color: var(--color-dark-navy, #0f172a);
-  background: var(--color-surface, #ffffff);
+  color: var(--color-on-navy, #ffffff);
+  background: var(--color-secondary-navy, #083574);
   font-weight: 600;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 1px 3px rgba(8, 53, 116, 0.25), 0 1px 2px rgba(8, 53, 116, 0.15);
+}
+
+.ui-tab[aria-current="page"]:hover,
+.ui-tab.is-active:hover,
+.ui-tab[aria-selected="true"]:hover {
+  color: var(--color-on-navy, #ffffff);
+  background: var(--color-action-hover, #0c4a9e);
 }
 
 .ui-tab-icon {
@@ -1195,8 +1221,8 @@ a {
 .ui-tab.is-active .ui-tab-badge,
 .ui-tab[aria-selected="true"] .ui-tab-badge,
 .ui-tab[aria-current="page"] .ui-tab-badge {
-  background: #e0e7ff;
-  color: #283886;
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
 }
 
 .ui-detail-tabs {
@@ -1482,7 +1508,7 @@ a {
   inset: unset;
   margin: 0;
   border: 0;
-  z-index: 2000;
+  z-index: 99999;
   padding: 8px 10px;
   border-radius: 10px;
   background: rgb(15 23 42 / 0.96);
@@ -1493,6 +1519,7 @@ a {
   white-space: nowrap;
   pointer-events: none;
   transform: translateY(-50%) translateX(2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
 .ui-tooltip.is-above {
@@ -1642,7 +1669,8 @@ a {
   align-items: center;
   gap: var(--space-12);
   min-height: var(--topbar-height);
-  padding: 10px 22px;
+  height: var(--topbar-height);
+  padding: 0 20px;
   background: var(--color-surface);
   box-shadow: var(--shadow-topbar);
 }
@@ -1667,27 +1695,27 @@ a {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 27px;
+  font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.01em;
-  line-height: 1.2;
+  line-height: 1.25;
   color: var(--color-dark-navy);
 }
 
 .app-topbar-description {
-  margin: 2px 0 0;
+  margin: 1px 0 0;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--color-secondary-text);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
-  line-height: 1.3;
+  line-height: 1.25;
 }
 
 .app-topbar-title.is-muted {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--color-secondary-text);
 }
@@ -1705,8 +1733,8 @@ a {
 
 .app-topbar-status .ui-badge {
   flex-shrink: 0;
-  min-height: 26px;
-  padding: 5px 12px;
+  min-height: 24px;
+  padding: 2px 10px;
   font-size: var(--font-size-small);
 }
 
@@ -1714,9 +1742,10 @@ a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  min-width: 36px;
-  min-height: 36px;
+  width: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  height: 32px;
   padding: 0;
   border: 0;
   border-radius: var(--radius-md);
@@ -2172,13 +2201,13 @@ a {
   color: var(--color-on-navy);
 }
 
-.app-content {
+.app-content {  
   flex: 1;
   min-width: 0;
   min-height: 0;
   padding: 10px;
   display: grid;
-  gap: var(--space-16);
+  gap: 8px;
   align-content: start;
   overflow: auto;
   overscroll-behavior: contain;
@@ -2186,8 +2215,8 @@ a {
 
 .ui-module-stack {
   display: grid;
-  gap: var(--space-16);
-  padding: 10px;
+  gap: 8px;
+  padding: 8px 12px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -2593,7 +2622,7 @@ a {
 }
 
 .ui-card-body {
-  padding: var(--space-16) var(--space-20);
+  padding: 10px 14px;
 }
 
 .ui-card-body>.ui-field-help:first-child {
@@ -2602,12 +2631,12 @@ a {
 
 .ui-card-body .ui-pagination {
   margin-top: 0;
-  padding: var(--space-12) var(--space-20);
+  padding: 6px 14px;
   background: var(--color-page-background);
 }
 
 .ui-card-body>.ui-table-wrap {
-  margin: 0 calc(var(--space-20) * -1) calc(var(--space-16) * -1);
+  margin: 0 calc(14px * -1) calc(10px * -1);
   border: 0;
   border-radius: 0;
   box-shadow: none;
@@ -2615,7 +2644,7 @@ a {
 
 .ui-card-body>.ui-list-toolbar,
 .ui-card-body>.ui-filter-bar {
-  margin-bottom: var(--space-16);
+  margin-bottom: 6px;
 }
 
 .ui-property-list {
@@ -3547,11 +3576,11 @@ a {
   }
 
   .app-topbar {
-    padding: 10px 12px;
+    padding: 0 12px;
   }
 
   .app-topbar-title {
-    font-size: 20px;
+    font-size: 18px;
   }
 
   .app-topbar-identity {
@@ -4189,7 +4218,7 @@ a {
   color: inherit;
   text-decoration: none;
   font-weight: 600;
-  transition: color 0.15s ease;
+    transition: color 0.15s ease;
 }
 
 
@@ -4487,4 +4516,237 @@ a {
   100% {
     box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
   }
+}
+
+/* ── Sub-Job Workflow & Pipeline Styles ────────────────────────────────────── */
+.ui-subjob-pipeline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-radius: var(--radius-md, 8px);
+  margin: 10px 0;
+  border: 1px solid #e2e8f0;
+}
+
+.ui-subjob-pipeline-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  margin-right: 4px;
+}
+
+.ui-subjob-pipeline-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ui-subjob-pipeline-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.ui-subjob-pipeline-step.is-done .ui-subjob-pipeline-dot {
+  background: #22c55e;
+  color: #ffffff;
+}
+
+.ui-subjob-pipeline-step.is-done {
+  color: #15803d;
+}
+
+.ui-subjob-pipeline-step.is-active .ui-subjob-pipeline-dot {
+  background: #3b82f6;
+  color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+}
+
+.ui-subjob-pipeline-step.is-active {
+  color: #1d4ed8;
+}
+
+.ui-subjob-pipeline-step.is-pending .ui-subjob-pipeline-dot {
+  background: #e2e8f0;
+  color: #64748b;
+}
+
+.ui-subjob-pipeline-step.is-pending {
+  color: #64748b;
+}
+
+.ui-subjob-history-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-md, 8px);
+  padding: 12px 16px;
+  margin-top: 10px;
+}
+
+.ui-subjob-history-header {
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ui-subjob-history-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ui-subjob-history-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.ui-subjob-history-time {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.ui-subjob-active-label {
+  margin-left: 6px;
+  color: var(--color-primary, #3b82f6);
+  font-weight: 600;
+}
+
+/* ── Sub-Job Detail Dialog (Desktop & Laptop Optimized Layout) ───────────── */
+.ui-dialog.ui-subjob-detail-dialog,
+.ui-dialog:has(.ui-subjob-detail-dialog-content) {
+  width: min(calc(100vw - 32px), 74rem);
+  max-width: 74rem;
+  max-height: min(calc(100vh - 32px), 900px);
+  padding: var(--space-16) var(--space-20);
+  display: flex;
+  flex-direction: column;
+}
+
+.ui-subjob-detail-dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  padding-right: 4px;
+  margin: 4px 0 10px;
+}
+
+.ui-subjob-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(125px, 1fr));
+  gap: 8px;
+}
+
+.ui-subjob-kpi-card {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px;
+  background: var(--surface-bg-muted, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+}
+
+.ui-subjob-kpi-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 2px;
+}
+
+.ui-subjob-kpi-val {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-color, #0f172a);
+}
+
+.ui-subjob-stage-progress-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  background: var(--surface-bg-muted, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+}
+
+.ui-subjob-stage-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ui-subjob-stage-pill.is-done {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.ui-subjob-stage-pill.is-active {
+  background: #eff6ff;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+.ui-subjob-stage-pill.is-pending {
+  background: #f8fafc;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.ui-subjob-split-section {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+@media (max-width: 900px) {
+  .ui-subjob-split-section {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ui-subjob-pipeline-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ui-subjob-history-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 180px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.ui-subjob-pipeline-pills {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
 }

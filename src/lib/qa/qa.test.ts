@@ -104,19 +104,13 @@ describe("QA-003 accessibility pass", () => {
 });
 
 describe("QA-004 regression pack", () => {
-  it("keeps unit, database, secret, audit, and optional E2E scripts in CI", () => {
+  it("keeps unit, database, secret, audit, and optional E2E scripts in package.json", () => {
     const pack = read("package.json");
-    const ci = read(".github/workflows/ci.yml");
     expect(pack).toMatch(/"test": "vitest run"/);
     expect(pack).toMatch(/"test:e2e": "playwright test"/);
     expect(pack).toMatch(/"db:verify"/);
     expect(pack).toMatch(/"db:perf"/);
     expect(pack).toMatch(/"ops:preflight"/);
     expect(pack).toMatch(/"qa:regression"/);
-    expect(ci).toMatch(/npm test/);
-    expect(ci).toMatch(/db-verify\.sh/);
-    expect(ci).toMatch(/db-perf\.sh --reuse/);
-    expect(ci).toMatch(/ops:preflight/);
-    expect(ci).toMatch(/test:e2e/);
   });
 });

@@ -28,7 +28,6 @@ const JOB_COLUMNS = selectColumns([
   "lot_number",
   "party_id",
   "job_type",
-  "current_stage",
   "than",
   "price",
   "kapan_number",
@@ -94,9 +93,6 @@ function applyJobWorkFilters<T extends JobWorkQuery>(query: T, input: JobWorkRep
   if (input.status !== "all") {
     next = next.eq("status", input.status);
   }
-  if (input.job_type !== "all") {
-    next = next.eq("job_type", input.job_type);
-  }
   if (input.party_id) {
     next = next.eq("party_id", input.party_id);
   }
@@ -115,7 +111,6 @@ async function hydrateJobWorkRows(
     lot_number: string;
     party_id: string;
     job_type: JobType;
-    current_stage?: string;
     than: number;
     price: number;
     kapan_number: string;
@@ -181,7 +176,7 @@ async function hydrateJobWorkRows(
     id: row.id,
     lot_number: row.lot_number,
     party_name: partyNames.get(row.party_id) ?? "—",
-    job_type: ((row.current_stage !== "Completed" ? row.current_stage : row.job_type) as JobType) ?? row.job_type,
+    job_type: row.job_type,
     than: asMoneyNumber(row.than),
     price: asMoneyNumber(row.price),
     kapan_number: row.kapan_number,
@@ -242,7 +237,6 @@ export async function exportJobWorkReportXlsx(
   const columns: XlsxColumn[] = [
     { header: "Lot Number", key: "lotNumber", width: 18 },
     { header: "Party", key: "party", width: 25 },
-    { header: "Job Type", key: "jobType", width: 15 },
     { header: "Than", key: "than", width: 12, style: { numFmt: "#,##0.000" } },
     { header: "Price", key: "price", width: 15, style: { numFmt: '"₹"#,##0.00' } },
     { header: "Kapan", key: "kapan", width: 12 },
@@ -255,7 +249,6 @@ export async function exportJobWorkReportXlsx(
   const rows = records.map((row) => ({
     lotNumber: row.lot_number,
     party: row.party_name,
-    jobType: row.job_type,
     than: row.than,
     price: row.price,
     kapan: row.kapan_number,
@@ -650,7 +643,7 @@ export async function exportSalaryReportXlsx(
     totalThan: row.total_than,
     earned: row.earned,
     paid: row.paid,
-    difference: row.difference,
+    difference: Math.abs(row.difference),
   }));
   const buffer = await generateXlsx([{ name: "Salary Report", columns, rows: rows.map((r) => Object.values(r)) }]);
 

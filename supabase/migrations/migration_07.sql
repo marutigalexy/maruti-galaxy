@@ -80,12 +80,11 @@ BEGIN
   PERFORM set_config('maruti.via_job_rpc', 'on', true);
 
   INSERT INTO public.invoices (
-    invoice_number, job_work_id, invoice_date, due_date, amount, status
+    invoice_number, job_work_id, invoice_date, amount, status
   )
   VALUES (
     public.next_invoice_number(),
     v_primary_id,
-    COALESCE(p_invoice_date, CURRENT_DATE),
     COALESCE(p_invoice_date, CURRENT_DATE),
     v_total,
     'Unpaid'
@@ -113,11 +112,13 @@ GRANT EXECUTE ON FUNCTION public.create_invoice_for_jobs(uuid, uuid[], date) TO 
 --    Patched to also write to invoice_jobs and use billing_amount.
 -- =============================================================================
 
+DROP FUNCTION IF EXISTS public.create_invoice_for_job(uuid, uuid, date, date);
+DROP FUNCTION IF EXISTS public.create_invoice_for_job(uuid, uuid, date);
+
 CREATE OR REPLACE FUNCTION public.create_invoice_for_job(
   p_party_id     uuid,
   p_job_id       uuid,
-  p_invoice_date date DEFAULT CURRENT_DATE,
-  p_due_date     date DEFAULT NULL
+  p_invoice_date date DEFAULT CURRENT_DATE
 )
 RETURNS TABLE (invoice_id uuid, invoice_number text, amount numeric)
 LANGUAGE plpgsql
@@ -147,13 +148,12 @@ BEGIN
   PERFORM set_config('maruti.via_job_rpc', 'on', true);
 
   INSERT INTO public.invoices (
-    invoice_number, job_work_id, invoice_date, due_date, amount, status
+    invoice_number, job_work_id, invoice_date, amount, status
   )
   VALUES (
     public.next_invoice_number(),
     v_job.id,
     COALESCE(p_invoice_date, CURRENT_DATE),
-    COALESCE(p_due_date, p_invoice_date, CURRENT_DATE),
     COALESCE(v_job.billing_amount, round(v_job.than * v_job.price, 2)),
     'Unpaid'
   )
@@ -169,5 +169,5 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.create_invoice_for_job(uuid, uuid, date, date) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.create_invoice_for_job(uuid, uuid, date, date) TO authenticated;
+REVOKE ALL ON FUNCTION public.create_invoice_for_job(uuid, uuid, date) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.create_invoice_for_job(uuid, uuid, date) TO authenticated;

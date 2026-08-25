@@ -27,7 +27,6 @@ const JOB_SUMMARY_COLUMNS = selectColumns([
   "id",
   "lot_number",
   "job_type",
-  "current_stage",
   "status",
   "than",
   "price",
@@ -217,7 +216,7 @@ export async function getPartySummary(id: string): Promise<PartySummary> {
   if (jobIds.length > 0) {
     const { data: subRows, error: subError } = await supabase
       .from("sub_jobs")
-      .select("job_id, than, stage")
+      .select("job_id, than")
       .in("job_id", jobIds);
 
     if (subError) {
@@ -225,9 +224,7 @@ export async function getPartySummary(id: string): Promise<PartySummary> {
     }
 
     for (const sub of subRows ?? []) {
-      const stage = sub.stage ?? "Sarin";
-      const key = `${sub.job_id}:${stage}`;
-      subAllocated.set(key, (subAllocated.get(key) ?? 0) + asMoneyNumber(sub.than));
+      subAllocated.set(sub.job_id, (subAllocated.get(sub.job_id) ?? 0) + asMoneyNumber(sub.than));
     }
   }
 
@@ -237,14 +234,12 @@ export async function getPartySummary(id: string): Promise<PartySummary> {
       row.billing_amount != null
         ? asMoneyNumber(row.billing_amount)
         : Math.round(than * asMoneyNumber(row.price) * 100) / 100;
-    const currentStage = row.current_stage ?? row.job_type ?? "Sarin";
-    const key = `${row.id}:${currentStage}`;
-    const used = subAllocated.get(key) ?? 0;
+    const used = subAllocated.get(row.id) ?? 0;
     const remainingThan = Math.max(0, Math.round((than - used) * 1000) / 1000);
     return {
       id: row.id,
       lot_number: row.lot_number,
-      job_type: currentStage,
+      job_type: row.job_type,
       status: row.status,
       than,
       remaining_than: remainingThan,

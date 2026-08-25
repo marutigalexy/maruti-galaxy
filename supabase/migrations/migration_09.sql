@@ -1,7 +1,10 @@
 -- =============================================================================
--- Migration 09: Default Transaction-Linked Categories
+-- Migration 09: Default Transaction-Linked Categories & Invoice Schema Cleanup
 -- Ensures system-required categories exist and are active without duplicates.
+-- Removes obsolete invoice due_date column.
 -- =============================================================================
+
+ALTER TABLE public.invoices DROP COLUMN IF EXISTS due_date;
 
 INSERT INTO public.categories (name, type, is_active)
 VALUES 

@@ -5,7 +5,6 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { ExportButton } from "@/components/ui/export-button";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { FormField } from "@/components/ui/form-field";
-import { JobTypeBadge } from "@/components/ui/job-type-badge";
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput } from "@/components/ui/search-input";
 import { Select } from "@/components/ui/select";
@@ -39,7 +38,6 @@ function exportHref(query: JobWorkReportInput): string {
   return queryHref("/api/export/jobs", {
     search: query.search,
     status: query.status,
-    job_type: query.job_type,
     party_id: query.party_id,
     date_from: query.date_from,
     date_to: query.date_to,
@@ -54,7 +52,6 @@ export function JobWorkReportView({ query, result, parties }: JobWorkReportViewP
   const filtered =
     Boolean(query.search) ||
     query.status !== "all" ||
-    query.job_type !== "all" ||
     Boolean(query.party_id) ||
     Boolean(query.date_from) ||
     Boolean(query.date_to);
@@ -67,7 +64,6 @@ export function JobWorkReportView({ query, result, parties }: JobWorkReportViewP
           pushQuery({
             search: "",
             status: "all",
-            job_type: "all",
             party_id: undefined,
             date_from: undefined,
             date_to: undefined,
@@ -83,23 +79,6 @@ export function JobWorkReportView({ query, result, parties }: JobWorkReportViewP
           onValueChange={(search) => pushQuery({ ...query, search, page: 1 })}
           placeholder="Search lot number"
         />
-        <FormField
-          label="Job Type"
-          htmlFor="report-job-type"
-        >
-          <Select
-            id="report-job-type"
-            value={query.job_type}
-            onChange={(event) =>
-              pushQuery({ ...query, job_type: event.target.value as JobWorkReportInput["job_type"], page: 1 })
-            }
-          >
-            <option value="all">All</option>
-            <option value="Sarin">Sarin</option>
-            <option value="Dropping">Dropping</option>
-            <option value="Galaxy">Galaxy</option>
-          </Select>
-        </FormField>
         <FormField label="Status" htmlFor="report-job-status">
           <Select
             id="report-job-status"
@@ -148,7 +127,6 @@ export function JobWorkReportView({ query, result, parties }: JobWorkReportViewP
         columns={[
           { key: "lot", header: "Lot Number", render: (row) => row.lot_number },
           { key: "party", header: "Party", render: (row) => row.party_name },
-          { key: "type", header: "Job Type", render: (row) => <JobTypeBadge type={row.job_type} /> },
           { key: "than", header: "Than", numeric: true, render: (row) => formatThan(row.than) },
           { key: "done", header: "Done Than", numeric: true, render: (row) => formatThan(row.done_than) },
           { key: "weight", header: "Weight", numeric: true, render: (row) => <WeightCt value={row.weight} /> },

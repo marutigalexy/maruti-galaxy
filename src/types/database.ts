@@ -125,8 +125,6 @@ export type Database = {
           weight: number;
           billing_amount: number | null;
           status: Database["public"]["Enums"]["job_status"];
-          stages: string[];
-          current_stage: string;
           created_at: string;
           updated_at: string;
         };
@@ -141,8 +139,6 @@ export type Database = {
           weight: number;
           billing_amount?: number | null;
           status?: Database["public"]["Enums"]["job_status"];
-          stages?: string[];
-          current_stage?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -157,8 +153,6 @@ export type Database = {
           weight?: number;
           billing_amount?: number | null;
           status?: Database["public"]["Enums"]["job_status"];
-          stages?: string[];
-          current_stage?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -216,6 +210,8 @@ export type Database = {
           than: number;
           weight: number;
           status: Database["public"]["Enums"]["job_status"];
+          stages: string[];
+          current_stage: string;
           stage: string;
           created_at: string;
           updated_at: string;
@@ -227,6 +223,8 @@ export type Database = {
           than: number;
           weight: number;
           status?: Database["public"]["Enums"]["job_status"];
+          stages?: string[];
+          current_stage?: string;
           stage?: string;
           created_at?: string;
           updated_at?: string;
@@ -238,6 +236,8 @@ export type Database = {
           than?: number;
           weight?: number;
           status?: Database["public"]["Enums"]["job_status"];
+          stages?: string[];
+          current_stage?: string;
           stage?: string;
           created_at?: string;
           updated_at?: string;
@@ -252,11 +252,47 @@ export type Database = {
           },
         ];
       };
+      sub_job_stage_history: {
+        Row: {
+          id: string;
+          sub_job_id: string;
+          stage: string;
+          started_at: string;
+          completed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          sub_job_id: string;
+          stage: string;
+          started_at?: string;
+          completed_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          sub_job_id?: string;
+          stage?: string;
+          started_at?: string;
+          completed_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "sub_job_stage_history_sub_job_id_fkey";
+            columns: ["sub_job_id"];
+            isOneToOne: false;
+            referencedRelation: "sub_jobs";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       sub_job_employee_work: {
         Row: {
           id: string;
           sub_job_id: string;
           employee_id: string;
+          stage: string;
           done_than: number;
           commission: number;
           earning: number;
@@ -267,6 +303,7 @@ export type Database = {
           id?: string;
           sub_job_id: string;
           employee_id: string;
+          stage?: string;
           done_than: number;
           commission: number;
           earning: number;
@@ -277,6 +314,7 @@ export type Database = {
           id?: string;
           sub_job_id?: string;
           employee_id?: string;
+          stage?: string;
           done_than?: number;
           commission?: number;
           earning?: number;
@@ -285,17 +323,17 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: "sub_job_employee_work_sub_job_id_fkey";
-            columns: ["sub_job_id"];
-            isOneToOne: false;
-            referencedRelation: "sub_jobs";
-            referencedColumns: ["id"];
-          },
-          {
             foreignKeyName: "sub_job_employee_work_employee_id_fkey";
             columns: ["employee_id"];
             isOneToOne: false;
             referencedRelation: "employees";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "sub_job_employee_work_sub_job_id_fkey";
+            columns: ["sub_job_id"];
+            isOneToOne: false;
+            referencedRelation: "sub_jobs";
             referencedColumns: ["id"];
           },
         ];
@@ -306,7 +344,6 @@ export type Database = {
           invoice_number: string;
           job_work_id: string;
           invoice_date: string;
-          due_date: string | null;
           amount: number;
           status: Database["public"]["Enums"]["invoice_status"];
           created_at: string;
@@ -317,7 +354,6 @@ export type Database = {
           invoice_number: string;
           job_work_id: string;
           invoice_date: string;
-          due_date?: string | null;
           amount: number;
           status?: Database["public"]["Enums"]["invoice_status"];
           created_at?: string;
@@ -328,7 +364,6 @@ export type Database = {
           invoice_number?: string;
           job_work_id?: string;
           invoice_date?: string;
-          due_date?: string | null;
           amount?: number;
           status?: Database["public"]["Enums"]["invoice_status"];
           created_at?: string;
@@ -520,6 +555,8 @@ export type Database = {
           than: number | null;
           weight: number | null;
           status: Database["public"]["Enums"]["job_status"] | null;
+          stages: string[] | null;
+          current_stage: string | null;
           stage: string | null;
           created_at: string | null;
           updated_at: string | null;
@@ -602,12 +639,12 @@ export type Database = {
           p_kapan_number: string;
           p_weight: number;
           p_status?: Database["public"]["Enums"]["job_status"];
-          p_stages?: string[];
+          p_billing_amount?: number | null;
         };
         Returns: { job_id: string; lot_number: string }[];
       };
       create_invoice_for_job: {
-        Args: { p_party_id: string; p_job_id: string; p_invoice_date?: string; p_due_date?: string };
+        Args: { p_party_id: string; p_job_id: string; p_invoice_date?: string };
         Returns: { invoice_id: string; invoice_number: string; amount: number }[];
       };
       create_invoice_for_jobs: {
@@ -627,8 +664,7 @@ export type Database = {
           p_weight?: number;
           p_status?: Database["public"]["Enums"]["job_status"];
           p_job_type?: Database["public"]["Enums"]["job_type"];
-          p_stages?: string[];
-          p_current_stage?: string;
+          p_billing_amount?: number | null;
         };
         Returns: {
           job_id: string;
@@ -645,7 +681,8 @@ export type Database = {
           p_than: number;
           p_weight: number;
           p_status?: Database["public"]["Enums"]["job_status"];
-          p_stage?: string;
+          p_stages?: string[];
+          p_current_stage?: string;
         };
         Returns: Database["public"]["Tables"]["sub_jobs"]["Row"];
       };
@@ -655,6 +692,8 @@ export type Database = {
           p_than: number;
           p_weight?: number;
           p_status?: Database["public"]["Enums"]["job_status"];
+          p_stages?: string[];
+          p_current_stage?: string;
         };
         Returns: Database["public"]["Tables"]["sub_jobs"]["Row"];
       };
@@ -674,13 +713,9 @@ export type Database = {
         Args: { p_work_id: string };
         Returns: undefined;
       };
-      advance_job_stage: {
-        Args: { p_job_id: string };
-        Returns: {
-          job_id: string;
-          current_stage: string;
-          status: Database["public"]["Enums"]["job_status"];
-        }[];
+      advance_sub_job_stage: {
+        Args: { p_sub_job_id: string };
+        Returns: Database["public"]["Tables"]["sub_jobs"]["Row"];
       };
       allocate_entry_to_invoices: {
         Args: {

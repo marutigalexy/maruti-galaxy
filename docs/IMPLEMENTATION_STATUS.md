@@ -20,7 +20,7 @@ Started empty (requirement documents and logo only). Phase 1 foundation is in pl
 | FOUND-006 | Env split | `.env.example` |
 | FOUND-007 | Secret gitignore | `.env.local` ignored |
 | FOUND-008 | ESLint + TypeScript strict | Configured |
-| FOUND-009 | CI + secret scan | `.github/workflows/ci.yml` |
+| FOUND-009 | Secret scan | `scripts/secret-scan.mjs` |
 | FOUND-010 | Environment plan | `docs/environments.md` |
 | OPS-001 | Local runbook | README |
 

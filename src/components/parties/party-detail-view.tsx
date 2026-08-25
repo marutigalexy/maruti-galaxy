@@ -17,7 +17,6 @@ import { FormField } from "@/components/ui/form-field";
 import { IconButton } from "@/components/ui/icon-button";
 import { EditIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
-import { JobTypeBadge } from "@/components/ui/job-type-badge";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { WeightCt } from "@/components/ui/weight-ct";
 import { useToast } from "@/components/ui/toast";
@@ -169,11 +168,6 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
                   key: "lot",
                   header: "Lot Number",
                   render: (row) => row.lot_number,
-                },
-                {
-                  key: "type",
-                  header: "Job Type",
-                  render: (row) => <JobTypeBadge type={row.job_type} />,
                 },
                 {
                   key: "than",
@@ -394,7 +388,7 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
               placeholder="e.g. 9876543210"
             />
           </FormField>
-          <FormField label="Price" htmlFor="detail-edit-price">
+          <FormField label="Price/Than" htmlFor="detail-edit-price">
             <Input
               id="detail-edit-price"
               name="price"

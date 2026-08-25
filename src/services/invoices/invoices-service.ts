@@ -88,7 +88,6 @@ export type InvoiceDetail = {
   id: string;
   invoice_number: string;
   invoice_date: string;
-  due_date: string | null;
   amount: number;
   status: InvoiceStatus;
   // Primary job kept for backward-compat (detail view, allocations, etc.)
@@ -415,7 +414,7 @@ export async function getInvoice(id: string): Promise<InvoiceDetail> {
 
   const { data: invoice, error: invoiceError } = await supabase
     .from("invoices")
-    .select("id, invoice_number, invoice_date, due_date, amount, status, job_work_id")
+    .select("id, invoice_number, invoice_date, amount, status, job_work_id")
     .eq("id", id)
     .maybeSingle();
 
@@ -507,7 +506,6 @@ export async function getInvoice(id: string): Promise<InvoiceDetail> {
     id: invoice.id,
     invoice_number: invoice.invoice_number,
     invoice_date: invoice.invoice_date,
-    due_date: invoice.due_date,
     amount: asMoneyNumber(invoice.amount),
     status: outstanding.status,
     job_work_id: invoice.job_work_id,

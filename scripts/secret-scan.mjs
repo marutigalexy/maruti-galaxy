@@ -29,7 +29,6 @@ const ALLOW_SERVICE_ROLE_DOCS = new Set([
   "docs/environments.md",
   "docs/IMPLEMENTATION_STATUS.md",
   "scripts/secret-scan.mjs",
-  ".github/workflows/ci.yml",
 ]);
 
 function walk(dir, files = []) {
