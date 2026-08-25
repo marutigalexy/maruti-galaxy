@@ -254,6 +254,103 @@ export async function deleteCategory(id: string): Promise<{ ok: true }> {
   return { ok: true };
 }
 
+export const SYSTEM_CATEGORIES = [
+  { name: "Party Payment", type: "Income" as const },
+  { name: "Employee Salary", type: "Expense" as const },
+] as const;
+
+export async function ensureDefaultCategories(): Promise<void> {
+  const supabase = await createSupabaseServerClient();
+  for (const cat of SYSTEM_CATEGORIES) {
+    const { data: existing } = await supabase
+      .from("categories")
+      .select("id, is_active")
+      .eq("name", cat.name)
+      .eq("type", cat.type)
+      .maybeSingle();
+
+    if (!existing) {
+      await supabase.from("categories").insert({
+        name: cat.name,
+        type: cat.type,
+        is_active: true,
+      });
+    } else if (!existing.is_active) {
+      await supabase.from("categories").update({ is_active: true }).eq("id", existing.id);
+    }
+  }
+}
+
+export async function getOrCreateCategory(
+  name: string,
+  type: Database["public"]["Enums"]["entry_type"],
+): Promise<CategoryOption> {
+  await requireActiveAdmin();
+  const supabase = await createSupabaseServerClient();
+  const trimmed = name.trim();
+
+  // Try exact lookup first
+  const { data: exact } = await supabase
+    .from("categories")
+    .select("id, name, type, is_active")
+    .eq("name", trimmed)
+    .eq("type", type)
+    .maybeSingle();
+
+  if (exact) {
+    if (!exact.is_active) {
+      await supabase.from("categories").update({ is_active: true }).eq("id", exact.id);
+      return { ...exact, is_active: true };
+    }
+    return exact;
+  }
+
+  // Try case-insensitive lookup to avoid duplicates
+  const { data: caseInsensitive } = await supabase
+    .from("categories")
+    .select("id, name, type, is_active")
+    .ilike("name", trimmed)
+    .eq("type", type)
+    .maybeSingle();
+
+  if (caseInsensitive) {
+    if (!caseInsensitive.is_active) {
+      await supabase.from("categories").update({ is_active: true }).eq("id", caseInsensitive.id);
+      return { ...caseInsensitive, is_active: true };
+    }
+    return caseInsensitive;
+  }
+
+  // Insert new category
+  const { data: inserted } = await supabase
+    .from("categories")
+    .insert({
+      name: trimmed,
+      type,
+      is_active: true,
+    })
+    .select("id, name, type, is_active")
+    .maybeSingle();
+
+  if (inserted) {
+    return inserted;
+  }
+
+  // Fallback in case of concurrent insert / unique conflict
+  const { data: fallback } = await supabase
+    .from("categories")
+    .select("id, name, type, is_active")
+    .eq("name", trimmed)
+    .eq("type", type)
+    .maybeSingle();
+
+  if (fallback) {
+    return fallback;
+  }
+
+  throw new AppError("INTERNAL", `Unable to resolve category "${name}".`);
+}
+
 export type CategoryOption = {
   id: string;
   name: string;
@@ -263,6 +360,7 @@ export type CategoryOption = {
 
 export async function listCategoryOptions(): Promise<CategoryOption[]> {
   await requireActiveAdmin();
+  await ensureDefaultCategories();
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("categories")

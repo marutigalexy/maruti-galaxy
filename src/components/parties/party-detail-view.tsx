@@ -7,7 +7,6 @@ import { updatePartyAction } from "@/app/actions/parties";
 import { TopbarActions, TopbarStatus, useRecordTitle } from "@/components/layout/page-chrome";
 import { PartyPaymentDialog } from "@/components/parties/party-payment-dialog";
 import { PartyInvoiceDialog } from "@/components/parties/party-invoice-dialog";
-import { JobCreateForm } from "@/components/jobs/job-create-form";
 import { InvoicePrintButton } from "@/components/invoices/invoice-print-button";
 import { ClientTabs } from "@/components/ui/client-tabs";
 import { Button } from "@/components/ui/button";
@@ -22,11 +21,10 @@ import { JobTypeBadge } from "@/components/ui/job-type-badge";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { WeightCt } from "@/components/ui/weight-ct";
 import { useToast } from "@/components/ui/toast";
-import { formatInr, formatThan } from "@/lib/formatters";
+import { formatInr, formatSignedInr, formatThan } from "@/lib/formatters";
 import type { AccountOption } from "@/services/accounts/accounts-service";
 import type { CategoryOption } from "@/services/categories/categories-service";
 import type { PartyInvoiceRow, PartyJobRow, PartyRecord, PartySummary } from "@/services/parties/parties-service";
-import type { PartyOption } from "@/services/parties/parties-service";
 
 type PartyDetailViewProps = {
   party: PartyRecord;
@@ -66,16 +64,16 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
   const [pending, startTransition] = useTransition();
   const [editOpen, setEditOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<TabKey>("jobs");
-  useRecordTitle(party.company_name, partySubtitle(party));
-
-  // Sync tab from URL hash on mount
-  useEffect(() => {
-    const hash = window.location.hash.slice(1);
-    if (hash === "jobs" || hash === "invoices" || hash === "payments") {
-      setActiveTab(hash);
+  const [activeTab, setActiveTab] = useState<TabKey>(() => {
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash.slice(1);
+      if (hash === "jobs" || hash === "invoices" || hash === "payments") {
+        return hash;
+      }
     }
-  }, []);
+    return "jobs";
+  });
+  useRecordTitle(party.company_name, partySubtitle(party));
 
   // Update URL hash when tab changes (preserves history for back button)
   useEffect(() => {
@@ -86,7 +84,16 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
     { label: "Default Price", value: formatInr(party.price) },
     { label: "Jobs", value: String(summary.jobsCount) },
     { label: "Invoices", value: String(summary.invoicesCount) },
-    { label: "Outstanding", value: formatInr(summary.outstanding) },
+    {
+      label: "Outstanding",
+      value: (
+        <span className={summary.outstanding < 0 ? "ui-amount-negative" : "ui-amount-positive"}>
+          {summary.outstanding < 0
+            ? formatSignedInr("Expense", Math.abs(summary.outstanding))
+            : formatSignedInr("Income", summary.outstanding)}
+        </span>
+      ),
+    },
   ];
 
   // All job IDs that already belong to an invoice
@@ -110,9 +117,9 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
   }, [summary.invoices, summary.jobs]);
 
   const tabItems = [
-    { id: "jobs", label: "Jobs" },
-    { id: "invoices", label: "Invoices" },
-    { id: "payments", label: "Payment History" },
+    { id: "jobs", label: "Jobs", count: summary.jobs.length },
+    { id: "invoices", label: "Invoices", count: summary.invoices.length },
+    { id: "payments", label: "Payment History", count: summary.payments.length },
   ] as const;
 
   return (

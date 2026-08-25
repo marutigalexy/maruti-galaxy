@@ -379,6 +379,7 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
               );
             }}
           >
+            <p className="ui-field-help">The current password is never shown for security.</p>
             <FormField label="New Password" htmlFor="pw-password" required>
               <PasswordInput
                 id="pw-password"

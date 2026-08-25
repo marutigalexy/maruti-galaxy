@@ -10,7 +10,7 @@ import {
 import { logServerError } from "@/lib/api/logging";
 
 const RPC_MESSAGES: Record<string, string> = {
-  THAN_EXCEEDED: "Sub Job Than exceeds remaining Main Job Than.",
+  THAN_EXCEEDED: "Sub Job Than exceeds remaining Main Job Than for this stage.",
   DONE_THAN_EXCEEDED: "Done Than exceeds remaining Sub Job Than.",
   THAN_BELOW_SUB_JOBS: "Job Than cannot be less than allocated sub-job Than.",
   THAN_BELOW_WORK: "Sub Job Than cannot be less than completed Done Than.",
@@ -50,8 +50,13 @@ const VALIDATION_RPC = new Set([
 ]);
 
 function looksUnsafe(message: string): boolean {
-  return /select\s|insert\s|update\s|delete\s|from\s|postgres|supabase|stack|\/users\/|password|service.role|authorization/i.test(
-    message,
+  return (
+    /select\s+.+\s+from\s+|insert\s+into\s+|delete\s+from\s+|update\s+[a-z0-9_]+\s+set\s+|relation\s+"[^"]+"\s+does\s+not\s+exist/i.test(
+      message,
+    ) ||
+    /pg_catalog|information_schema|service_role|anon_key|jwt_secret|password=|connection\s+refused|ECONNREFUSED|ENOTFOUND|\b(BEGIN|COMMIT|ROLLBACK)\b|syntax\s+error\s+at\s+or\s+near|\/Users\/|\/var\/www|node_modules|\bat\s+[a-zA-Z0-9_<>. ]+\s*\(/i.test(
+      message,
+    )
   );
 }
 
@@ -93,9 +98,9 @@ function rpcCode(rpc: string): AppErrorCode {
 
 export function mapToActionError(error: unknown): ActionError {
   if (isAppError(error)) {
-    if (error.code === "INTERNAL" || looksUnsafe(error.message)) {
-      logServerError("unsafe_or_internal_error", error, { code: error.code });
-      return { code: "INTERNAL", message: SAFE_INTERNAL_MESSAGE };
+    if (error.code === "INTERNAL") {
+      logServerError("internal_app_error", error, { code: error.code });
+      return { code: "INTERNAL", message: error.message && !looksUnsafe(error.message) ? error.message : SAFE_INTERNAL_MESSAGE };
     }
 
     return { code: error.code, message: error.message };
@@ -112,12 +117,24 @@ export function mapToActionError(error: unknown): ActionError {
     return { code: rpcCode(message), message: RPC_MESSAGES[message] };
   }
 
+  if (message) {
+    for (const [key, text] of Object.entries(RPC_MESSAGES)) {
+      if (message.includes(key)) {
+        return { code: rpcCode(key), message: text };
+      }
+    }
+  }
+
   if (code === "23505") {
     return { code: "CONFLICT", message: "This record already exists." };
   }
 
   if (code === "23503") {
-    return { code: "INTEGRITY", message: "This record is in use and cannot be changed that way." };
+    return { code: "INTEGRITY", message: "This record is in use and cannot be changed or deleted." };
+  }
+
+  if (code === "23514") {
+    return { code: "VALIDATION", message: "Constraint check failed. Please review the values entered." };
   }
 
   if (code === "42501") {
@@ -125,7 +142,19 @@ export function mapToActionError(error: unknown): ActionError {
   }
 
   if (code === "22P02" || code === "22023") {
-    return { code: "VALIDATION", message: "Invalid input." };
+    return { code: "VALIDATION", message: "Invalid input values. Please review the numbers and text entered." };
+  }
+
+  if (code === "42883") {
+    return { code: "INTERNAL", message: "Database function signature mismatch. Please update database migrations." };
+  }
+
+  if (code === "42725") {
+    return { code: "INTERNAL", message: "Ambiguous database function. Please remove duplicate function overloads." };
+  }
+
+  if (message && !looksUnsafe(message)) {
+    return { code: "INTERNAL", message };
   }
 
   logServerError("unmapped_error", error);
@@ -134,9 +163,6 @@ export function mapToActionError(error: unknown): ActionError {
 
 export function toAppError(error: unknown): AppError {
   if (isAppError(error)) {
-    if (error.code === "INTERNAL" || looksUnsafe(error.message)) {
-      return new AppError("INTERNAL", SAFE_INTERNAL_MESSAGE);
-    }
     return error;
   }
 

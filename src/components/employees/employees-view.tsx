@@ -19,6 +19,7 @@ import { FormField } from "@/components/ui/form-field";
 import { IconButton } from "@/components/ui/icon-button";
 import { DeleteIcon, EditIcon, PowerIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
+import { JobTypeBadge } from "@/components/ui/job-type-badge";
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput } from "@/components/ui/search-input";
 import { Select } from "@/components/ui/select";
@@ -90,7 +91,7 @@ export function EmployeesView({ query, result }: EmployeesViewProps) {
       >
         <SearchInput
           value={query.search}
-          onValueChange={(search) => push(listHref("/employees", { ...query, search, page: 1 }))}
+          onValueChange={(search) => pushQuery({ ...query, search, page: 1 })}
           placeholder="Search name or mobile"
         />
         <FormField label="Status" htmlFor="employee-status">
@@ -116,6 +117,11 @@ export function EmployeesView({ query, result }: EmployeesViewProps) {
         columns={[
           { key: "name", header: "Employee Name", render: (row) => row.name },
           { key: "mobile", header: "Mobile Number", render: (row) => row.mobile_number },
+          {
+            key: "employee_type",
+            header: "Employee Type",
+            render: (row) => <JobTypeBadge type={row.employee_type} />,
+          },
           {
             key: "commission",
             header: "Commission",
@@ -205,6 +211,7 @@ export function EmployeesView({ query, result }: EmployeesViewProps) {
                   name: String(form.get("name") ?? ""),
                   mobile_number: String(form.get("mobile_number") ?? ""),
                   commission: String(form.get("commission") ?? ""),
+                  employee_type: String(form.get("employee_type") ?? "Sarin"),
                   is_active: true,
                 }),
               "Employee created successfully.",
@@ -216,6 +223,13 @@ export function EmployeesView({ query, result }: EmployeesViewProps) {
           </FormField>
           <FormField label="Mobile Number" htmlFor="create-employee-mobile" required>
             <Input id="create-employee-mobile" name="mobile_number" required disabled={pending} placeholder="e.g. 9876543210" />
+          </FormField>
+          <FormField label="Employee Type" htmlFor="create-employee-type" required>
+            <Select id="create-employee-type" name="employee_type" required defaultValue="Sarin" disabled={pending}>
+              <option value="Sarin">Sarin</option>
+              <option value="Dropping">Dropping</option>
+              <option value="Galaxy">Galaxy</option>
+            </Select>
           </FormField>
           <FormField
             label="Commission"
@@ -260,6 +274,7 @@ export function EmployeesView({ query, result }: EmployeesViewProps) {
                     name: String(form.get("name") ?? ""),
                     mobile_number: String(form.get("mobile_number") ?? ""),
                     commission: String(form.get("commission") ?? ""),
+                    employee_type: String(form.get("employee_type") ?? "Sarin"),
                   }),
                 "Employee updated successfully.",
               );
@@ -284,6 +299,19 @@ export function EmployeesView({ query, result }: EmployeesViewProps) {
                 disabled={pending}
                 placeholder="e.g. 9876543210"
               />
+            </FormField>
+            <FormField label="Employee Type" htmlFor="edit-employee-type" required>
+              <Select
+                id="edit-employee-type"
+                name="employee_type"
+                required
+                defaultValue={editEmployee.employee_type}
+                disabled={pending}
+              >
+                <option value="Sarin">Sarin</option>
+                <option value="Dropping">Dropping</option>
+                <option value="Galaxy">Galaxy</option>
+              </Select>
             </FormField>
             <FormField
               label="Commission"

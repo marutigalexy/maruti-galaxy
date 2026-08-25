@@ -28,6 +28,7 @@ const JOB_COLUMNS = selectColumns([
   "lot_number",
   "party_id",
   "job_type",
+  "current_stage",
   "than",
   "price",
   "kapan_number",
@@ -114,6 +115,7 @@ async function hydrateJobWorkRows(
     lot_number: string;
     party_id: string;
     job_type: JobType;
+    current_stage?: string;
     than: number;
     price: number;
     kapan_number: string;
@@ -179,7 +181,7 @@ async function hydrateJobWorkRows(
     id: row.id,
     lot_number: row.lot_number,
     party_name: partyNames.get(row.party_id) ?? "—",
-    job_type: row.job_type,
+    job_type: ((row.current_stage !== "Completed" ? row.current_stage : row.job_type) as JobType) ?? row.job_type,
     than: asMoneyNumber(row.than),
     price: asMoneyNumber(row.price),
     kapan_number: row.kapan_number,
@@ -392,7 +394,7 @@ export async function getPartyOutstandingReport(
     query = query.ilike("company_name", `%${escapeIlike(input.search.trim())}%`);
   }
 
-  const { data: parties, error, count } = await query;
+  const { data: parties, error } = await query;
   if (error) {
     throw new AppError("INTERNAL", "Unable to load parties for outstanding report.");
   }
@@ -589,6 +591,11 @@ export async function getSalaryReport(
     .order("name", { ascending: true })
     .range(offset, offset + input.pageSize - 1);
 
+  if (input.search && input.search.trim() !== "") {
+    const pattern = `%${escapeIlike(input.search.trim())}%`;
+    query = query.ilike("name", pattern);
+  }
+
   if (input.employee_id) {
     query = query.eq("id", input.employee_id);
   }
@@ -612,6 +619,11 @@ export async function exportSalaryReportXlsx(
     .select("id, name", { count: "exact" })
     .order("name", { ascending: true })
     .range(0, EXPORT_REPORT_MAX_ROWS - 1);
+
+  if (input.search && input.search.trim() !== "") {
+    const pattern = `%${escapeIlike(input.search.trim())}%`;
+    query = query.ilike("name", pattern);
+  }
 
   if (input.employee_id) {
     query = query.eq("id", input.employee_id);

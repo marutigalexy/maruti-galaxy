@@ -1,6 +1,9 @@
-import Link from "next/link";
+"use client";
 
-import { formatDisplayDate, formatInr, formatThan } from "@/lib/formatters";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+import { formatDisplayDate, formatInr, formatSignedInr, formatThan } from "@/lib/formatters";
 import type { DashboardSnapshot } from "@/services/dashboard/dashboard-service";
 
 type DashboardViewProps = {
@@ -38,6 +41,8 @@ function accountInitial(name: string): string {
 // ── component ──────────────────────────────────────────────────────────────
 
 export function DashboardView({ snapshot }: DashboardViewProps) {
+  const router = useRouter();
+
   const {
     jobs_total,
     jobs_pending,
@@ -118,7 +123,7 @@ export function DashboardView({ snapshot }: DashboardViewProps) {
           className="db-kpi db-kpi-green db-kpi-finance"
         >
           <div className="db-kpi-label">Total Income</div>
-          <div className="db-kpi-value">{formatInr(month_income)}</div>
+          <div className="db-kpi-value ui-amount-income">{formatSignedInr("Income", month_income)}</div>
           <div className="db-kpi-helper">
             <b className="db-text-green">This month</b> · cash received
           </div>
@@ -130,7 +135,7 @@ export function DashboardView({ snapshot }: DashboardViewProps) {
           className="db-kpi db-kpi-orange db-kpi-finance"
         >
           <div className="db-kpi-label">Total Expense</div>
-          <div className="db-kpi-value">{formatInr(month_expense)}</div>
+          <div className="db-kpi-value ui-amount-expense">{formatSignedInr("Expense", month_expense)}</div>
           <div className="db-kpi-helper">
             <b className="db-text-orange">This month</b> · low spend
           </div>
@@ -139,7 +144,11 @@ export function DashboardView({ snapshot }: DashboardViewProps) {
 
         <Link href="/reports/outstanding" className="db-kpi db-kpi-blue db-kpi-finance">
           <div className="db-kpi-label">Outstanding Amount</div>
-          <div className="db-kpi-value">{formatInr(outstanding)}</div>
+          <div className={`db-kpi-value ${outstanding < 0 ? "ui-amount-negative" : "ui-amount-positive"}`}>
+            {outstanding < 0
+              ? formatSignedInr("Expense", Math.abs(outstanding))
+              : formatSignedInr("Income", outstanding)}
+          </div>
           <div className="db-kpi-helper">
             <b className="db-text-blue">All time</b> · awaiting collection
           </div>
@@ -148,7 +157,10 @@ export function DashboardView({ snapshot }: DashboardViewProps) {
       </div>
 
       {/* ── Account Balances ─────────────────────────────────────────── */}
-      <div className="db-section-title">Current Account Balances</div>
+      <div className="db-section-header">
+        <div className="db-section-title">Current Account Balances</div>
+        <Link href="/accounting/accounts" className="db-view-all">Manage accounts →</Link>
+      </div>
 
       <div className="db-accounts-card">
         <div className="db-accounts-head">
@@ -159,7 +171,11 @@ export function DashboardView({ snapshot }: DashboardViewProps) {
           <div className="db-accounts-empty">No accounts yet.</div>
         ) : (
           accounts.map((account) => (
-            <div key={account.id} className="db-account-row">
+            <Link
+              key={account.id}
+              href={`/accounting/entries?account_id=${account.id}`}
+              className="db-account-row"
+            >
               <div className="db-account-info">
                 <div className="db-account-icon">{accountInitial(account.name)}</div>
                 <div>
@@ -167,7 +183,7 @@ export function DashboardView({ snapshot }: DashboardViewProps) {
                 </div>
               </div>
               <div className="db-account-balance">{formatInr(account.current_balance)}</div>
-            </div>
+            </Link>
           ))
         )}
       </div>
@@ -199,8 +215,27 @@ export function DashboardView({ snapshot }: DashboardViewProps) {
                 </tr>
               ) : (
                 recent_jobs.map((job) => (
-                  <tr key={job.id}>
-                    <td className="db-lot">{job.lot_number}</td>
+                  <tr
+                    key={job.id}
+                    className="db-row-clickable"
+                    onClick={() => router.push(`/jobs/${job.id}`)}
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        router.push(`/jobs/${job.id}`);
+                      }
+                    }}
+                  >
+                    <td className="db-lot">
+                      <Link
+                        href={`/jobs/${job.id}`}
+                        className="db-table-link"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {job.lot_number}
+                      </Link>
+                    </td>
                     <td className="db-party">{job.party_name}</td>
                     <td>{jobStatusBadge(job.status)}</td>
                     <td>{formatDisplayDate(job.created_at)}</td>
@@ -233,10 +268,43 @@ export function DashboardView({ snapshot }: DashboardViewProps) {
                 </tr>
               ) : (
                 recent_entries.map((entry) => (
-                  <tr key={entry.id}>
+                  <tr
+                    key={entry.id}
+                    className="db-row-clickable"
+                    onClick={() =>
+                      router.push(
+                        entry.account_id
+                          ? `/accounting/entries?account_id=${entry.account_id}`
+                          : `/accounting/entries`
+                      )
+                    }
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        router.push(
+                          entry.account_id
+                            ? `/accounting/entries?account_id=${entry.account_id}`
+                            : `/accounting/entries`
+                        );
+                      }
+                    }}
+                  >
                     <td>{formatDisplayDate(entry.entry_date)}</td>
                     <td>{entryTypeBadge(entry.entry_type)}</td>
-                    <td>{entry.account_name}</td>
+                    <td>
+                      {entry.account_id ? (
+                        <Link
+                          href={`/accounting/entries?account_id=${entry.account_id}`}
+                          className="db-table-link"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {entry.account_name}
+                        </Link>
+                      ) : (
+                        entry.account_name
+                      )}
+                    </td>
                     <td className="db-amount">{formatInr(entry.amount)}</td>
                   </tr>
                 ))
@@ -249,3 +317,4 @@ export function DashboardView({ snapshot }: DashboardViewProps) {
     </div>
   );
 }
+

@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import { normalizeStages, STAGE_ORDER, type StageType } from "@/lib/validation/jobs";
 import type { PartyOption } from "@/services/parties/parties-service";
 
 type JobCreateFormProps = {
@@ -26,7 +27,7 @@ export function JobCreateForm({ parties, onCancel }: JobCreateFormProps) {
   const [pending, startTransition] = useTransition();
   const [formError, setFormError] = useState<string | null>(null);
   const [partyId, setPartyId] = useState("");
-  const [jobType, setJobType] = useState("Sarin");
+  const [selectedStages, setSelectedStages] = useState<StageType[]>(["Sarin", "Dropping", "Galaxy"]);
   const [price, setPrice] = useState("");
   const [priceEdited, setPriceEdited] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -34,6 +35,21 @@ export function JobCreateForm({ parties, onCancel }: JobCreateFormProps) {
   useUnsavedChanges(dirty && !pending);
 
   const activeParties = useMemo(() => parties.filter((party) => party.is_active), [parties]);
+
+  const pipeline = useMemo(() => normalizeStages(selectedStages), [selectedStages]);
+
+  function toggleStage(stage: StageType) {
+    setDirty(true);
+    if (selectedStages.includes(stage)) {
+      if (selectedStages.length === 1) {
+        toast.error("A job must have at least one stage.");
+        return;
+      }
+      setSelectedStages(selectedStages.filter((s) => s !== stage));
+    } else {
+      setSelectedStages([...selectedStages, stage]);
+    }
+  }
 
   if (activeParties.length === 0) {
     return (
@@ -56,11 +72,15 @@ export function JobCreateForm({ parties, onCancel }: JobCreateFormProps) {
       onSubmit={(event) => {
         event.preventDefault();
         const form = new FormData(event.currentTarget);
+        if (pipeline.length === 0) {
+          setFormError("Please select at least one stage for this job.");
+          return;
+        }
         setFormError(null);
         startTransition(async () => {
           const outcome = await createJobAction({
             party_id: String(form.get("party_id") ?? ""),
-            job_type: String(form.get("job_type") ?? ""),
+            stages: pipeline,
             than: String(form.get("than") ?? ""),
             price: String(form.get("price") ?? ""),
             kapan_number: String(form.get("kapan_number") ?? ""),
@@ -81,7 +101,7 @@ export function JobCreateForm({ parties, onCancel }: JobCreateFormProps) {
       }}
       onChange={() => setDirty(true)}
     >
-      <FormField label="Party" htmlFor="job-party" required className="ui-job-form-full">
+      <FormField label="Party" htmlFor="job-party" required>
         <Select
           id="job-party"
           name="party_id"
@@ -105,23 +125,52 @@ export function JobCreateForm({ parties, onCancel }: JobCreateFormProps) {
           ))}
         </Select>
       </FormField>
-      <FormField label="Job Type" htmlFor="job-type" required>
-        <Select
-          id="job-type"
-          name="job_type"
-          required
-          disabled={pending}
-          value={jobType}
-          onChange={(event) => {
-            setDirty(true);
-            setJobType(event.target.value);
-          }}
-        >
-          <option value="Sarin">Sarin</option>
-          <option value="Dropping">Dropping</option>
-          <option value="Galaxy">Galaxy</option>
+
+      <FormField label="Status" htmlFor="job-status" required>
+        <Select id="job-status" name="status" required disabled={pending} defaultValue="Pending">
+          <option value="Pending">Pending</option>
+          <option value="Progress">Progress</option>
+          <option value="Completed">Completed</option>
         </Select>
       </FormField>
+
+      <div className="ui-form-field ui-job-form-full">
+        <label className="ui-form-label">
+          Job Stages <span className="ui-required-mark">*</span>
+        </label>
+        <div className="ui-stage-checkbox-group" role="group" aria-label="Select job stages">
+          {STAGE_ORDER.map((stage) => {
+            const isChecked = selectedStages.includes(stage);
+            return (
+              <label
+                key={stage}
+                className={`ui-stage-checkbox-label ${isChecked ? "is-selected" : ""}`}
+              >
+                <input
+                  type="checkbox"
+                  className="ui-stage-checkbox"
+                  checked={isChecked}
+                  disabled={pending}
+                  onChange={() => toggleStage(stage)}
+                />
+                <span className="ui-stage-name">{stage}</span>
+              </label>
+            );
+          })}
+        </div>
+        <div className="ui-stage-pipeline-preview">
+          <span className="ui-pipeline-label">Workflow:</span>{" "}
+          {pipeline.map((stage, idx) => (
+            <span key={stage} className="ui-pipeline-step">
+              {idx > 0 && <span className="ui-pipeline-arrow">→</span>}
+              <span className={`ui-badge ui-badge-${stage.toLowerCase()}`}>{stage}</span>
+            </span>
+          ))}
+          <span className="ui-pipeline-arrow">→</span>
+          <span className="ui-badge ui-badge-completed">Completed</span>
+        </div>
+      </div>
+
       <FormField label="Than" htmlFor="job-than" required>
         <Input
           id="job-than"
@@ -153,13 +202,6 @@ export function JobCreateForm({ parties, onCancel }: JobCreateFormProps) {
       </FormField>
       <FormField label="Weight" htmlFor="job-weight" required>
         <Input id="job-weight" name="weight" inputMode="decimal" required disabled={pending} placeholder="e.g. 2.250" />
-      </FormField>
-      <FormField label="Status" htmlFor="job-status" required>
-        <Select id="job-status" name="status" required disabled={pending} defaultValue="Pending">
-          <option value="Pending">Pending</option>
-          <option value="Progress">Progress</option>
-          <option value="Completed">Completed</option>
-        </Select>
       </FormField>
       {formError ? (
         <p className="ui-field-error" role="alert">

@@ -97,15 +97,17 @@ describe("employee schemas", () => {
     ).toThrow(/out of range|decimal/i);
   });
 
-  it("strips extra fields", () => {
+  it("strips extra fields and validates employee_type", () => {
     const parsed = parseOrThrow(updateEmployeeSchema, {
       id: UUID,
       name: "Ramesh",
       mobile_number: "9000000000",
       commission: "2.00",
+      employee_type: "Dropping",
       earning: "999",
       password_hash: "nope",
     });
+    expect(parsed.employee_type).toBe("Dropping");
     expect(parsed).not.toHaveProperty("earning");
     expect(parsed).not.toHaveProperty("password_hash");
   });
@@ -233,8 +235,8 @@ describe("master data services", () => {
     expect(categoryView).toMatch(/entry_count === 0/);
     expect(categoryView).toMatch(/htmlFor="category-type"/);
     expect(categoryView).toMatch(/create-category-status/);
-    expect(categories).toMatch(/exportCategoriesCsv/);
-    expect(accounts).toMatch(/exportAccountsCsv/);
+    expect(categories).toMatch(/exportCategoriesXlsx/);
+    expect(accounts).toMatch(/exportAccountsXlsx/);
   });
 
   it("maps party and employee delete restrict copy", () => {

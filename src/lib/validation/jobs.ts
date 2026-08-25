@@ -18,37 +18,100 @@ function emptyToUndefined(value: unknown): unknown {
   return value;
 }
 
+export const STAGE_ORDER = ["Sarin", "Dropping", "Galaxy"] as const;
+export type StageType = (typeof STAGE_ORDER)[number];
+
 export const JOB_TYPES = ["Sarin", "Dropping", "Galaxy"] as const;
 export const JOB_STATUSES = ["Pending", "Progress", "Completed"] as const;
 
+export const stageSchema = z.enum(["Sarin", "Dropping", "Galaxy"]);
+export const jobStageSchema = z.enum(["Sarin", "Dropping", "Galaxy", "Completed"]);
 export const jobTypeSchema = z.enum(["Sarin", "Dropping", "Galaxy"]);
 export const jobStatusSchema = z.enum(["Pending", "Progress", "Completed"]);
 export const jobTypeFilterSchema = z.enum(["all", "Sarin", "Dropping", "Galaxy"]);
+export const stageFilterSchema = z.enum(["all", "Sarin", "Dropping", "Galaxy", "Completed"]);
 export const jobStatusFilterSchema = z.enum(["all", "Pending", "Progress", "Completed"]);
+
+/**
+ * Normalizes user-selected stages into the canonical fixed sequence:
+ * SARIN → DROPPING → GALAXY
+ * Strips duplicates and unselected stages, preserving canonical order.
+ */
+export function normalizeStages(stages: string[] | readonly string[]): StageType[] {
+  const set = new Set(stages.map((s) => s.trim().toLowerCase()));
+  const filtered = STAGE_ORDER.filter((stage) => set.has(stage.toLowerCase()));
+  return filtered.length > 0 ? [...filtered] : ["Sarin"];
+}
+
+/**
+ * Returns the next active stage in the job's stage pipeline.
+ * If at the final stage or unknown, returns "Completed".
+ */
+export function getNextStage(
+  stages: string[] | readonly string[],
+  currentStage: string,
+): StageType | "Completed" {
+  const normalized = normalizeStages(stages);
+  const idx = normalized.findIndex((s) => s.toLowerCase() === currentStage.trim().toLowerCase());
+  if (idx === -1 || idx >= normalized.length - 1) {
+    return "Completed";
+  }
+  return normalized[idx + 1] ?? "Completed";
+}
 
 export const kapanSchema = z
   .string()
   .trim()
   .min(1, "Kapan Number is required.")
-  .max(100, "Kapan Number is limited to 100 characters.");
+  .max(50, "Kapan Number must be at most 50 characters.");
 
-export const createJobSchema = z.object({
-  party_id: uuidSchema,
-  job_type: jobTypeSchema,
-  than: thanSchema,
-  price: moneySchema,
-  kapan_number: kapanSchema,
-  weight: weightSchema,
-  billing_amount: z.preprocess(
-    (v) => (v === "" || v === null || v === undefined ? undefined : v),
-    moneySchema.optional(),
-  ),
-  status: jobStatusSchema.optional().default("Pending"),
-});
+export const createJobSchema = z
+  .object({
+    party_id: uuidSchema,
+    job_type: jobTypeSchema.optional(),
+    stages: z.preprocess(
+      (v) => {
+        if (Array.isArray(v)) return v;
+        if (typeof v === "string" && v.trim()) return [v.trim()];
+        return undefined;
+      },
+      z.array(stageSchema).min(1).optional(),
+    ),
+    than: thanSchema,
+    price: moneySchema,
+    kapan_number: kapanSchema,
+    weight: weightSchema,
+    billing_amount: z.preprocess(
+      (v) => (v === "" || v === null || v === undefined ? undefined : v),
+      moneySchema.optional(),
+    ),
+    status: jobStatusSchema.default("Pending"),
+  })
+  .transform((data) => {
+    const rawStages = data.stages ?? (data.job_type ? [data.job_type] : ["Sarin"]);
+    const stages = normalizeStages(rawStages);
+    const firstStage = stages[0] ?? "Sarin";
+    const job_type = (data.job_type ?? firstStage) as (typeof JOB_TYPES)[number];
+    return {
+      ...data,
+      stages,
+      current_stage: firstStage,
+      job_type,
+    };
+  });
 
 export const updateJobSchema = z.object({
   id: uuidSchema,
-  job_type: jobTypeSchema,
+  job_type: jobTypeSchema.optional(),
+  stages: z.preprocess(
+    (v) => {
+      if (Array.isArray(v)) return v;
+      if (typeof v === "string" && v.trim()) return [v.trim()];
+      return undefined;
+    },
+    z.array(stageSchema).min(1).optional(),
+  ),
+  current_stage: z.string().optional(),
   than: thanSchema,
   price: moneySchema,
   kapan_number: kapanSchema,
@@ -60,17 +123,37 @@ export const updateJobSchema = z.object({
   status: jobStatusSchema,
 });
 
+export const integerThanSchema = z
+  .preprocess((v) => {
+    if (typeof v === "number") return String(Math.floor(v));
+    if (typeof v === "string") {
+      const trimmed = v.trim();
+      if (/^\d+\.0+$/.test(trimmed)) {
+        return trimmed.split(".")[0];
+      }
+      return trimmed;
+    }
+    return v;
+  }, z.string())
+  .refine((value) => /^[1-9]\d*$/.test(value), "Than must be a positive integer without decimals.")
+  .refine((value) => {
+    const amount = Number(value);
+    return Number.isSafeInteger(amount) && amount > 0;
+  }, "This value is out of range.");
+
 export const createSubJobSchema = z.object({
   job_id: uuidSchema,
-  than: thanSchema,
+  than: integerThanSchema,
   weight: weightSchema,
+  stage: stageSchema.optional(),
   status: jobStatusSchema.optional().default("Pending"),
 });
 
 export const updateSubJobSchema = z.object({
   id: uuidSchema,
-  than: thanSchema,
+  than: integerThanSchema,
   weight: weightSchema,
+  stage: stageSchema.optional(),
   status: jobStatusSchema,
 });
 
@@ -83,6 +166,10 @@ export const addEmployeeWorkSchema = z.object({
 export const updateEmployeeWorkSchema = z.object({
   id: uuidSchema,
   done_than: thanSchema,
+});
+
+export const advanceJobStageSchema = z.object({
+  job_id: uuidSchema,
 });
 
 export const workIdSchema = z.object({
@@ -100,6 +187,7 @@ export const listJobsSchema = z
     search: z.preprocess((value) => value ?? "", searchSchema),
     status: jobStatusFilterSchema.optional().default("all"),
     job_type: jobTypeFilterSchema.optional().default("all"),
+    stage: stageFilterSchema.optional().default("all"),
     party_id: z.preprocess(emptyToUndefined, uuidSchema.optional()),
     employee_id: z.preprocess(emptyToUndefined, uuidSchema.optional()),
   })
@@ -109,6 +197,7 @@ export const listJobsSchema = z
     search: value.search,
     status: value.status,
     job_type: value.job_type,
+    stage: value.stage,
     party_id: value.party_id,
     employee_id: value.employee_id,
   }));
@@ -119,4 +208,5 @@ export type CreateSubJobInput = z.output<typeof createSubJobSchema>;
 export type UpdateSubJobInput = z.output<typeof updateSubJobSchema>;
 export type AddEmployeeWorkInput = z.output<typeof addEmployeeWorkSchema>;
 export type UpdateEmployeeWorkInput = z.output<typeof updateEmployeeWorkSchema>;
+export type AdvanceJobStageInput = z.output<typeof advanceJobStageSchema>;
 export type ListJobsInput = z.output<typeof listJobsSchema>;

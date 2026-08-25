@@ -107,6 +107,7 @@ export async function GET(request: Request, { params }: ExportRouteProps) {
 
     if (report === "salary") {
       const parsed = parseOrThrow(salaryReportSchema, {
+        search: query.search ?? "",
         employee_id: query.employee_id,
         date_from: query.date_from,
         date_to: query.date_to,

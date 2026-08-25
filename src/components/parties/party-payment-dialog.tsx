@@ -35,7 +35,6 @@ function todayIso(): string {
 
 export function PartyPaymentDialog({
   partyId,
-  outstanding,
   accounts,
   categories,
   invoices,
@@ -151,6 +150,12 @@ export function PartyPaymentDialog({
               name="category_id"
               required
               disabled={pending}
+              defaultValue={
+                categories.find(
+                  (c) => c.type === "Income" && c.is_active && c.name.toLowerCase() === "party payment",
+                )?.id ??
+                categories.find((c) => c.type === "Income" && c.is_active)?.id
+              }
             >
               <option value="">Select category</option>
               {categories

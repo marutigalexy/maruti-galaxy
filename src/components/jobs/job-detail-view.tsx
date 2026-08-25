@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition, useEffect } from "react";
+import { useMemo, useState, useTransition } from "react";
 
 import {
   addEmployeeWorkAction,
+  advanceJobStageAction,
   createSubJobAction,
   deleteEmployeeWorkAction,
   updateEmployeeWorkAction,
@@ -30,8 +32,12 @@ import { WeightCt } from "@/components/ui/weight-ct";
 import { TableActions } from "@/components/ui/table-actions";
 import { useToast } from "@/components/ui/toast";
 import { formatDisplayDate, formatInr, formatThan } from "@/lib/formatters";
+import { getNextStage, normalizeStages } from "@/lib/validation/jobs";
 import type { EmployeeOption } from "@/services/employees/employees-service";
 import type { JobDetail, JobSubJobRecord, JobWorkRecord } from "@/services/jobs/jobs-service";
+import type { Database } from "@/types/database";
+
+type JobStatus = Database["public"]["Enums"]["job_status"];
 
 type JobDetailViewProps = {
   job: JobDetail;
@@ -58,27 +64,62 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
   const [workSub, setWorkSub] = useState<JobSubJobRecord | null>(null);
   const [editWork, setEditWork] = useState<JobWorkRecord | null>(null);
   const [deleteWork, setDeleteWork] = useState<JobWorkRecord | null>(null);
+  const [advanceOpen, setAdvanceOpen] = useState(false);
   const [editJobOpen, setEditJobOpen] = useState(false);
+  const [subThan, setSubThan] = useState("");
+  const [subWeight, setSubWeight] = useState("");
+  const [subStatus, setSubStatus] = useState<JobStatus>("Pending");
+  const [editThan, setEditThan] = useState("");
+  const [editWeight, setEditWeight] = useState("");
+  const [editStatus, setEditStatus] = useState<JobStatus>("Pending");
   const [expandedId, setExpandedId] = useState<string | null>(job.sub_jobs[0]?.id ?? null);
   const [workEmployeeId, setWorkEmployeeId] = useState("");
   const [workDoneThan, setWorkDoneThan] = useState("");
   const [activeTab, setActiveTab] = useState<"details" | "subjobs">("details");
   useRecordTitle(job.lot_number);
 
-  // Parse fromParty and tab from URL hash (for browser back button to restore correct tab)
-  useEffect(() => {
-    const hash = window.location.hash.slice(1);
-    if (hash) {
-      const params = new URLSearchParams(hash);
-      // We don't need to store these; the browser history handles navigation back
-      // The party detail page reads the hash to restore the active tab
-    }
-  }, []);
-
   const activeEmployees = useMemo(
     () => employees.filter((employee) => employee.is_active),
     [employees],
   );
+
+  const stages = useMemo(
+    () => normalizeStages(job.stages ?? [job.job_type ?? "Sarin"]),
+    [job.stages, job.job_type],
+  );
+
+  const nextStage = useMemo(
+    () => getNextStage(stages, job.current_stage),
+    [stages, job.current_stage],
+  );
+
+  const activeStage =
+    (job.current_stage !== "Completed" ? job.current_stage : stages[stages.length - 1]) ?? "Sarin";
+  const activeStageSubs = job.sub_jobs.filter((sub) => sub.stage === activeStage);
+  const activeStageAllocated = activeStageSubs.reduce((sum, sub) => sum + sub.than, 0);
+  const activeStageRemaining = Math.max(0, Math.round((job.than - activeStageAllocated) * 1000) / 1000);
+
+  function handleOpenAddSubModal() {
+    const remaining = Math.max(0, Math.floor(activeStageRemaining));
+    setSubThan(remaining > 0 ? String(remaining) : "");
+    setSubWeight("");
+    setSubStatus("Pending");
+    setSubOpen(true);
+  }
+
+  function handleOpenEditSubModal(sub: JobSubJobRecord) {
+    setEditThan(String(Math.round(sub.than)));
+    setEditWeight(String(sub.weight));
+    setEditStatus(sub.status);
+    setEditSub(sub);
+  }
+
+  const eligibleEmployees = useMemo(() => {
+    if (!workSub) return [];
+    const targetStage = workSub.stage ?? job.current_stage;
+    return activeEmployees.filter((emp) => emp.employee_type === targetStage);
+  }, [workSub, job.current_stage, activeEmployees]);
+
   const selectedEmployee = activeEmployees.find((employee) => employee.id === workEmployeeId);
   const workPreview =
     selectedEmployee && Number(workDoneThan) > 0
@@ -87,7 +128,7 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
 
   const tabItems = [
     { id: "details", label: "Job Details" },
-    { id: "subjobs", label: "Sub Jobs" },
+    { id: "subjobs", label: "Sub Jobs", count: job.sub_jobs.length },
   ] as const;
 
   function runMutation(
@@ -107,6 +148,7 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
       setWorkSub(null);
       setEditWork(null);
       setDeleteWork(null);
+      setAdvanceOpen(false);
       setWorkEmployeeId("");
       setWorkDoneThan("");
       toast.success(success);
@@ -114,12 +156,26 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
     });
   }
 
+  const isCompleted = job.status === "Completed" || job.current_stage === "Completed";
+  const currentStageIndex = stages.indexOf(job.current_stage as (typeof stages)[number]);
+
   return (
     <>
       <TopbarStatus>
         <StatusBadge tone={statusTone(job.status)} />
       </TopbarStatus>
       <TopbarActions>
+        {!isCompleted && (
+          <Button
+            variant="primary"
+            disabled={pending}
+            onClick={() => setAdvanceOpen(true)}
+          >
+            {nextStage === "Completed"
+              ? "Complete Job"
+              : `Advance to ${nextStage}`}
+          </Button>
+        )}
         <IconButton
           tone="edit"
           label="Edit job"
@@ -128,7 +184,51 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
           <EditIcon width={16} height={16} />
         </IconButton>
       </TopbarActions>
-<div className="ui-detail-stack">
+
+      <div className="ui-detail-stack">
+        {/* Stage Progress Stepper */}
+        <section className="ui-section" aria-label="Job stage progression">
+          <Card title="Stage Progression">
+            <div className="ui-stage-stepper">
+              {stages.map((stage, idx) => {
+                const stageDone = isCompleted || (currentStageIndex > -1 && idx < currentStageIndex);
+                const stageActive = !isCompleted && stage === job.current_stage;
+                const stageUpcoming = !stageDone && !stageActive;
+
+                let stepClass = "ui-stage-step";
+                if (stageDone) stepClass += " is-completed";
+                if (stageActive) stepClass += " is-active";
+                if (stageUpcoming) stepClass += " is-upcoming";
+
+                return (
+                  <div key={stage} className={stepClass}>
+                    <div className="ui-stage-indicator">
+                      {stageDone ? "✓" : idx + 1}
+                    </div>
+                    <div className="ui-stage-meta">
+                      <span className="ui-stage-step-title">{stage}</span>
+                      <span className="ui-stage-step-status">
+                        {stageDone ? "Completed" : stageActive ? "Active" : "Upcoming"}
+                      </span>
+                    </div>
+                    {idx < stages.length - 1 && <div className="ui-stage-connector" />}
+                  </div>
+                );
+              })}
+              <div className="ui-stage-connector" />
+              <div className={`ui-stage-step ${isCompleted ? "is-completed" : "is-upcoming"}`}>
+                <div className="ui-stage-indicator">★</div>
+                <div className="ui-stage-meta">
+                  <span className="ui-stage-step-title">Completed</span>
+                  <span className="ui-stage-step-status">
+                    {isCompleted ? "Finished" : "Pending"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </section>
+
         <ClientTabs
           items={tabItems}
           activeId={activeTab}
@@ -155,9 +255,15 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
                     <dd>{job.party_name}</dd>
                   </div>
                   <div className="ui-detail-item">
-                    <dt>Job Type</dt>
+                    <dt>Current Stage</dt>
                     <dd>
-                      <JobTypeBadge type={job.job_type} />
+                      <JobTypeBadge type={job.current_stage} />
+                    </dd>
+                  </div>
+                  <div className="ui-detail-item">
+                    <dt>Stages Pipeline</dt>
+                    <dd>
+                      <span className="ui-pipeline-text">{stages.join(" → ")}</span>
                     </dd>
                   </div>
                   <div className="ui-detail-item">
@@ -174,12 +280,12 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
                     <dd>{formatThan(job.than)}</dd>
                   </div>
                   <div className="ui-detail-item">
-                    <dt>Accepted Taan</dt>
-                    <dd>{formatThan(job.allocated_than)}</dd>
+                    <dt>Accepted Taan ({activeStage})</dt>
+                    <dd>{formatThan(activeStageAllocated)}</dd>
                   </div>
                   <div className="ui-detail-item">
-                    <dt>Remaining Taan</dt>
-                    <dd>{formatThan(job.remaining_than)}</dd>
+                    <dt>Remaining Taan ({activeStage})</dt>
+                    <dd>{formatThan(activeStageRemaining)}</dd>
                   </div>
                   <div className="ui-detail-item">
                     <dt>Total Weight</dt>
@@ -209,26 +315,21 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
                       ) : null}
                     </dd>
                   </div>
-                  <div className="ui-detail-item">
-                    <dt>Payment Status</dt>
-                    <dd>
-                      <StatusBadge tone={statusTone(job.status)} />
-                    </dd>
-                  </div>
                 </dl>
               </section>
             </div>
           </Card>
         </div>
 
-<div role="tabpanel" id="subjobs-panel" aria-labelledby="subjobs-tab" hidden={activeTab !== "subjobs"}>
+        <div role="tabpanel" id="subjobs-panel" aria-labelledby="subjobs-tab" hidden={activeTab !== "subjobs"}>
           <Card
             title="Sub Jobs"
             action={
               <AddButton
+                size="sm"
                 onClick={() => {
                   setFormError(null);
-                  setSubOpen(true);
+                  handleOpenAddSubModal();
                 }}
               >
                 Add Sub Job
@@ -236,147 +337,150 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
             }
           >
             {job.sub_jobs.length === 0 ? (
-            <p className="ui-field-help">No sub-jobs yet.</p>
-          ) : (
-            <div className="ui-subjob-list">
-              {job.sub_jobs.map((sub) => {
-                const workExpanded = expandedId === sub.id;
-                const workPanelId = `subjob-work-${sub.id}`;
+              <p className="ui-field-help">No sub-jobs yet.</p>
+            ) : (
+              <div className="ui-subjob-list">
+                {job.sub_jobs.map((sub) => {
+                  const workExpanded = expandedId === sub.id;
+                  const workPanelId = `subjob-work-${sub.id}`;
 
-                return (
-                  <article key={sub.id} className="ui-subjob-card">
-                    <div className="ui-subjob-header">
-                      <div className="ui-subjob-heading">
-                        <h3 className="ui-subjob-title">{sub.display_no}</h3>
-                        <StatusBadge tone={statusTone(sub.status)} />
+                  return (
+                    <article key={sub.id} className="ui-subjob-card">
+                      <div className="ui-subjob-header">
+                        <div className="ui-subjob-heading">
+                          <h3 className="ui-subjob-title">{sub.display_no}</h3>
+                          <JobTypeBadge type={sub.stage} />
+                          <StatusBadge tone={statusTone(sub.status)} />
+                        </div>
+                        <div className="ui-inline-actions">
+                          <IconButton
+                            label={workExpanded ? "Hide work" : "Show work"}
+                            aria-expanded={workExpanded}
+                            aria-controls={workExpanded ? workPanelId : undefined}
+                            onClick={() =>
+                              setExpandedId(workExpanded ? null : sub.id)
+                            }
+                          >
+                            <EyeIcon width={16} height={16} />
+                          </IconButton>
+                          <IconButton
+                            tone="edit"
+                            label={`Edit ${sub.display_no}`}
+                            onClick={() => {
+                              setFormError(null);
+                              handleOpenEditSubModal(sub);
+                            }}
+                          >
+                            <EditIcon width={16} height={16} />
+                          </IconButton>
+                          <AddButton
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => {
+                              setFormError(null);
+                              setWorkEmployeeId("");
+                              setWorkDoneThan("");
+                              setWorkSub(sub);
+                            }}
+                          >
+                            Add Work
+                          </AddButton>
+                        </div>
                       </div>
-                      <div className="ui-inline-actions">
-                        <IconButton
-                          label={workExpanded ? "Hide work" : "Show work"}
-                          aria-expanded={workExpanded}
-                          aria-controls={workExpanded ? workPanelId : undefined}
-                          onClick={() =>
-                            setExpandedId(workExpanded ? null : sub.id)
-                          }
-                        >
-                          <EyeIcon width={16} height={16} />
-                        </IconButton>
-                        <IconButton
-                          tone="edit"
-                          label={`Edit ${sub.display_no}`}
-                          onClick={() => {
-                            setFormError(null);
-                            setEditSub(sub);
-                          }}
-                        >
-                          <EditIcon width={16} height={16} />
-                        </IconButton>
-                        <AddButton
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => {
-                            setFormError(null);
-                            setWorkEmployeeId("");
-                            setWorkDoneThan("");
-                            setWorkSub(sub);
-                          }}
-                        >
-                          Add Work
-                        </AddButton>
-                      </div>
-                    </div>
-                    <dl className="ui-summary-grid">
-                      <div className="ui-detail-item">
-                        <dt>Total</dt>
-                        <dd>{formatThan(sub.than)}</dd>
-                      </div>
-                      <div className="ui-detail-item">
-                        <dt>Done</dt>
-                        <dd>{formatThan(sub.done_than)}</dd>
-                      </div>
-                      <div className="ui-detail-item">
-                        <dt>Remaining Than</dt>
-                        <dd>{formatThan(sub.remaining_than)}</dd>
-                      </div>
-                      <div className="ui-detail-item">
-                        <dt>Weight</dt>
-                        <dd><WeightCt value={sub.weight} /></dd>
-                      </div>
-                    </dl>
-                    {workExpanded ? (
-                      <div id={workPanelId}>
-                        <DataTable
-                          caption={`${sub.display_no} work`}
-                          columns={[
-                            {
-                              key: "date",
-                              header: "Date",
-                              render: (row) =>
-                                formatDisplayDate(row.created_at),
-                            },
-                            {
-                              key: "employee",
-                              header: "Employee",
-                              render: (row) => row.employee_name,
-                            },
-                            {
-                              key: "than",
-                              header: "Done Than",
-                              numeric: true,
-                              render: (row) => formatThan(row.done_than),
-                            },
-                            {
-                              key: "commission",
-                              header: "Commission",
-                              numeric: true,
-                              render: (row) => formatInr(row.commission),
-                            },
-                            {
-                              key: "earning",
-                              header: "Earning",
-                              numeric: true,
-                              render: (row) => formatInr(row.earning),
-                            },
-                            {
-                              key: "actions",
-                              header: "Actions",
-                              render: (row) => (
-                                <TableActions>
-                                  <IconButton
-                                    tone="edit"
-                                    label="Edit work"
-                                    onClick={() => {
-                                      setFormError(null);
-                                      setEditWork(row);
-                                    }}
-                                  >
-                                    <EditIcon width={16} height={16} />
-                                  </IconButton>
-                                  <IconButton
-                                    tone="delete"
-                                    label="Delete work"
-                                    onClick={() => setDeleteWork(row)}
-                                  >
-                                    <DeleteIcon width={16} height={16} />
-                                  </IconButton>
-                                </TableActions>
-                              ),
-                            },
-                          ]}
-                          rows={sub.work}
-                          rowKey={(row) => row.id}
-                          emptyTitle="No employee work has been recorded for this sub-job yet."
-                        />
-                      </div>
-                    ) : null}
-                  </article>
-                );
-              })}
-            </div>
-          )}
-        </Card>
+                      <dl className="ui-summary-grid">
+                        <div className="ui-detail-item">
+                          <dt>Total Than</dt>
+                          <dd>{formatThan(sub.than)}</dd>
+                        </div>
+                        <div className="ui-detail-item">
+                          <dt>Done Than</dt>
+                          <dd>{formatThan(sub.done_than)}</dd>
+                        </div>
+                        <div className="ui-detail-item">
+                          <dt>Remaining Than</dt>
+                          <dd>{formatThan(sub.remaining_than)}</dd>
+                        </div>
+                        <div className="ui-detail-item">
+                          <dt>Weight</dt>
+                          <dd>
+                            <WeightCt value={sub.weight} />
+                          </dd>
+                        </div>
+                      </dl>
+                      {workExpanded ? (
+                        <div id={workPanelId}>
+                          <DataTable<JobWorkRecord>
+                            caption={`${sub.display_no} work`}
+                            emptyTitle="No employee work has been recorded for this sub-job yet."
+                            rows={sub.work}
+                            rowKey={(row) => row.id}
+                            columns={[
+                              {
+                                key: "date",
+                                header: "Date",
+                                render: (row) =>
+                                  formatDisplayDate(row.created_at),
+                              },
+                              {
+                                key: "employee",
+                                header: "Employee",
+                                render: (row) => row.employee_name,
+                              },
+                              {
+                                key: "than",
+                                header: "Done Than",
+                                numeric: true,
+                                render: (row) => formatThan(row.done_than),
+                              },
+                              {
+                                key: "commission",
+                                header: "Commission",
+                                numeric: true,
+                                render: (row) => formatInr(row.commission),
+                              },
+                              {
+                                key: "earning",
+                                header: "Earning",
+                                numeric: true,
+                                render: (row) => formatInr(row.earning),
+                              },
+                              {
+                                key: "actions",
+                                header: "Actions",
+                                render: (row) => (
+                                  <TableActions>
+                                    <IconButton
+                                      tone="edit"
+                                      label="Edit work"
+                                      onClick={() => {
+                                        setFormError(null);
+                                        setEditWork(row);
+                                      }}
+                                    >
+                                      <EditIcon width={16} height={16} />
+                                    </IconButton>
+                                    <IconButton
+                                      tone="delete"
+                                      label="Delete work"
+                                      onClick={() => setDeleteWork(row)}
+                                    >
+                                      <DeleteIcon width={16} height={16} />
+                                    </IconButton>
+                                  </TableActions>
+                                ),
+                              },
+                            ]}
+                          />
+                        </div>
+                      ) : null}
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+        </div>
       </div>
-    </div>
 
       <Dialog
         open={editJobOpen}
@@ -400,27 +504,53 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
           className="ui-dialog-form"
           onSubmit={(event) => {
             event.preventDefault();
-            const form = new FormData(event.currentTarget);
             runMutation(
               () =>
                 createSubJobAction({
                   job_id: job.id,
-                  than: String(form.get("than") ?? ""),
-                  weight: String(form.get("weight") ?? ""),
-                  status: String(form.get("status") ?? "Pending"),
+                  than: subThan.trim(),
+                  weight: subWeight.trim(),
+                  stage: activeStage,
+                  status: subStatus,
                 }),
               "Sub-job created successfully.",
             );
           }}
         >
-          <FormField label="Than" htmlFor="create-sub-than" required>
+          <FormField
+            label="Stage"
+            htmlFor="create-sub-stage-display"
+          >
+            <div id="create-sub-stage-display" className="ui-field-control-row">
+              <JobTypeBadge type={activeStage} />
+              <span style={{ fontSize: "13px", fontWeight: 500, color: "var(--color-primary-text)" }}>
+                {activeStage} Stage
+              </span>
+            </div>
+          </FormField>
+          <FormField
+            label="Than"
+            htmlFor="create-sub-than"
+            required
+            help={`Remaining for ${activeStage}: ${Math.floor(activeStageRemaining)} (Total Job Than: ${formatThan(job.than)})`}
+          >
             <Input
               id="create-sub-than"
               name="than"
-              inputMode="decimal"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              autoComplete="off"
               required
               disabled={pending}
-              placeholder="e.g. 4.00"
+              placeholder={Math.floor(activeStageRemaining) > 0 ? String(Math.floor(activeStageRemaining)) : "e.g. 4"}
+              value={subThan}
+              onChange={(e) => setSubThan(e.target.value.replace(/[^0-9]/g, ""))}
+              onKeyDown={(e) => {
+                if (e.key === "." || e.key === "e" || e.key === "E" || e.key === "-" || e.key === "+") {
+                  e.preventDefault();
+                }
+              }}
             />
           </FormField>
           <FormField label="Weight" htmlFor="create-sub-weight" required>
@@ -428,8 +558,11 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
               id="create-sub-weight"
               name="weight"
               inputMode="decimal"
+              autoComplete="off"
               required
               disabled={pending}
+              value={subWeight}
+              onChange={(e) => setSubWeight(e.target.value)}
               placeholder="e.g. 1.250"
             />
           </FormField>
@@ -438,7 +571,8 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
               id="create-sub-status"
               name="status"
               required
-              defaultValue="Pending"
+              value={subStatus}
+              onChange={(e) => setSubStatus(e.target.value as JobStatus)}
               disabled={pending}
             >
               <option value="Pending">Pending</option>
@@ -476,30 +610,52 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
         {editSub ? (
           <form
             className="ui-dialog-form"
+            autoComplete="off"
             onSubmit={(event) => {
               event.preventDefault();
-              const form = new FormData(event.currentTarget);
               runMutation(
                 () =>
                   updateSubJobAction({
                     id: editSub.id,
-                    than: String(form.get("than") ?? ""),
-                    weight: String(form.get("weight") ?? ""),
-                    status: String(form.get("status") ?? ""),
+                    than: editThan.trim(),
+                    weight: editWeight.trim(),
+                    stage: editSub.stage,
+                    status: editStatus,
                   }),
                 "Sub-job updated successfully.",
               );
             }}
           >
+            <FormField
+              label="Stage"
+              htmlFor="edit-sub-stage-display"
+              help="Assigned stage for this sub-job"
+            >
+              <div id="edit-sub-stage-display" className="ui-field-control-row">
+                <JobTypeBadge type={editSub.stage} />
+                <span style={{ fontSize: "13px", fontWeight: 500, color: "var(--color-primary-text)" }}>
+                  {editSub.stage} Stage
+                </span>
+              </div>
+            </FormField>
             <FormField label="Than" htmlFor="edit-sub-than" required>
               <Input
                 id="edit-sub-than"
                 name="than"
-                inputMode="decimal"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="off"
                 required
-                defaultValue={String(editSub.than)}
+                value={editThan}
+                onChange={(e) => setEditThan(e.target.value.replace(/[^0-9]/g, ""))}
                 disabled={pending}
-                placeholder="e.g. 4.00"
+                placeholder="e.g. 4"
+                onKeyDown={(e) => {
+                  if (e.key === "." || e.key === "e" || e.key === "E" || e.key === "-" || e.key === "+") {
+                    e.preventDefault();
+                  }
+                }}
               />
             </FormField>
             <FormField label="Weight" htmlFor="edit-sub-weight" required>
@@ -508,7 +664,8 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
                 name="weight"
                 inputMode="decimal"
                 required
-                defaultValue={String(editSub.weight)}
+                value={editWeight}
+                onChange={(e) => setEditWeight(e.target.value)}
                 disabled={pending}
                 placeholder="e.g. 1.250"
               />
@@ -518,7 +675,8 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
                 id="edit-sub-status"
                 name="status"
                 required
-                defaultValue={editSub.status}
+                value={editStatus}
+                onChange={(e) => setEditStatus(e.target.value as JobStatus)}
                 disabled={pending}
               >
                 <option value="Pending">Pending</option>
@@ -549,7 +707,7 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
 
       <Dialog
         open={Boolean(workSub)}
-        title={workSub ? `Add Work · ${workSub.display_no}` : "Add Work"}
+        title={workSub ? `Add Work · ${workSub.display_no} (${workSub.stage})` : "Add Work"}
         onClose={() => setWorkSub(null)}
         disableClose={pending}
         footer={null}
@@ -571,23 +729,36 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
               );
             }}
           >
+            <div className="ui-form-stage-notice">
+              <span>Required Employee Type:</span>{" "}
+              <JobTypeBadge type={workSub.stage} />
+            </div>
+
             <FormField label="Employee" htmlFor="work-employee" required>
               <Select
                 id="work-employee"
                 name="employee_id"
                 required
-                disabled={pending}
+                disabled={pending || eligibleEmployees.length === 0}
                 value={workEmployeeId}
                 onChange={(event) => setWorkEmployeeId(event.target.value)}
               >
-                <option value="">Select employee</option>
-                {activeEmployees.map((employee) => (
+                <option value="">Select {workSub.stage} employee</option>
+                {eligibleEmployees.map((employee) => (
                   <option key={employee.id} value={employee.id}>
-                    {employee.name}
+                    {employee.name} ({employee.employee_type})
                   </option>
                 ))}
               </Select>
             </FormField>
+
+            {eligibleEmployees.length === 0 && (
+              <p className="ui-field-error">
+                No active {workSub.stage} employees available.{" "}
+                <Link href="/employees">Add a {workSub.stage} employee</Link>
+              </p>
+            )}
+
             {selectedEmployee ? (
               <p className="ui-field-help">
                 Current commission {formatInr(selectedEmployee.commission)} per Than.
@@ -624,7 +795,7 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
               >
                 Cancel
               </Button>
-              <Button type="submit" loading={pending}>
+              <Button type="submit" loading={pending} disabled={eligibleEmployees.length === 0}>
                 Add Work
               </Button>
             </div>
@@ -706,6 +877,31 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
           runMutation(
             () => deleteEmployeeWorkAction({ id: deleteWork.id }),
             "Work deleted successfully.",
+          );
+        }}
+      />
+
+      <ConfirmDialog
+        open={advanceOpen}
+        title={
+          nextStage === "Completed"
+            ? "Complete Job?"
+            : `Advance Job to ${nextStage}?`
+        }
+        description={
+          nextStage === "Completed"
+            ? `Are you sure you want to complete the entire job (${job.lot_number})?`
+            : `This will advance the job from "${job.current_stage}" stage to "${nextStage}" stage.`
+        }
+        confirmLabel={nextStage === "Completed" ? "Complete Job" : `Advance to ${nextStage}`}
+        pending={pending}
+        onCancel={() => setAdvanceOpen(false)}
+        onConfirm={() => {
+          runMutation(
+            () => advanceJobStageAction({ job_id: job.id }),
+            nextStage === "Completed"
+              ? "Job marked as completed."
+              : `Job advanced to ${nextStage} stage.`,
           );
         }}
       />

@@ -1,9 +1,13 @@
 "use client";
 
-type TabItem<T extends string = string> = {
+import type { ReactNode } from "react";
+
+export type TabItem<T extends string = string> = {
   id: T;
   label: string;
-  icon?: React.ReactNode;
+  count?: number;
+  badge?: ReactNode;
+  icon?: ReactNode;
 };
 
 type ClientTabsProps<T extends string = string> = {
@@ -11,11 +15,22 @@ type ClientTabsProps<T extends string = string> = {
   activeId: T;
   onChange: (id: T) => void;
   ariaLabel?: string;
+  className?: string;
 };
 
-export function ClientTabs<T extends string>({ items, activeId, onChange, ariaLabel = "Section" }: ClientTabsProps<T>) {
+export function ClientTabs<T extends string>({
+  items,
+  activeId,
+  onChange,
+  ariaLabel = "Sections",
+  className = "",
+}: ClientTabsProps<T>) {
   return (
-    <nav className="ui-tabs" aria-label={ariaLabel} role="tablist">
+    <nav
+      className={`ui-tabs ${className}`.trim()}
+      aria-label={ariaLabel}
+      role="tablist"
+    >
       {items.map((item) => {
         const current = item.id === activeId;
         return (
@@ -29,8 +44,25 @@ export function ClientTabs<T extends string>({ items, activeId, onChange, ariaLa
             className={`ui-tab ${current ? "is-active" : ""}`}
             onClick={() => onChange(item.id)}
           >
-            {item.icon && <span className="ui-tab-icon" aria-hidden="true">{item.icon}</span>}
-            {item.label}
+            {item.icon && (
+              <span className="ui-tab-icon" aria-hidden="true">
+                {item.icon}
+              </span>
+            )}
+            <span className="ui-tab-label">{item.label}</span>
+            {item.count !== undefined && (
+              <span
+                className={`ui-tab-badge ${current ? "is-active" : ""}`}
+                aria-label={`${item.count} items`}
+              >
+                {item.count}
+              </span>
+            )}
+            {item.badge && (
+              <span className={`ui-tab-badge ${current ? "is-active" : ""}`}>
+                {item.badge}
+              </span>
+            )}
           </button>
         );
       })}

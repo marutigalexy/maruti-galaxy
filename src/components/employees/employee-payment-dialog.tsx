@@ -21,10 +21,6 @@ type EmployeePaymentDialogProps = {
   categories: CategoryOption[];
 };
 
-function remainingAfterPayment(remaining: number, amount: string) {
-  return Math.round((remaining - (Number(amount) || 0)) * 100) / 100;
-}
-
 export function EmployeePaymentDialog({
   employee,
   summary,

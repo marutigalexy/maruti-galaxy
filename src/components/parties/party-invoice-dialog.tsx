@@ -12,6 +12,7 @@ import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { formatDisplayDate, formatInr } from "@/lib/formatters";
+import { downloadInvoicePdf } from "@/lib/invoices/pdf-download";
 import type { PartyJobRow, PartyRecord } from "@/services/parties/parties-service";
 
 type PartyInvoiceDialogProps = {
@@ -111,6 +112,11 @@ export function PartyInvoiceDialog({ party, jobs, invoicedJobIds }: PartyInvoice
               }
               setOpen(false);
               toast.success(`Invoice ${outcome.data.invoice_number} created.`);
+              try {
+                await downloadInvoicePdf(outcome.data);
+              } catch (err) {
+                console.error("Failed to generate and download invoice PDF:", err);
+              }
               router.refresh();
             });
           }}

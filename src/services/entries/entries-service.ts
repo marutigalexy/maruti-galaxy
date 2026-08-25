@@ -13,6 +13,7 @@ import {
   type ListEntriesInput,
   type UpdateEntryInput,
 } from "@/lib/validation/entries";
+import { getOrCreateCategory } from "@/services/categories/categories-service";
 import { getEmployee } from "@/services/employees/employees-service";
 import type { Database } from "@/types/database";
 
@@ -362,10 +363,14 @@ export async function createEntry(input: CreateEntryInput): Promise<EntryDetail>
 export async function createEmployeePayment(input: CreateEmployeePaymentInput): Promise<EntryDetail> {
   await requireActiveAdmin();
   await getEmployee(input.employee_id);
+  const categoryId =
+    input.category_id ||
+    (await getOrCreateCategory("Employee Salary", "Expense")).id;
+
   return createEntry({
     entry_type: "Expense",
     account_id: input.account_id,
-    category_id: input.category_id,
+    category_id: categoryId,
     party_id: null,
     employee_id: input.employee_id,
     entry_date: input.entry_date,

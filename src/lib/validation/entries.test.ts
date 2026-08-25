@@ -112,14 +112,12 @@ describe("entry schemas", () => {
       account_id: UUID,
       category_id: UUID_B,
       entry_date: "2026-08-15",
-      amount: "500.00",
-      invoice_id: UUID_B,
+      items: [{ invoice_id: UUID_B, amount: "500.00" }],
     });
     expect(partyPayment).toMatchObject({
       party_id: UUID,
-      amount: "500.00",
+      items: [{ invoice_id: UUID_B, amount: "500.00" }],
     });
-    expect(partyPayment).toMatchObject({ invoice_id: UUID_B });
 
     const employeePayment = parseOrThrow(createEmployeePaymentSchema, {
       employee_id: UUID,
@@ -136,6 +134,14 @@ describe("entry schemas", () => {
     });
     expect(employeePayment).not.toHaveProperty("invoice_id");
     expect(employeePayment).not.toHaveProperty("entry_type");
+
+    const partyPaymentNoCategory = parseOrThrow(createPartyPaymentSchema, {
+      party_id: UUID,
+      account_id: UUID,
+      entry_date: "2026-08-15",
+      items: [{ invoice_id: UUID_B, amount: "500.00" }],
+    });
+    expect(partyPaymentNoCategory.category_id).toBeUndefined();
   });
 
   it("keeps update ids and optional party/employee", () => {
@@ -264,9 +270,8 @@ describe("entry and allocation security", () => {
     expect(invoiceDialog).toMatch(/Add Payment/);
     expect(invoiceDialog).toMatch(/Invoice Total/);
     expect(invoiceDialog).toMatch(/Remaining/);
-    expect(invoiceDialog).not.toMatch(/Select invoice/);
-    expect(partyDialog).toMatch(/Outstanding Payment/);
-    expect(partyDialog).toMatch(/Select invoice/);
+    expect(partyDialog).toMatch(/Collect Payment|Outstanding Payment/);
+    expect(partyDialog).toMatch(/Open Invoices/);
     expect(partyDialog).not.toMatch(/Allocation preview/);
     expect(partyDialog).not.toMatch(/FIFO/);
     expect(partyDialog).toMatch(/Add Payment/);

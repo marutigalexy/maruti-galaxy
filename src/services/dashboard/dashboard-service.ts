@@ -18,6 +18,7 @@ export type DashboardAccountBalance = {
 export type DashboardRecentJob = {
   id: string;
   lot_number: string;
+  party_id: string;
   party_name: string;
   status: JobStatus;
   created_at: string;
@@ -28,6 +29,7 @@ export type DashboardRecentEntry = {
   entry_date: string;
   entry_type: EntryType;
   amount: number;
+  account_id: string;
   account_name: string;
 };
 
@@ -127,6 +129,7 @@ export async function getDashboard(): Promise<DashboardSnapshot> {
     recent_jobs: (recentJobRows.data ?? []).map((row) => ({
       id: row.id,
       lot_number: row.lot_number,
+      party_id: row.party_id,
       party_name: partyNames.get(row.party_id) ?? "—",
       status: row.status,
       created_at: row.created_at,
@@ -136,6 +139,7 @@ export async function getDashboard(): Promise<DashboardSnapshot> {
       entry_date: row.entry_date,
       entry_type: row.entry_type,
       amount: asMoneyNumber(row.amount),
+      account_id: row.account_id,
       account_name: accountNames.get(row.account_id) ?? "—",
     })),
   };

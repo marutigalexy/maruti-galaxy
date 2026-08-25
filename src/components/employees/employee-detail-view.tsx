@@ -15,9 +15,11 @@ import { FormField } from "@/components/ui/form-field";
 import { IconButton } from "@/components/ui/icon-button";
 import { EditIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
+import { JobTypeBadge } from "@/components/ui/job-type-badge";
+import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useToast } from "@/components/ui/toast";
-import { formatDisplayDate, formatInr, formatThan } from "@/lib/formatters";
+import { formatDisplayDate, formatInr, formatSignedInr, formatThan } from "@/lib/formatters";
 import type { AccountOption } from "@/services/accounts/accounts-service";
 import type { CategoryOption } from "@/services/categories/categories-service";
 import type { EmployeeRecord, EmployeeSummary, EmployeePaymentRow } from "@/services/employees/employees-service";
@@ -59,16 +61,40 @@ export function EmployeeDetailView({ employee, summary, accounts, categories }: 
   useRecordTitle(employee.name, employee.mobile_number);
 
   const kpis = [
+    { label: "Employee Type", value: <JobTypeBadge type={employee.employee_type} /> },
     { label: "Commission", value: formatInr(employee.commission) },
     { label: "Total Done Than", value: formatThan(summary.total_done_than) },
-    { label: "Total Earning", value: formatInr(summary.total_earning) },
-    { label: "Paid Amount", value: formatInr(summary.total_paid) },
-    { label: "Remaining Amount", value: formatInr(summary.remaining_amount) },
+    {
+      label: "Total Earning",
+      value: (
+        <span className="ui-amount-income">
+          {formatSignedInr("Income", summary.total_earning)}
+        </span>
+      ),
+    },
+    {
+      label: "Paid Amount",
+      value: (
+        <span className="ui-amount-expense">
+          {formatSignedInr("Expense", summary.total_paid)}
+        </span>
+      ),
+    },
+    {
+      label: "Remaining Amount",
+      value: (
+        <span className={summary.remaining_amount < 0 ? "ui-amount-negative" : "ui-amount-positive"}>
+          {summary.remaining_amount < 0
+            ? formatSignedInr("Expense", Math.abs(summary.remaining_amount))
+            : formatSignedInr("Income", summary.remaining_amount)}
+        </span>
+      ),
+    },
   ];
 
   const tabItems = [
-    { id: "work", label: "Work History" },
-    { id: "payments", label: "Payment History" },
+    { id: "work", label: "Work History", count: summary.work.length },
+    { id: "payments", label: "Payment History", count: summary.payments.length },
   ] as const;
 
   return (
@@ -93,7 +119,7 @@ export function EmployeeDetailView({ employee, summary, accounts, categories }: 
             {kpis.map((kpi) => (
               <article key={kpi.label} className="ui-kpi-card">
                 <p className="ui-kpi-label">{kpi.label}</p>
-                <p className="ui-kpi-value">{kpi.value}</p>
+                <div className="ui-kpi-value">{kpi.value}</div>
               </article>
             ))}
           </div>
@@ -121,18 +147,28 @@ export function EmployeeDetailView({ employee, summary, accounts, categories }: 
                   header: "Date",
                   render: (row) => formatDisplayDate(row.created_at),
                 },
-                { key: "than", header: "Done Than", numeric: true, render: (row) => formatThan(row.done_than) },
+                {
+                  key: "done",
+                  header: "Done Than",
+                  numeric: true,
+                  render: (row) => formatThan(row.done_than),
+                },
                 {
                   key: "commission",
                   header: "Commission",
                   numeric: true,
                   render: (row) => formatInr(row.commission),
                 },
-                { key: "earning", header: "Earning", numeric: true, render: (row) => formatInr(row.earning) },
+                {
+                  key: "earning",
+                  header: "Earning",
+                  numeric: true,
+                  render: (row) => formatInr(row.earning),
+                },
               ]}
               rows={summary.work}
               rowKey={(row) => row.id}
-              emptyTitle="No work has been recorded for this employee yet."
+              emptyTitle="No work history recorded for this employee."
             />
           </Card>
         </div>
@@ -153,6 +189,11 @@ export function EmployeeDetailView({ employee, summary, accounts, categories }: 
                   render: (row) => paymentCategoryBadge(row),
                 },
                 {
+                  key: "remarks",
+                  header: "Remarks",
+                  render: (row) => row.remarks ?? "—",
+                },
+                {
                   key: "amount",
                   header: "Amount",
                   numeric: true,
@@ -160,15 +201,10 @@ export function EmployeeDetailView({ employee, summary, accounts, categories }: 
                     <span className={paymentAmountClass(row)}>{formatInr(row.amount)}</span>
                   ),
                 },
-                {
-                  key: "remarks",
-                  header: "Remarks",
-                  render: (row) => row.remarks ?? "—",
-                },
               ]}
               rows={summary.payments}
               rowKey={(row) => row.id}
-              emptyTitle="No payments recorded for this employee yet."
+              emptyTitle="No payments recorded for this employee."
             />
           </Card>
         </div>
@@ -192,6 +228,7 @@ export function EmployeeDetailView({ employee, summary, accounts, categories }: 
                 name: String(form.get("name") ?? ""),
                 mobile_number: String(form.get("mobile_number") ?? ""),
                 commission: String(form.get("commission") ?? ""),
+                employee_type: String(form.get("employee_type") ?? "Sarin"),
               });
               if (!outcome.ok) {
                 setFormError(outcome.error.message);
@@ -223,6 +260,19 @@ export function EmployeeDetailView({ employee, summary, accounts, categories }: 
               disabled={pending}
               placeholder="e.g. 9876543210"
             />
+          </FormField>
+          <FormField label="Employee Type" htmlFor="detail-edit-employee-type" required>
+            <Select
+              id="detail-edit-employee-type"
+              name="employee_type"
+              required
+              defaultValue={employee.employee_type}
+              disabled={pending}
+            >
+              <option value="Sarin">Sarin</option>
+              <option value="Dropping">Dropping</option>
+              <option value="Galaxy">Galaxy</option>
+            </Select>
           </FormField>
           <FormField
             label="Commission"

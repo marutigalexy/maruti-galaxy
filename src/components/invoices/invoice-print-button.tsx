@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { PrintIcon } from "@/components/ui/icons";
 import { useToast } from "@/components/ui/toast";
+import { downloadInvoicePdf } from "@/lib/invoices/pdf-download";
 import type { InvoiceDetail } from "@/services/invoices/invoices-service";
 
 type InvoicePrintButtonProps = {
@@ -38,14 +39,11 @@ export function InvoicePrintButton({
   invoiceId,
   invoice,
   variant = "button",
-  children = "Print",
+  children = "Download PDF",
 }: InvoicePrintButtonProps) {
   const toast = useToast();
   const printRootRef = useRef<HTMLDivElement>(null);
   const [pending, startTransition] = useTransition();
-  // activeDoc is set only while this specific button is printing.
-  // It is cleared immediately after window.print() returns so the div
-  // is removed from the DOM and cannot bleed into the next print job.
   const [activeDoc, setActiveDoc] = useState<InvoiceDetail | null>(null);
 
   useEffect(() => {
@@ -58,8 +56,6 @@ export function InvoicePrintButton({
         return;
       }
       window.print();
-      // Remove the print div immediately after printing so it is not
-      // present in the DOM when another invoice's print button is clicked.
       setActiveDoc(null);
     });
     return () => {
@@ -67,38 +63,39 @@ export function InvoicePrintButton({
     };
   }, [activeDoc]);
 
-  function printNow() {
+  function handleAction() {
     startTransition(async () => {
-      // If an invoice was pre-passed as a prop, use it directly.
-      // Otherwise fetch it fresh. Either way we set it as activeDoc
-      // which mounts the print div only for this single print action.
-      if (invoice) {
-        setActiveDoc(invoice);
-        return;
+      let doc = invoice;
+      if (!doc) {
+        const outcome = await getInvoiceAction({ id: invoiceId });
+        if (!outcome.ok) {
+          toast.error(outcome.error.message);
+          return;
+        }
+        doc = outcome.data;
       }
-      const outcome = await getInvoiceAction({ id: invoiceId });
-      if (!outcome.ok) {
-        toast.error(outcome.error.message);
-        return;
+
+      try {
+        await downloadInvoicePdf(doc);
+        toast.success(`Invoice PDF downloaded.`);
+      } catch (err) {
+        console.error("PDF download failed, falling back to print dialog:", err);
+        setActiveDoc(doc);
       }
-      setActiveDoc(outcome.data);
     });
   }
 
   return (
     <>
       {variant === "icon" ? (
-        <IconButton tone="print" label="Print invoice" loading={pending} onClick={printNow}>
+        <IconButton tone="print" label="Download invoice PDF" loading={pending} onClick={handleAction}>
           <PrintIcon width={16} height={16} />
         </IconButton>
       ) : (
-        <Button variant="secondary" loading={pending} onClick={printNow}>
+        <Button variant="secondary" loading={pending} onClick={handleAction}>
           {children}
         </Button>
       )}
-      {/* Only mount the print div while actively printing this invoice.
-          This prevents multiple InvoicePrintButton instances on the same
-          page from all appearing in the print output simultaneously. */}
       {activeDoc ? (
         <div ref={printRootRef} className="invoice-print-root" aria-hidden="true">
           <InvoicePrintView invoice={activeDoc} />
@@ -107,3 +104,4 @@ export function InvoicePrintButton({
     </>
   );
 }
+

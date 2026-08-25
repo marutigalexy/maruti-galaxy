@@ -65,6 +65,7 @@ export {
   addEmployeeWorkSchema,
   createJobSchema,
   createSubJobSchema,
+  integerThanSchema,
   jobIdSchema,
   listJobsSchema,
   updateEmployeeWorkSchema,

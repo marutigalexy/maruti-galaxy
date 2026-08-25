@@ -28,7 +28,7 @@ import { useToast } from "@/components/ui/toast";
 import { useQueryPush } from "@/hooks/use-query-push";
 import { listHref } from "@/lib/api/list-href";
 import type { Paginated } from "@/lib/api/pagination";
-import { formatInr } from "@/lib/formatters";
+import { formatDisplayDate, formatInr } from "@/lib/formatters";
 import type { ListPartiesInput } from "@/lib/validation/parties";
 import type { PartyRecord } from "@/services/parties/parties-service";
 
@@ -90,7 +90,7 @@ export function PartiesView({ query, result }: PartiesViewProps) {
       >
         <SearchInput
           value={query.search}
-          onValueChange={(search) => push(listHref("/parties", { ...query, search, page: 1 }))}
+          onValueChange={(search) => pushQuery({ ...query, search, page: 1 })}
           placeholder="Search company or mobile"
         />
         <FormField label="Status" htmlFor="party-status">
@@ -114,6 +114,11 @@ export function PartiesView({ query, result }: PartiesViewProps) {
           { key: "contact", header: "Contact Person", render: (row) => row.contact_person_name ?? "—" },
           { key: "mobile", header: "Mobile", render: (row) => row.mobile_number },
           { key: "price", header: "Price", numeric: true, render: (row) => formatInr(row.price) },
+          {
+            key: "created_at",
+            header: "Created At",
+            render: (row) => formatDisplayDate(row.created_at),
+          },
           {
             key: "status",
             header: "Status",

@@ -49,7 +49,9 @@ function jobsHref(query: ListJobsInput): string {
   if (query.status !== "all") {
     params.set("status", query.status);
   }
-  if (query.job_type !== "all") {
+  if (query.stage && query.stage !== "all") {
+    params.set("stage", query.stage);
+  } else if (query.job_type !== "all") {
     params.set("job_type", query.job_type);
   }
   if (query.party_id) {
@@ -149,6 +151,7 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
     Boolean(query.search) ||
     query.status !== "all" ||
     query.job_type !== "all" ||
+    (query.stage && query.stage !== "all") ||
     Boolean(query.party_id) ||
     Boolean(query.employee_id);
 
@@ -172,6 +175,7 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
             search: "",
             status: "all",
             job_type: "all",
+            stage: "all",
             party_id: undefined,
             employee_id: undefined,
             page: 1,
@@ -185,24 +189,26 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
           placeholder="Search lot or sub-job (J01, J01-A)"
         />
         <FormField
-          label="Job Type"
-          htmlFor="job-type-filter"
+          label="Stage"
+          htmlFor="job-stage-filter"
         >
           <Select
-            id="job-type-filter"
-            value={query.job_type}
+            id="job-stage-filter"
+            value={query.stage ?? query.job_type ?? "all"}
             onChange={(event) =>
               pushQuery({
                 ...query,
-                job_type: event.target.value as ListJobsInput["job_type"],
+                stage: event.target.value as ListJobsInput["stage"],
+                job_type: "all",
                 page: 1,
               })
             }
           >
-            <option value="all">All</option>
+            <option value="all">All Stages</option>
             <option value="Sarin">Sarin</option>
             <option value="Dropping">Dropping</option>
             <option value="Galaxy">Galaxy</option>
+            <option value="Completed">Completed</option>
           </Select>
         </FormField>
         <FormField label="Status" htmlFor="job-status-filter">
@@ -310,9 +316,17 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
             render: (row) => (row.kind === "job" ? row.job.party_name : "—"),
           },
           {
-            key: "type",
-            header: "Job Type",
-            render: (row) => (row.kind === "job" ? <JobTypeBadge type={row.job.job_type} /> : "—"),
+            key: "stage",
+            header: "Current Stage",
+            render: (row) => {
+              if (row.kind === "job") {
+                return <JobTypeBadge type={row.job.current_stage} />;
+              }
+              if (row.kind === "sub") {
+                return <JobTypeBadge type={row.sub.stage} />;
+              }
+              return "—";
+            },
           },
           {
             key: "than",
@@ -350,60 +364,71 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
             },
           },
           {
-            key: "price",
-            header: "Price",
-            numeric: true,
-            render: (row) => (row.kind === "job" ? formatInr(row.job.price) : ""),
-          },
-          {
             key: "status",
             header: "Status",
             render: (row) => {
               if (row.kind === "empty") {
-                return null;
+                return "";
               }
               const status = row.kind === "job" ? row.job.status : row.sub.status;
               return <StatusBadge tone={statusTone(status)} />;
             },
           },
           {
+            key: "price",
+            header: "Price",
+            numeric: true,
+            render: (row) => (row.kind === "job" ? <span className="ui-price">{formatInr(row.job.price)}</span> : "—"),
+          },
+          {
             key: "actions",
             header: "Actions",
-            render: (row) =>
-              row.kind === "job" ? (
+            render: (row) => {
+              if (row.kind !== "job") {
+                return null;
+              }
+              return (
                 <TableActions>
                   <IconButton
                     tone="edit"
-                    label="Edit job"
-                    loading={editPending && editJobId === row.job.id}
-                    disabled={editPending}
-                    onClick={() => openEdit(row.job.id)}
+                    label={`Edit ${row.job.lot_number}`}
+                    disabled={editPending && editJobId === row.job.id}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      openEdit(row.job.id);
+                    }}
                   >
                     <EditIcon width={16} height={16} />
                   </IconButton>
                 </TableActions>
-              ) : null,
+              );
+            },
           },
         ]}
         rows={rows}
-        rowKey={(row) =>
-          row.kind === "job" ? row.job.id : row.kind === "sub" ? `${row.job.id}:${row.sub.id}` : `${row.job.id}:empty`
-        }
+        rowKey={(row) => {
+          if (row.kind === "job") {
+            return row.job.id;
+          }
+          if (row.kind === "sub") {
+            return `sub-${row.sub.id}`;
+          }
+          return `empty-${row.job.id}`;
+        }}
+        getRowProps={(row: JobsTableRow) => ({
+          className: row.kind === "job" ? "is-clickable" : "is-nested",
+        })}
+        onRowClick={(row) => {
+          if (row.kind === "job") {
+            router.push(`/jobs/${row.job.id}`);
+          }
+        }}
         loading={queryPending}
-        getRowProps={(row) =>
-          row.kind === "job"
-            ? {
-                className: "is-parent",
-                "aria-expanded": expandedIds.has(row.job.id),
-                "aria-level": 1,
-              }
-            : {
-                className: "is-nested",
-                "aria-level": 2,
-              }
+        emptyTitle={
+          filteredEmpty
+            ? "No jobs match the selected filters."
+            : "No jobs have been added yet."
         }
-        onRowClick={(row) => router.push(`/jobs/${row.job.id}`)}
-        emptyTitle={filteredEmpty ? "No jobs match the selected filters." : "No jobs found."}
         footer={
           <Pagination
             page={result.page}
@@ -414,21 +439,30 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
           />
         }
       />
+
       <Dialog
         open={createOpen}
         title="Add Job"
         onClose={() => setCreateOpen(false)}
         footer={null}
       >
-        {createOpen ? <JobCreateForm parties={parties} onCancel={() => setCreateOpen(false)} /> : null}
+        {createOpen ? (
+          <JobCreateForm
+            parties={parties}
+            onCancel={() => setCreateOpen(false)}
+          />
+        ) : null}
       </Dialog>
+
       <Dialog
         open={Boolean(editJob)}
         title={editJob ? `Edit Job • ${editJob.lot_number}` : "Edit Job"}
         onClose={() => setEditJob(null)}
         footer={null}
       >
-        {editJob ? <JobEditForm job={editJob} onCancel={() => setEditJob(null)} /> : null}
+        {editJob ? (
+          <JobEditForm job={editJob} onCancel={() => setEditJob(null)} />
+        ) : null}
       </Dialog>
     </>
   );

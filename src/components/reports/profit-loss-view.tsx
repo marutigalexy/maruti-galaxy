@@ -8,7 +8,7 @@ import { FilterBar } from "@/components/ui/filter-bar";
 import { FormField } from "@/components/ui/form-field";
 import { useQueryPush } from "@/hooks/use-query-push";
 import { queryHref } from "@/lib/api/query-href";
-import { formatInr } from "@/lib/formatters";
+import { formatSignedInr } from "@/lib/formatters";
 import type { ProfitLossInput } from "@/lib/validation/reports";
 import type { ProfitLossReport } from "@/services/reports/reports-service";
 
@@ -72,21 +72,31 @@ export function ProfitLossView({ query, result }: ProfitLossViewProps) {
             key: "income",
             header: "Total Income",
             numeric: true,
-            render: (row) => <span className="ui-amount-income">{formatInr(row.total_income)}</span>,
+            render: (row) => (
+              <span className="ui-amount-income">
+                {formatSignedInr("Income", row.total_income)}
+              </span>
+            ),
           },
           {
             key: "expense",
             header: "Total Expense",
             numeric: true,
-            render: (row) => <span className="ui-amount-expense">{formatInr(row.total_expense)}</span>,
+            render: (row) => (
+              <span className="ui-amount-expense">
+                {formatSignedInr("Expense", row.total_expense)}
+              </span>
+            ),
           },
           {
             key: "net",
             header: "Net Profit/Loss",
             numeric: true,
             render: (row) => (
-              <span className={row.net < 0 ? "ui-amount-expense" : "ui-amount-income"}>
-                {formatInr(row.net)}
+              <span className={row.net < 0 ? "ui-amount-negative" : "ui-amount-positive"}>
+                {row.net < 0
+                  ? formatSignedInr("Expense", Math.abs(row.net))
+                  : formatSignedInr("Income", row.net)}
               </span>
             ),
           },

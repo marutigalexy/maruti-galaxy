@@ -1,7 +1,6 @@
 "use client";
 
-import { startTransition, useActionState, useEffect, useState } from "react";
-import Link from "next/link";
+import { startTransition, useActionState, useState } from "react";
 
 import { loginAction, type LoginState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
@@ -19,14 +18,14 @@ type LoginFormProps = {
 export function LoginForm({ nextPath }: LoginFormProps) {
   const [state, formAction, pending] = useActionState(loginAction, initialState);
   const [email, setEmail] = useState(state.email);
+  const [prevEmail, setPrevEmail] = useState(state.email);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  useEffect(() => {
-    if (state.email) {
-      setEmail(state.email);
-    }
-  }, [state.email]);
+  if (state.email !== prevEmail) {
+    setPrevEmail(state.email);
+    setEmail(state.email);
+  }
 
   return (
     <form

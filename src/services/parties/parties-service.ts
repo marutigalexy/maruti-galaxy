@@ -27,6 +27,7 @@ const JOB_SUMMARY_COLUMNS = selectColumns([
   "id",
   "lot_number",
   "job_type",
+  "current_stage",
   "status",
   "than",
   "price",
@@ -151,7 +152,7 @@ export async function listParties(input: ListPartiesInput): Promise<Paginated<Pa
   let query = supabase
     .from("parties")
     .select(PARTY_LIST_COLUMNS, { count: "exact" })
-    .order("company_name", { ascending: true })
+    .order("created_at", { ascending: false })
     .range(offset, offset + input.pageSize - 1);
 
   if (input.status === "active") {
@@ -216,7 +217,7 @@ export async function getPartySummary(id: string): Promise<PartySummary> {
   if (jobIds.length > 0) {
     const { data: subRows, error: subError } = await supabase
       .from("sub_jobs")
-      .select("job_id, than")
+      .select("job_id, than, stage")
       .in("job_id", jobIds);
 
     if (subError) {
@@ -224,7 +225,9 @@ export async function getPartySummary(id: string): Promise<PartySummary> {
     }
 
     for (const sub of subRows ?? []) {
-      subAllocated.set(sub.job_id, (subAllocated.get(sub.job_id) ?? 0) + asMoneyNumber(sub.than));
+      const stage = sub.stage ?? "Sarin";
+      const key = `${sub.job_id}:${stage}`;
+      subAllocated.set(key, (subAllocated.get(key) ?? 0) + asMoneyNumber(sub.than));
     }
   }
 
@@ -234,13 +237,17 @@ export async function getPartySummary(id: string): Promise<PartySummary> {
       row.billing_amount != null
         ? asMoneyNumber(row.billing_amount)
         : Math.round(than * asMoneyNumber(row.price) * 100) / 100;
+    const currentStage = row.current_stage ?? row.job_type ?? "Sarin";
+    const key = `${row.id}:${currentStage}`;
+    const used = subAllocated.get(key) ?? 0;
+    const remainingThan = Math.max(0, Math.round((than - used) * 1000) / 1000);
     return {
       id: row.id,
       lot_number: row.lot_number,
-      job_type: row.job_type,
+      job_type: currentStage,
       status: row.status,
       than,
-      remaining_than: than - (subAllocated.get(row.id) ?? 0),
+      remaining_than: remainingThan,
       price: asMoneyNumber(row.price),
       kapan_number: row.kapan_number,
       weight: asMoneyNumber(row.weight),

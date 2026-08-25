@@ -6,11 +6,11 @@ import { ExportButton } from "@/components/ui/export-button";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { FormField } from "@/components/ui/form-field";
 import { Pagination } from "@/components/ui/pagination";
-import { Select } from "@/components/ui/select";
+import { SearchInput } from "@/components/ui/search-input";
 import { useQueryPush } from "@/hooks/use-query-push";
 import { queryHref } from "@/lib/api/query-href";
 import type { Paginated } from "@/lib/api/pagination";
-import { formatInr, formatThan } from "@/lib/formatters";
+import { formatSignedInr, formatThan } from "@/lib/formatters";
 import type { SalaryReportInput } from "@/lib/validation/reports";
 import type { EmployeeOption } from "@/services/employees/employees-service";
 import type { SalaryReportRow } from "@/services/reports/reports-service";
@@ -18,30 +18,24 @@ import type { SalaryReportRow } from "@/services/reports/reports-service";
 type SalaryReportViewProps = {
   query: SalaryReportInput;
   result: Paginated<SalaryReportRow>;
-  employees: EmployeeOption[];
+  employees?: EmployeeOption[];
 };
-
-function amountClass(key: string, row: SalaryReportRow) {
-  if (key === "earned") return "ui-amount-earned";
-  if (key === "paid") return "ui-amount-salary-paid";
-  if (key === "difference") return row.difference >= 0 ? "ui-amount-positive" : "ui-amount-negative";
-  return "";
-}
 
 function exportHref(query: SalaryReportInput): string {
   return queryHref("/api/export/salary", {
+    search: query.search,
     employee_id: query.employee_id,
     date_from: query.date_from,
     date_to: query.date_to,
   });
 }
 
-export function SalaryReportView({ query, result, employees }: SalaryReportViewProps) {
+export function SalaryReportView({ query, result }: SalaryReportViewProps) {
   const { pending: queryPending, push } = useQueryPush();
   const pushQuery = (next: SalaryReportInput) => {
     push(queryHref("/reports/salary", next));
   };
-  const filtered = Boolean(query.employee_id) || Boolean(query.date_from) || Boolean(query.date_to);
+  const filtered = Boolean(query.search) || Boolean(query.employee_id) || Boolean(query.date_from) || Boolean(query.date_to);
 
   return (
     <>
@@ -49,6 +43,7 @@ export function SalaryReportView({ query, result, employees }: SalaryReportViewP
         action={<ExportButton href={exportHref(query)} />}
         onReset={() =>
           pushQuery({
+            search: "",
             employee_id: undefined,
             date_from: undefined,
             date_to: undefined,
@@ -57,20 +52,11 @@ export function SalaryReportView({ query, result, employees }: SalaryReportViewP
           })
         }
       >
-        <FormField label="Employee" htmlFor="report-salary-employee">
-          <Select
-            id="report-salary-employee"
-            value={query.employee_id ?? ""}
-            onChange={(event) => pushQuery({ ...query, employee_id: event.target.value || undefined, page: 1 })}
-          >
-            <option value="">All</option>
-            {employees.map((employee) => (
-              <option key={employee.id} value={employee.id}>
-                {employee.name}
-              </option>
-            ))}
-          </Select>
-        </FormField>
+        <SearchInput
+          value={query.search}
+          onValueChange={(search) => pushQuery({ ...query, search, page: 1 })}
+          placeholder="Search employee name"
+        />
         <FormField label="Date From" htmlFor="report-salary-from">
           <DatePicker
             id="report-salary-from"
@@ -100,19 +86,33 @@ export function SalaryReportView({ query, result, employees }: SalaryReportViewP
             key: "earned",
             header: "Total Earnings",
             numeric: true,
-            render: (row) => <span className={amountClass("earned", row)}>{formatInr(row.earned)}</span>,
+            render: (row) => (
+              <span className="ui-amount-income">
+                {formatSignedInr("Income", row.earned)}
+              </span>
+            ),
           },
           {
             key: "paid",
             header: "Paid Amount",
             numeric: true,
-            render: (row) => <span className={amountClass("paid", row)}>{formatInr(row.paid)}</span>,
+            render: (row) => (
+              <span className="ui-amount-expense">
+                {formatSignedInr("Expense", row.paid)}
+              </span>
+            ),
           },
           {
             key: "difference",
             header: "Remaining Amount",
             numeric: true,
-            render: (row) => <span className={amountClass("difference", row)}>{formatInr(row.difference)}</span>,
+            render: (row) => (
+              <span className={row.difference < 0 ? "ui-amount-negative" : "ui-amount-positive"}>
+                {row.difference < 0
+                  ? formatSignedInr("Expense", Math.abs(row.difference))
+                  : formatSignedInr("Income", row.difference)}
+              </span>
+            ),
           },
         ]}
         rows={result.records}

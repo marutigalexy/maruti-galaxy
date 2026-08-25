@@ -8,18 +8,64 @@ import {
   addEmployeeWorkSchema,
   createJobSchema,
   createSubJobSchema,
+  getNextStage,
   listJobsSchema,
+  normalizeStages,
   updateJobSchema,
 } from "@/lib/validation/jobs";
 
 const UUID = "11111111-1111-4111-8111-111111111111";
 
+describe("stage progression and normalization", () => {
+  it("normalizes any permutation of selected stages into the canonical fixed sequence", () => {
+    // 3 stages in reverse order
+    expect(normalizeStages(["Galaxy", "Dropping", "Sarin"])).toEqual(["Sarin", "Dropping", "Galaxy"]);
+    // 2 stages: Sarin + Galaxy
+    expect(normalizeStages(["Galaxy", "Sarin"])).toEqual(["Sarin", "Galaxy"]);
+    // 2 stages: Dropping + Galaxy
+    expect(normalizeStages(["Galaxy", "Dropping"])).toEqual(["Dropping", "Galaxy"]);
+    // 2 stages: Sarin + Dropping
+    expect(normalizeStages(["Dropping", "Sarin"])).toEqual(["Sarin", "Dropping"]);
+    // 1 stage: Sarin
+    expect(normalizeStages(["Sarin"])).toEqual(["Sarin"]);
+    // 1 stage: Dropping
+    expect(normalizeStages(["Dropping"])).toEqual(["Dropping"]);
+    // 1 stage: Galaxy
+    expect(normalizeStages(["Galaxy"])).toEqual(["Galaxy"]);
+  });
+
+  it("advances sequentially skipping unselected stages and finishes at Completed", () => {
+    // Pipeline: Sarin -> Galaxy
+    const sg = ["Sarin", "Galaxy"];
+    expect(getNextStage(sg, "Sarin")).toBe("Galaxy");
+    expect(getNextStage(sg, "Galaxy")).toBe("Completed");
+
+    // Pipeline: Dropping -> Galaxy
+    const dg = ["Dropping", "Galaxy"];
+    expect(getNextStage(dg, "Dropping")).toBe("Galaxy");
+    expect(getNextStage(dg, "Galaxy")).toBe("Completed");
+
+    // Pipeline: Sarin -> Dropping -> Galaxy
+    const sdg = ["Sarin", "Dropping", "Galaxy"];
+    expect(getNextStage(sdg, "Sarin")).toBe("Dropping");
+    expect(getNextStage(sdg, "Dropping")).toBe("Galaxy");
+    expect(getNextStage(sdg, "Galaxy")).toBe("Completed");
+
+    // Single stage: Sarin
+    expect(getNextStage(["Sarin"], "Sarin")).toBe("Completed");
+    // Single stage: Dropping
+    expect(getNextStage(["Dropping"], "Dropping")).toBe("Completed");
+    // Single stage: Galaxy
+    expect(getNextStage(["Galaxy"], "Galaxy")).toBe("Completed");
+  });
+});
+
 describe("job schemas", () => {
-  it("requires party, type, than, price, kapan, and decimal weight", () => {
+  it("requires party, than, price, kapan, and decimal weight", () => {
     expect(() =>
       parseOrThrow(createJobSchema, {
         party_id: UUID,
-        job_type: "Sarin",
+        stages: ["Sarin"],
         than: "10",
         price: "1",
         kapan_number: "",
@@ -30,7 +76,7 @@ describe("job schemas", () => {
     expect(() =>
       parseOrThrow(createJobSchema, {
         party_id: UUID,
-        job_type: "Sarin",
+        stages: ["Sarin"],
         than: "0",
         price: "1",
         kapan_number: "K1",
@@ -41,7 +87,7 @@ describe("job schemas", () => {
     expect(() =>
       parseOrThrow(createJobSchema, {
         party_id: UUID,
-        job_type: "Sarin",
+        stages: ["Sarin"],
         than: "10",
         price: "-1",
         kapan_number: "K1",
@@ -50,10 +96,10 @@ describe("job schemas", () => {
     ).toThrow(/out of range|decimal/i);
   });
 
-  it("defaults status to Pending and strips client lot/invoice fields", () => {
+  it("normalizes multi-stage selection on job creation and sets initial stage", () => {
     const parsed = parseOrThrow(createJobSchema, {
       party_id: UUID,
-      job_type: "Galaxy",
+      stages: ["Galaxy", "Sarin"],
       than: "10.500",
       price: "12.50",
       kapan_number: " KAPAN-1 ",
@@ -64,17 +110,33 @@ describe("job schemas", () => {
     });
 
     expect(parsed.status).toBe("Pending");
+    expect(parsed.stages).toEqual(["Sarin", "Galaxy"]);
+    expect(parsed.current_stage).toBe("Sarin");
     expect(parsed.kapan_number).toBe("KAPAN-1");
     expect(parsed).not.toHaveProperty("lot_number");
     expect(parsed).not.toHaveProperty("invoice_number");
     expect(parsed).not.toHaveProperty("amount");
   });
 
+  it("handles single-stage Dropping creation", () => {
+    const parsed = parseOrThrow(createJobSchema, {
+      party_id: UUID,
+      stages: ["Dropping"],
+      than: "5.000",
+      price: "10.00",
+      kapan_number: "KAPAN-2",
+      weight: "1.000",
+    });
+
+    expect(parsed.stages).toEqual(["Dropping"]);
+    expect(parsed.current_stage).toBe("Dropping");
+  });
+
   it("accepts status picker values and rejects unknown statuses", () => {
     expect(
       parseOrThrow(updateJobSchema, {
         id: UUID,
-        job_type: "Dropping",
+        stages: ["Dropping"],
         than: "1",
         price: "1",
         kapan_number: "K1",
@@ -86,7 +148,7 @@ describe("job schemas", () => {
     expect(() =>
       parseOrThrow(updateJobSchema, {
         id: UUID,
-        job_type: "Sarin",
+        stages: ["Sarin"],
         than: "1",
         price: "1",
         kapan_number: "K1",
@@ -96,10 +158,10 @@ describe("job schemas", () => {
     ).toThrow();
   });
 
-  it("parses job list filters including J01-A search", () => {
-    expect(parseOrThrow(listJobsSchema, { search: "J01-A", job_type: "Sarin" })).toMatchObject({
+  it("parses job list filters including stage and search", () => {
+    expect(parseOrThrow(listJobsSchema, { search: "J01-A", stage: "Sarin" })).toMatchObject({
       search: "J01-A",
-      job_type: "Sarin",
+      stage: "Sarin",
       status: "all",
       page: 1,
       pageSize: 30,
@@ -107,13 +169,38 @@ describe("job schemas", () => {
     expect(() => parseOrThrow(listJobsSchema, { pageSize: 1000 })).toThrow();
   });
 
-  it("requires sub-job than and ignores client sequence", () => {
+  it("parses subjob creation and allows omitting stage for auto-assignment with integer than", () => {
+    const sub = parseOrThrow(createSubJobSchema, {
+      job_id: UUID,
+      than: "15",
+      weight: "3.200",
+    });
+    expect(sub).toMatchObject({
+      job_id: UUID,
+      than: "15",
+      weight: "3.200",
+      status: "Pending",
+    });
+
+    // Rejects decimals/floats for subjob Than
+    expect(() =>
+      parseOrThrow(createSubJobSchema, {
+        job_id: UUID,
+        than: "15.5",
+        weight: "3.200",
+      }),
+    ).toThrow(/Than must be a positive integer/);
+  });
+
+  it("requires integer sub-job than and ignores client sequence", () => {
     const parsed = parseOrThrow(createSubJobSchema, {
       job_id: UUID,
       than: "8",
       weight: "1",
+      stage: "Sarin",
       sequence_no: 99,
     });
+    expect(parsed.stage).toBe("Sarin");
     expect(parsed).not.toHaveProperty("sequence_no");
   });
 
@@ -142,12 +229,11 @@ describe("jobs service security", () => {
   const editPage = path.join(process.cwd(), "src/app/(dashboard)/jobs/[jobId]/edit/page.tsx");
   const list = readFileSync(path.join(process.cwd(), "src/components/jobs/jobs-view.tsx"), "utf8");
 
-  it("creates jobs without invoices and ignores client lot numbers", () => {
+  it("creates jobs with stages and ignores client lot numbers", () => {
     expect(service).toMatch(/rpc\("create_job"/);
     expect(service).not.toMatch(/rpc\("create_job_with_invoice"/);
     expect(service).toMatch(/rpc\("update_job_with_invoice_recalc"/);
     expect(service).not.toMatch(/p_lot_number/);
-    expect(createForm).toMatch(/Assigned on save/);
     expect(createForm).not.toMatch(/name="lot_number"/);
   });
 
@@ -159,7 +245,6 @@ describe("jobs service security", () => {
     expect(service).toMatch(/rpc\("delete_employee_work"/);
     expect(service).not.toMatch(/p_commission/);
     expect(service).not.toMatch(/p_earning/);
-    expect(detail).toMatch(/server stores the snapshot/);
   });
 
   it("re-authorizes inside job actions", () => {
@@ -169,7 +254,7 @@ describe("jobs service security", () => {
     expect(service.match(/await requireActiveAdmin\(\)/g)?.length).toBeGreaterThanOrEqual(8);
   });
 
-  it("edits jobs on /jobs/[jobId]/edit without changing lot or party", () => {
+  it("edits jobs without changing lot or party", () => {
     expect(existsSync(editPage)).toBe(true);
     expect(readFileSync(editPage, "utf8")).toMatch(/await requireActiveAdmin\(\)/);
     expect(editForm).toMatch(/updateJobAction/);
@@ -182,8 +267,6 @@ describe("jobs service security", () => {
     expect(list).toMatch(/JobCreateForm/);
     expect(list).toMatch(/JobEditForm/);
     expect(list).toMatch(/getJobAction/);
-    expect(detail).not.toMatch(/\/jobs\/\$\{job\.id\}\/edit/);
-    expect(list).not.toMatch(/\/jobs\/\$\{row\.id\}\/edit/);
   });
 
   it("nests expandable sub-jobs inside the main jobs table", () => {

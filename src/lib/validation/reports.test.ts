@@ -33,9 +33,10 @@ describe("report schemas", () => {
     expect(parsed).not.toHaveProperty("cogs");
   });
 
-  it("parses salary filters", () => {
-    expect(parseOrThrow(salaryReportSchema, { employee_id: UUID })).toMatchObject({
+  it("parses salary filters including employee search", () => {
+    expect(parseOrThrow(salaryReportSchema, { employee_id: UUID, search: " Ramesh " })).toMatchObject({
       employee_id: UUID,
+      search: "Ramesh",
       page: 1,
       pageSize: 30,
     });

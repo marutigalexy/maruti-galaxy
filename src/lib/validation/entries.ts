@@ -150,7 +150,10 @@ export const allocateInvoiceSchema = z
 
 const paymentFields = {
   account_id: uuidSchema,
-  category_id: uuidSchema,
+  category_id: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : v),
+    uuidSchema.optional(),
+  ),
   entry_date: isoDateSchema,
   amount: moneyPositiveSchema,
   remarks: z.preprocess(emptyToNull, remarksSchema.nullable()),
@@ -174,7 +177,10 @@ export const createPartyPaymentSchema = z
   .object({
     party_id: uuidSchema,
     account_id: uuidSchema,
-    category_id: uuidSchema,
+    category_id: z.preprocess(
+      (v) => (v === "" || v === null || v === undefined ? undefined : v),
+      uuidSchema.optional(),
+    ),
     entry_date: isoDateSchema,
     amount: z.preprocess(
       (v) => (v === "" || v === null || v === undefined ? undefined : v),

@@ -12,6 +12,7 @@ import type {
   CreateInvoicePaymentInput,
   CreatePartyPaymentInput,
 } from "@/lib/validation/entries";
+import { getOrCreateCategory } from "@/services/categories/categories-service";
 import { createEntry, getEntry, type EntryDetail } from "@/services/entries/entries-service";
 import { getInvoice, type InvoiceDetail } from "@/services/invoices/invoices-service";
 import { getParty } from "@/services/parties/parties-service";
@@ -269,10 +270,14 @@ export async function createInvoicePayment(input: CreateInvoicePaymentInput): Pr
   const paymentAmount = asMoneyNumber(input.amount);
   const { allocated } = planInvoiceAllocation(invoice.outstanding, paymentAmount);
 
+  const categoryId =
+    input.category_id ||
+    (await getOrCreateCategory("Party Payment", "Income")).id;
+
   const entry = await createEntry({
     entry_type: "Income",
     account_id: input.account_id,
-    category_id: input.category_id,
+    category_id: categoryId,
     party_id: invoice.party_id,
     employee_id: null,
     entry_date: input.entry_date,
@@ -348,11 +353,15 @@ export async function createPartyPayment(input: CreatePartyPaymentInput): Promis
     })
     .filter((item) => item.amount > 0);
 
+  const categoryId =
+    input.category_id ||
+    (await getOrCreateCategory("Party Payment", "Income")).id;
+
   // Create the accounting entry for the total amount
   const entry = await createEntry({
     entry_type: "Income",
     account_id: input.account_id,
-    category_id: input.category_id,
+    category_id: categoryId,
     party_id: input.party_id,
     employee_id: null,
     entry_date: input.entry_date,

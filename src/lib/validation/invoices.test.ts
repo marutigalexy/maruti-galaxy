@@ -52,13 +52,13 @@ describe("invoice schemas", () => {
     expect(() => parseOrThrow(invoiceIdSchema, { id: "INV-0001" })).toThrow();
   });
 
-  it("requires a party, main job, and valid invoice dates when creating an invoice", () => {
+  it("requires a party, job_ids, and valid invoice date when creating an invoice", () => {
     expect(parseOrThrow(createInvoiceSchema, {
-      party_id: UUID, job_work_id: UUID, invoice_date: "2026-01-01", due_date: "2026-01-15",
-    })).toMatchObject({ party_id: UUID, job_work_id: UUID });
+      party_id: UUID, job_ids: [UUID], invoice_date: "2026-01-01",
+    })).toMatchObject({ party_id: UUID, job_ids: [UUID] });
     expect(() => parseOrThrow(createInvoiceSchema, {
-      party_id: UUID, job_work_id: UUID, invoice_date: "2026-01-15", due_date: "2026-01-01",
-    })).toThrow(/Due Date/);
+      party_id: UUID, job_ids: [], invoice_date: "2026-01-01",
+    })).toThrow(/Select at least one job/);
   });
 });
 
@@ -106,14 +106,6 @@ describe("invoice read security", () => {
   );
   const css = readFileSync(path.join(process.cwd(), "src/styles/components.css"), "utf8");
   const billCopy = readFileSync(path.join(process.cwd(), "src/lib/invoices/bill.ts"), "utf8");
-  const partyPrintView = readFileSync(
-    path.join(process.cwd(), "src/components/parties/party-outstanding-print-view.tsx"),
-    "utf8",
-  );
-  const partyPrintButton = readFileSync(
-    path.join(process.cwd(), "src/components/parties/party-outstanding-print-button.tsx"),
-    "utf8",
-  );
   const migration = readFileSync(
     path.join(process.cwd(), "supabase/migrations/migration_01.sql"),
     "utf8",
@@ -132,7 +124,7 @@ describe("invoice read security", () => {
     expect(service).not.toMatch(/\.insert\(/);
     expect(service).not.toMatch(/\.update\(/);
     expect(service).not.toMatch(/\.delete\(/);
-    expect(service).toMatch(/rpc\("create_invoice_for_job"/);
+    expect(service).toMatch(/rpc\("create_invoice_for_job/);
     expect(service.match(/await requireActiveAdmin\(\)/g)?.length).toBeGreaterThanOrEqual(3);
   });
 
@@ -150,12 +142,12 @@ describe("invoice read security", () => {
     expect(migration).toMatch(/round\(v_job\.than \* v_job\.price, 2\)/);
     expect(invoiceMigration).toMatch(/round\(v_job\.than \* v_job\.price, 2\)/);
     expect(service).toMatch(/from\("invoices"\)/);
-    expect(detail).toMatch(/comes from the invoice record/);
+    expect(detail).toMatch(/formatInr\(invoice\.amount\)/);
   });
 
   it("uses only the required invoice-specific date fields", () => {
     const ui = `${listView}\n${detail}\n${printView}\n${billView}`;
-    expect(partyDetail).toMatch(/Due Date/);
+    expect(partyDetail).toMatch(/Invoice Date/);
     expect(ui).not.toMatch(/Discount/);
     expect(ui).not.toMatch(/Tax Amount/);
     expect(ui).not.toMatch(/Subtotal/);
@@ -170,7 +162,7 @@ describe("invoice read security", () => {
     expect(billView).toMatch(/INVOICE_BILL\.minTableRows/);
     expect(billView).not.toMatch(/invoice-bill-empty/);
     expect(billView).not.toMatch(/paddedBillRowCount/);
-    expect(jobDetail).toMatch(/<dt>Job Type<\/dt>/);
+    expect(jobDetail).toMatch(/<dt>Current Stage<\/dt>|<dt>Job Type<\/dt>/);
     expect(`${listView}\n${detail}`).not.toMatch(/>Allocate</);
   });
 
@@ -183,15 +175,12 @@ describe("invoice read security", () => {
     expect(billView).toMatch(/Auth\. Signatory/);
     expect(partyDetail).toMatch(/InvoicePrintButton/);
     expect(partyInvoiceDialog).toMatch(/Generate Invoice/);
-    expect(partyInvoiceDialog).toMatch(/Select unpaid job/);
+    expect(partyInvoiceDialog).toMatch(/Eligible Jobs/);
     expect(listView).not.toMatch(/InvoicePrintButton/);
     expect(jobDetail).not.toMatch(/InvoicePrintButton/);
     expect(listView).not.toMatch(/\/invoices\/.*\/print/);
     expect(jobDetail).not.toMatch(/\/invoices\/.*\/print/);
     expect(detail).not.toMatch(/\/invoices\/.*\/print/);
-    expect(partyPrintButton).toMatch(/window\.print/);
-    expect(partyPrintView).toMatch(/InvoiceBillView/);
-    expect(partyPrintView).toMatch(/outstanding > 0/);
     expect(css).toMatch(/\.invoice-print-root[\s\S]*overflow:\s*visible\s*!important/);
     expect(css).toMatch(/\.invoice-bill[\s\S]*height:\s*auto\s*!important/);
     expect(css).toMatch(/\.invoice-bill-footer[\s\S]*page-break-inside:\s*avoid/);

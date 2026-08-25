@@ -70,12 +70,14 @@ export const salaryReportSchema = withDateOrder(
     .object({
       page: pageSchema,
       pageSize: pageSizeSchema,
+      search: z.preprocess((value) => value ?? "", searchSchema),
       employee_id: z.preprocess(emptyToUndefined, uuidSchema.optional()),
       ...dateRangeFields,
     })
     .transform((value) => ({
       page: value.page,
       pageSize: DEFAULT_PAGE_SIZE,
+      search: value.search,
       employee_id: value.employee_id,
       date_from: value.date_from,
       date_to: value.date_to,

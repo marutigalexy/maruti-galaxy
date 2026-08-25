@@ -9,6 +9,7 @@ import type { ActionResult } from "@/lib/api/result";
 import { parseOrThrow } from "@/lib/validation";
 import {
   addEmployeeWorkSchema,
+  advanceJobStageSchema,
   createJobSchema,
   createSubJobSchema,
   jobIdSchema,
@@ -20,6 +21,7 @@ import {
 } from "@/lib/validation/jobs";
 import {
   addEmployeeWork,
+  advanceJobStage,
   createJob,
   createSubJob,
   deleteEmployeeWork,
@@ -117,3 +119,13 @@ export async function deleteEmployeeWorkAction(input: unknown): Promise<ActionRe
     return job;
   });
 }
+
+export async function advanceJobStageAction(input: unknown): Promise<ActionResult<JobDetail>> {
+  return runAction(async () => {
+    const parsed = parseOrThrow(advanceJobStageSchema, input);
+    const job = await advanceJobStage(parsed);
+    revalidateJobs();
+    return job;
+  });
+}
+

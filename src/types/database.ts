@@ -86,6 +86,7 @@ export type Database = {
           name: string;
           mobile_number: string;
           commission: number;
+          employee_type: Database["public"]["Enums"]["employee_type"];
           is_active: boolean;
           created_at: string;
           updated_at: string;
@@ -95,6 +96,7 @@ export type Database = {
           name: string;
           mobile_number: string;
           commission: number;
+          employee_type?: Database["public"]["Enums"]["employee_type"];
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -104,6 +106,7 @@ export type Database = {
           name?: string;
           mobile_number?: string;
           commission?: number;
+          employee_type?: Database["public"]["Enums"]["employee_type"];
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -122,6 +125,8 @@ export type Database = {
           weight: number;
           billing_amount: number | null;
           status: Database["public"]["Enums"]["job_status"];
+          stages: string[];
+          current_stage: string;
           created_at: string;
           updated_at: string;
         };
@@ -129,13 +134,15 @@ export type Database = {
           id?: string;
           lot_number: string;
           party_id: string;
-          job_type: Database["public"]["Enums"]["job_type"];
+          job_type?: Database["public"]["Enums"]["job_type"];
           than: number;
           price: number;
           kapan_number: string;
           weight: number;
           billing_amount?: number | null;
           status?: Database["public"]["Enums"]["job_status"];
+          stages?: string[];
+          current_stage?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -150,6 +157,8 @@ export type Database = {
           weight?: number;
           billing_amount?: number | null;
           status?: Database["public"]["Enums"]["job_status"];
+          stages?: string[];
+          current_stage?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -207,6 +216,7 @@ export type Database = {
           than: number;
           weight: number;
           status: Database["public"]["Enums"]["job_status"];
+          stage: string;
           created_at: string;
           updated_at: string;
         };
@@ -217,6 +227,7 @@ export type Database = {
           than: number;
           weight: number;
           status?: Database["public"]["Enums"]["job_status"];
+          stage?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -227,6 +238,7 @@ export type Database = {
           than?: number;
           weight?: number;
           status?: Database["public"]["Enums"]["job_status"];
+          stage?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -508,6 +520,7 @@ export type Database = {
           than: number | null;
           weight: number | null;
           status: Database["public"]["Enums"]["job_status"] | null;
+          stage: string | null;
           created_at: string | null;
           updated_at: string | null;
         };
@@ -583,12 +596,13 @@ export type Database = {
       create_job: {
         Args: {
           p_party_id: string;
-          p_job_type: Database["public"]["Enums"]["job_type"];
+          p_job_type?: Database["public"]["Enums"]["job_type"];
           p_than: number;
           p_price: number;
           p_kapan_number: string;
           p_weight: number;
           p_status?: Database["public"]["Enums"]["job_status"];
+          p_stages?: string[];
         };
         Returns: { job_id: string; lot_number: string }[];
       };
@@ -613,6 +627,8 @@ export type Database = {
           p_weight?: number;
           p_status?: Database["public"]["Enums"]["job_status"];
           p_job_type?: Database["public"]["Enums"]["job_type"];
+          p_stages?: string[];
+          p_current_stage?: string;
         };
         Returns: {
           job_id: string;
@@ -629,6 +645,7 @@ export type Database = {
           p_than: number;
           p_weight: number;
           p_status?: Database["public"]["Enums"]["job_status"];
+          p_stage?: string;
         };
         Returns: Database["public"]["Tables"]["sub_jobs"]["Row"];
       };
@@ -656,6 +673,14 @@ export type Database = {
       delete_employee_work: {
         Args: { p_work_id: string };
         Returns: undefined;
+      };
+      advance_job_stage: {
+        Args: { p_job_id: string };
+        Returns: {
+          job_id: string;
+          current_stage: string;
+          status: Database["public"]["Enums"]["job_status"];
+        }[];
       };
       allocate_entry_to_invoices: {
         Args: {
@@ -686,6 +711,8 @@ export type Database = {
     Enums: {
       user_role: "admin";
       job_type: "Sarin" | "Dropping" | "Galaxy";
+      employee_type: "Sarin" | "Dropping" | "Galaxy";
+      job_stage: "Sarin" | "Dropping" | "Galaxy" | "Completed";
       job_status: "Pending" | "Progress" | "Completed";
       invoice_status: "Unpaid" | "Partially Paid" | "Paid";
       entry_type: "Income" | "Expense";

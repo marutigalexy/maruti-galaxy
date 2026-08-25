@@ -6,14 +6,16 @@ import { firstRpcRow } from "@/lib/api/rpc";
 import { selectColumns } from "@/lib/api/select";
 import { requireActiveAdmin } from "@/lib/permissions/require-active-admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type {
-  AddEmployeeWorkInput,
-  CreateJobInput,
-  CreateSubJobInput,
-  ListJobsInput,
-  UpdateEmployeeWorkInput,
-  UpdateJobInput,
-  UpdateSubJobInput,
+import {
+  normalizeStages,
+  type AddEmployeeWorkInput,
+  type AdvanceJobStageInput,
+  type CreateJobInput,
+  type CreateSubJobInput,
+  type ListJobsInput,
+  type UpdateEmployeeWorkInput,
+  type UpdateJobInput,
+  type UpdateSubJobInput,
 } from "@/lib/validation/jobs";
 import type { Database } from "@/types/database";
 
@@ -32,6 +34,8 @@ export const JOB_LIST_COLUMNS = selectColumns([
   "weight",
   "billing_amount",
   "status",
+  "stages",
+  "current_stage",
   "created_at",
 ]);
 
@@ -45,6 +49,7 @@ const SUB_DISPLAY_COLUMNS = selectColumns([
   "than",
   "weight",
   "status",
+  "stage",
 ]);
 const WORK_COLUMNS = selectColumns([
   "id",
@@ -62,6 +67,7 @@ export type JobListSubJob = {
   than: number;
   weight: number;
   status: JobStatus;
+  stage: string;
   remaining_than: number;
 };
 
@@ -71,6 +77,8 @@ export type JobListRecord = {
   party_id: string;
   party_name: string;
   job_type: JobType;
+  stages: string[];
+  current_stage: string;
   than: number;
   price: number;
   kapan_number: string;
@@ -101,6 +109,7 @@ export type JobSubJobRecord = {
   than: number;
   weight: number;
   status: JobStatus;
+  stage: string;
   done_than: number;
   remaining_than: number;
   work: JobWorkRecord[];
@@ -118,6 +127,8 @@ export type JobDetail = {
   party_id: string;
   party_name: string;
   job_type: JobType;
+  stages: string[];
+  current_stage: string;
   than: number;
   allocated_than: number;
   remaining_than: number;
@@ -226,7 +237,9 @@ export async function listJobs(input: ListJobsInput): Promise<Paginated<JobListR
     query = query.eq("status", input.status);
   }
 
-  if (input.job_type !== "all") {
+  if (input.stage && input.stage !== "all") {
+    query = query.eq("current_stage", input.stage);
+  } else if (input.job_type !== "all") {
     query = query.eq("job_type", input.job_type);
   }
 
@@ -244,7 +257,7 @@ export async function listJobs(input: ListJobsInput): Promise<Paginated<JobListR
   const partyIds = uniqueIds(rows.map((row) => row.party_id));
   const jobIds = rows.map((row) => row.id);
   const partyNames = new Map<string, string>();
-  const allocated = new Map<string, number>();
+  const stageAllocated = new Map<string, number>();
   const invoiceIds = new Map<string, string>();
   const subsByJob = new Map<string, JobListSubJob[]>();
 
@@ -280,6 +293,7 @@ export async function listJobs(input: ListJobsInput): Promise<Paginated<JobListR
         continue;
       }
       const than = asMoneyNumber(row.than);
+      const stage = row.stage ?? "Sarin";
       pendingSubs.push({
         id: row.id,
         job_id: row.job_id,
@@ -287,9 +301,11 @@ export async function listJobs(input: ListJobsInput): Promise<Paginated<JobListR
         than,
         weight: asMoneyNumber(row.weight),
         status: row.status,
+        stage,
         remaining_than: than,
       });
-      allocated.set(row.job_id, (allocated.get(row.job_id) ?? 0) + than);
+      const key = `${row.job_id}:${stage}`;
+      stageAllocated.set(key, (stageAllocated.get(key) ?? 0) + than);
     }
 
     const subIds = pendingSubs.map((sub) => sub.id);
@@ -317,6 +333,7 @@ export async function listJobs(input: ListJobsInput): Promise<Paginated<JobListR
         than: sub.than,
         weight: sub.weight,
         status: sub.status,
+        stage: sub.stage,
         remaining_than: sub.than - (doneBySub.get(sub.id) ?? 0),
       });
       subsByJob.set(sub.job_id, list);
@@ -339,19 +356,27 @@ export async function listJobs(input: ListJobsInput): Promise<Paginated<JobListR
   return paginated(
     rows.map((row) => {
       const than = asMoneyNumber(row.than);
-      const used = allocated.get(row.id) ?? 0;
+      const rawStages = (row.stages as string[]) ?? [row.job_type];
+      const stages = normalizeStages(rawStages);
+      const currentStage = row.current_stage ?? stages[0];
+      const activeStage = currentStage !== "Completed" ? currentStage : stages[stages.length - 1];
+      const key = `${row.id}:${activeStage}`;
+      const used = stageAllocated.get(key) ?? 0;
+      const remainingThan = Math.max(0, Math.round((than - used) * 1000) / 1000);
       return {
         id: row.id,
         lot_number: row.lot_number,
         party_id: row.party_id,
         party_name: partyNames.get(row.party_id) ?? "—",
         job_type: row.job_type,
+        stages,
+        current_stage: currentStage,
         than,
         price: asMoneyNumber(row.price),
         kapan_number: row.kapan_number,
         weight: asMoneyNumber(row.weight),
         status: row.status,
-        remaining_than: than - used,
+        remaining_than: remainingThan,
         invoice_id: invoiceIds.get(row.id) ?? null,
         created_at: row.created_at,
         sub_jobs: subsByJob.get(row.id) ?? [],
@@ -378,25 +403,31 @@ export async function getJob(id: string): Promise<JobDetail> {
   }
 
   if (!job) {
-    throw new AppError("NOT_FOUND", "Job was not found.");
+    throw new AppError("NOT_FOUND", "Job not found.");
   }
 
-  const [{ data: party }, { data: invoice }, { data: subRows, error: subError }] = await Promise.all([
-    supabase.from("parties").select("company_name").eq("id", job.party_id).maybeSingle(),
-    supabase.from("invoices").select(INVOICE_COLUMNS).eq("job_work_id", id).maybeSingle(),
-    supabase.from("v_sub_jobs_display").select(SUB_DISPLAY_COLUMNS).eq("job_id", id).order("sequence_no", {
-      ascending: true,
-    }),
-  ]);
+  const { data: party, error: partyError } = await supabase
+    .from("parties")
+    .select("company_name")
+    .eq("id", job.party_id)
+    .maybeSingle();
 
-  if (subError) {
-    throw new AppError("INTERNAL", "Unable to load job.");
+  if (partyError) {
+    throw new AppError("INTERNAL", "Unable to load job party.");
   }
 
-  const subJobs = subRows ?? [];
-  const subIds = uniqueIds(subJobs.map((row) => row.id));
+  const { data: subs, error: subsError } = await supabase
+    .from("v_sub_jobs_display")
+    .select(SUB_DISPLAY_COLUMNS)
+    .eq("job_id", id)
+    .order("sequence_no", { ascending: true });
+
+  if (subsError) {
+    throw new AppError("INTERNAL", "Unable to load sub-jobs.");
+  }
+
+  const subIds = (subs ?? []).map((row) => row.id).filter((item): item is string => Boolean(item));
   const workBySub = new Map<string, JobWorkRecord[]>();
-  const employeeNames = new Map<string, string>();
 
   if (subIds.length > 0) {
     const { data: workRows, error: workError } = await supabase
@@ -406,10 +437,11 @@ export async function getJob(id: string): Promise<JobDetail> {
       .order("created_at", { ascending: true });
 
     if (workError) {
-      throw new AppError("INTERNAL", "Unable to load job.");
+      throw new AppError("INTERNAL", "Unable to load sub-job work.");
     }
 
     const employeeIds = uniqueIds((workRows ?? []).map((row) => row.employee_id));
+    const employeeNames = new Map<string, string>();
     if (employeeIds.length > 0) {
       const { data: employees, error: employeeError } = await supabase
         .from("employees")
@@ -417,7 +449,7 @@ export async function getJob(id: string): Promise<JobDetail> {
         .in("id", employeeIds);
 
       if (employeeError) {
-        throw new AppError("INTERNAL", "Unable to load job.");
+        throw new AppError("INTERNAL", "Unable to load job employees.");
       }
 
       for (const employee of employees ?? []) {
@@ -426,6 +458,9 @@ export async function getJob(id: string): Promise<JobDetail> {
     }
 
     for (const row of workRows ?? []) {
+      if (!row.id || !row.sub_job_id || !row.employee_id) {
+        continue;
+      }
       const list = workBySub.get(row.sub_job_id) ?? [];
       list.push({
         id: row.id,
@@ -441,7 +476,7 @@ export async function getJob(id: string): Promise<JobDetail> {
     }
   }
 
-  const detailSubs: JobSubJobRecord[] = subJobs.flatMap((row) => {
+  const detailSubs: JobSubJobRecord[] = (subs ?? []).flatMap((row) => {
     if (!row.id || !row.job_id || !row.display_no || row.sequence_no == null || !row.status) {
       return [];
     }
@@ -457,6 +492,7 @@ export async function getJob(id: string): Promise<JobDetail> {
         than,
         weight: asMoneyNumber(row.weight),
         status: row.status,
+        stage: row.stage ?? "Sarin",
         done_than: done,
         remaining_than: than - done,
         work,
@@ -464,8 +500,25 @@ export async function getJob(id: string): Promise<JobDetail> {
     ];
   });
 
-  const allocated = detailSubs.reduce((sum, sub) => sum + sub.than, 0);
   const than = asMoneyNumber(job.than);
+  const rawStages = (job.stages as string[]) ?? [job.job_type];
+  const stages = normalizeStages(rawStages);
+  const currentStage = job.current_stage ?? stages[0];
+  const activeStage = currentStage !== "Completed" ? currentStage : stages[stages.length - 1];
+
+  const currentStageSubs = detailSubs.filter((sub) => sub.stage === activeStage);
+  const currentStageAllocated = currentStageSubs.reduce((sum, sub) => sum + sub.than, 0);
+  const remainingThan = Math.max(0, Math.round((than - currentStageAllocated) * 1000) / 1000);
+
+  const { data: invoice, error: invoiceError } = await supabase
+    .from("invoices")
+    .select(INVOICE_COLUMNS)
+    .eq("job_work_id", id)
+    .maybeSingle();
+
+  if (invoiceError) {
+    throw new AppError("INTERNAL", "Unable to load job invoice.");
+  }
 
   return {
     id: job.id,
@@ -473,9 +526,11 @@ export async function getJob(id: string): Promise<JobDetail> {
     party_id: job.party_id,
     party_name: party?.company_name ?? "—",
     job_type: job.job_type,
+    stages,
+    current_stage: currentStage,
     than,
-    allocated_than: allocated,
-    remaining_than: than - allocated,
+    allocated_than: currentStageAllocated,
+    remaining_than: remainingThan,
     price: asMoneyNumber(job.price),
     billing_amount: job.billing_amount != null ? asMoneyNumber(job.billing_amount) : null,
     kapan_number: job.kapan_number,
@@ -483,7 +538,7 @@ export async function getJob(id: string): Promise<JobDetail> {
     status: job.status,
     created_at: job.created_at,
     invoice: invoice
-        ? {
+      ? {
           id: invoice.id,
           amount: asMoneyNumber(invoice.amount),
           status: invoice.status,
@@ -493,9 +548,52 @@ export async function getJob(id: string): Promise<JobDetail> {
   };
 }
 
+export async function createSubJob(input: CreateSubJobInput): Promise<JobDetail> {
+  await requireActiveAdmin();
+  const supabase = await createSupabaseServerClient();
+
+  const { data: parentJob, error: parentError } = await supabase
+    .from("job_works")
+    .select("current_stage, stages")
+    .eq("id", input.job_id)
+    .maybeSingle();
+
+  if (parentError || !parentJob) {
+    throw new AppError("INTERNAL", "Parent job not found.");
+  }
+
+  let subStage = parentJob.current_stage as "Sarin" | "Dropping" | "Galaxy" | "Completed";
+  if (!subStage || subStage === "Completed") {
+    const rawStages = (parentJob.stages as string[]) ?? ["Sarin"];
+    const normalized = normalizeStages(rawStages);
+    subStage = normalized[normalized.length - 1] ?? "Sarin";
+  }
+
+  const { data, error } = await supabase.rpc("create_sub_job", {
+    p_job_id: input.job_id,
+    p_than: asMoneyNumber(input.than),
+    p_weight: asMoneyNumber(input.weight),
+    p_status: input.status,
+    p_stage: subStage,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const created = firstRpcRow(data);
+  if (!created?.job_id) {
+    throw new AppError("INTERNAL", "Unable to create sub-job.");
+  }
+
+  return getJob(created.job_id);
+}
+
 export async function createJob(input: CreateJobInput): Promise<JobDetail> {
   await requireActiveAdmin();
   const supabase = await createSupabaseServerClient();
+  const stages = input.stages ?? [input.job_type ?? "Sarin"];
+
   const { data, error } = await supabase.rpc("create_job", {
     p_party_id: input.party_id,
     p_job_type: input.job_type,
@@ -504,6 +602,7 @@ export async function createJob(input: CreateJobInput): Promise<JobDetail> {
     p_kapan_number: input.kapan_number,
     p_weight: asMoneyNumber(input.weight),
     p_status: input.status,
+    p_stages: stages,
   });
 
   if (error) {
@@ -533,6 +632,8 @@ export async function createJob(input: CreateJobInput): Promise<JobDetail> {
 export async function updateJob(input: UpdateJobInput): Promise<JobDetail> {
   await requireActiveAdmin();
   const supabase = await createSupabaseServerClient();
+  const stages = input.stages ? normalizeStages(input.stages) : undefined;
+
   const { data, error } = await supabase.rpc("update_job_with_invoice_recalc", {
     p_job_id: input.id,
     p_than: asMoneyNumber(input.than),
@@ -541,6 +642,8 @@ export async function updateJob(input: UpdateJobInput): Promise<JobDetail> {
     p_weight: asMoneyNumber(input.weight),
     p_status: input.status,
     p_job_type: input.job_type,
+    p_stages: stages,
+    p_current_stage: input.current_stage,
   });
 
   if (error) {
@@ -568,28 +671,6 @@ export async function updateJob(input: UpdateJobInput): Promise<JobDetail> {
   return job;
 }
 
-export async function createSubJob(input: CreateSubJobInput): Promise<JobDetail> {
-  await requireActiveAdmin();
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.rpc("create_sub_job", {
-    p_job_id: input.job_id,
-    p_than: asMoneyNumber(input.than),
-    p_weight: asMoneyNumber(input.weight),
-    p_status: input.status,
-  });
-
-  if (error) {
-    throw error;
-  }
-
-  const created = firstRpcRow(data);
-  if (!created?.job_id) {
-    throw new AppError("INTERNAL", "Unable to create sub-job.");
-  }
-
-  return getJob(created.job_id);
-}
-
 export async function updateSubJob(input: UpdateSubJobInput): Promise<JobDetail> {
   await requireActiveAdmin();
   const supabase = await createSupabaseServerClient();
@@ -609,12 +690,43 @@ export async function updateSubJob(input: UpdateSubJobInput): Promise<JobDetail>
     throw new AppError("NOT_FOUND", "Sub-job was not found.");
   }
 
+  if (input.stage) {
+    await supabase.from("sub_jobs").update({ stage: input.stage }).eq("id", input.id);
+  }
+
   return getJob(updated.job_id);
 }
 
 export async function addEmployeeWork(input: AddEmployeeWorkInput): Promise<JobDetail> {
   await requireActiveAdmin();
   const supabase = await createSupabaseServerClient();
+
+  // Validate employee type matches the subjob stage
+  const [{ data: sub }, { data: employee }] = await Promise.all([
+    supabase.from("sub_jobs").select("stage, job_id").eq("id", input.sub_job_id).maybeSingle(),
+    supabase.from("employees").select("employee_type, is_active, name").eq("id", input.employee_id).maybeSingle(),
+  ]);
+
+  if (!sub) {
+    throw new AppError("NOT_FOUND", "Sub-job was not found.");
+  }
+
+  if (!employee) {
+    throw new AppError("NOT_FOUND", "Employee was not found.");
+  }
+
+  if (!employee.is_active) {
+    throw new AppError("VALIDATION", "Cannot assign work to an inactive employee.");
+  }
+
+  const subStage = sub.stage ?? "Sarin";
+  if (employee.employee_type !== subStage) {
+    throw new AppError(
+      "VALIDATION",
+      `Employee ${employee.name} (${employee.employee_type}) cannot work on ${subStage} stage. Please select a ${subStage} employee.`,
+    );
+  }
+
   const { data, error } = await supabase.rpc("add_employee_work", {
     p_sub_job_id: input.sub_job_id,
     p_employee_id: input.employee_id,
@@ -627,16 +739,6 @@ export async function addEmployeeWork(input: AddEmployeeWorkInput): Promise<JobD
 
   const created = firstRpcRow(data);
   if (!created?.sub_job_id) {
-    throw new AppError("INTERNAL", "Unable to record work.");
-  }
-
-  const { data: sub, error: subError } = await supabase
-    .from("sub_jobs")
-    .select("job_id")
-    .eq("id", created.sub_job_id)
-    .maybeSingle();
-
-  if (subError || !sub) {
     throw new AppError("INTERNAL", "Unable to record work.");
   }
 
@@ -707,4 +809,19 @@ export async function deleteEmployeeWork(id: string): Promise<JobDetail> {
   }
 
   return getJob(sub.job_id);
+}
+
+export async function advanceJobStage(input: AdvanceJobStageInput): Promise<JobDetail> {
+  await requireActiveAdmin();
+  const supabase = await createSupabaseServerClient();
+
+  const { error } = await supabase.rpc("advance_job_stage", {
+    p_job_id: input.job_id,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return getJob(input.job_id);
 }

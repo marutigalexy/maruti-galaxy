@@ -36,6 +36,12 @@ export function PaymentEntryFields({
   const matchingCategories = categories.filter(
     (category) => category.type === categoryType && category.is_active,
   );
+  const defaultCategory =
+    matchingCategories.find((c) =>
+      categoryType === "Expense"
+        ? c.name.toLowerCase().includes("salary")
+        : c.name.toLowerCase().includes("party payment"),
+    ) ?? matchingCategories[0];
 
   return (
     <>
@@ -50,7 +56,13 @@ export function PaymentEntryFields({
         </Select>
       </FormField>
       <FormField label="Category" htmlFor={`${idPrefix}-category`} required>
-        <Select id={`${idPrefix}-category`} name="category_id" required disabled={pending}>
+        <Select
+          id={`${idPrefix}-category`}
+          name="category_id"
+          required
+          disabled={pending}
+          defaultValue={defaultCategory?.id}
+        >
           <option value="">Select category</option>
           {matchingCategories.map((category) => (
             <option key={category.id} value={category.id}>

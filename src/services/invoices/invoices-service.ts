@@ -390,18 +390,6 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<InvoiceD
     );
   }
 
-  // ── Step 3: calculate total from ONLY the selected jobs ───────────────────
-  // billing_amount takes priority; falls back to than × price per job.
-  const invoiceTotal = selectedJobs.reduce((sum, job) => {
-    const bill =
-      job.billing_amount != null
-        ? asMoneyNumber(job.billing_amount)
-        : Math.round(asMoneyNumber(job.than) * asMoneyNumber(job.price) * 100) / 100;
-    return sum + bill;
-  }, 0);
-
-  const primaryJobId = input.job_ids[0];
-
   // ── Step 4: create the invoice row ────────────────────────────────────────
   const { data: rpcData, error: rpcError } = await supabase.rpc("create_invoice_for_jobs", {
     p_party_id: input.party_id,

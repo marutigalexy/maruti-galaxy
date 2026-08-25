@@ -9,6 +9,7 @@ import { getSalaryReport, type SalaryReportRow } from "@/services/reports/report
 
 type SalaryReportPageProps = {
   searchParams: Promise<{
+    search?: string;
     employee_id?: string;
     date_from?: string;
     date_to?: string;
@@ -26,6 +27,7 @@ export default async function SalaryReportPage({ searchParams }: SalaryReportPag
   let employees;
   try {
     query = parseOrThrow(salaryReportSchema, {
+      search: params.search,
       employee_id: params.employee_id,
       date_from: params.date_from,
       date_to: params.date_to,

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 type ToastTone = "success" | "error";
 
@@ -27,6 +27,7 @@ function generateId(): string {
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const regionRef = useRef<HTMLDivElement>(null);
 
   const push = useCallback((tone: ToastTone, message: string) => {
     const id = generateId();
@@ -44,10 +45,40 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     [push],
   );
 
+  useEffect(() => {
+    const region = regionRef.current;
+    if (!region || typeof region.showPopover !== "function") {
+      return;
+    }
+    if (toasts.length > 0) {
+      if (!region.matches(":popover-open")) {
+        try {
+          region.showPopover();
+        } catch {
+          // Ignore if already open or unsupported
+        }
+      }
+    } else {
+      if (region.matches(":popover-open")) {
+        try {
+          region.hidePopover();
+        } catch {
+          // Ignore if already closed
+        }
+      }
+    }
+  }, [toasts.length]);
+
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="ui-toast-region" aria-live="polite" aria-relevant="additions">
+      <div
+        ref={regionRef}
+        popover="manual"
+        className="ui-toast-region"
+        aria-live="polite"
+        aria-relevant="additions"
+      >
         {toasts.map((toast) => (
           <p key={toast.id} className={`ui-toast ui-toast-${toast.tone}`} role="status">
             {toast.message}

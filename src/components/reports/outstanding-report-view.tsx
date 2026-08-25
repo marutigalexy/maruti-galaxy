@@ -14,7 +14,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { useQueryPush } from "@/hooks/use-query-push";
 import { queryHref } from "@/lib/api/query-href";
 import type { Paginated } from "@/lib/api/pagination";
-import { formatInr } from "@/lib/formatters";
+import { formatSignedInr } from "@/lib/formatters";
 import type { OutstandingPartiesInput } from "@/lib/validation/reports";
 import type { PartyOutstandingRow } from "@/services/reports/reports-service";
 
@@ -22,13 +22,6 @@ function partyStatusTone(status: PartyOutstandingRow["status"]) {
   if (status === "Paid") return "paid" as const;
   if (status === "Partially Paid") return "partial" as const;
   return "unpaid" as const;
-}
-
-function amountClass(status: PartyOutstandingRow["status"]) {
-  if (status === "Paid") return "ui-amount-paid";
-  if (status === "Partially Paid") return "ui-amount-partial";
-  if (status === "Unpaid") return "ui-amount-unpaid";
-  return "";
 }
 
 function exportHref(query: OutstandingPartiesInput): string {
@@ -113,21 +106,31 @@ export function OutstandingReportView({
             key: "billed",
             header: "Total Billed",
             numeric: true,
-            render: (row) => formatInr(row.total_billed),
+            render: (row) => (
+              <span className="ui-amount-income">
+                {formatSignedInr("Income", row.total_billed)}
+              </span>
+            ),
           },
           {
             key: "paid",
             header: "Paid Amount",
             numeric: true,
-            render: (row) => formatInr(row.total_paid),
+            render: (row) => (
+              <span className="ui-amount-expense">
+                {formatSignedInr("Expense", row.total_paid)}
+              </span>
+            ),
           },
           {
             key: "outstanding",
             header: "Outstanding Amount",
             numeric: true,
             render: (row) => (
-              <span className={amountClass(row.status)}>
-                {formatInr(row.outstanding)}
+              <span className={row.outstanding < 0 ? "ui-amount-negative" : "ui-amount-positive"}>
+                {row.outstanding < 0
+                  ? formatSignedInr("Expense", Math.abs(row.outstanding))
+                  : formatSignedInr("Income", row.outstanding)}
               </span>
             ),
           },

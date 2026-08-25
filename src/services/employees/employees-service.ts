@@ -18,17 +18,21 @@ export const EMPLOYEE_LIST_COLUMNS = selectColumns([
   "name",
   "mobile_number",
   "commission",
+  "employee_type",
   "is_active",
   "created_at",
 ]);
 
 const WORK_COLUMNS = selectColumns(["id", "sub_job_id", "done_than", "commission", "earning", "created_at"]);
 
+export type EmployeeType = "Sarin" | "Dropping" | "Galaxy";
+
 export type EmployeeRecord = {
   id: string;
   name: string;
   mobile_number: string;
   commission: number;
+  employee_type: EmployeeType;
   is_active: boolean;
   created_at: string;
 };
@@ -66,6 +70,7 @@ function toEmployee(row: {
   name: string;
   mobile_number: string;
   commission: number;
+  employee_type?: EmployeeType | null;
   is_active: boolean;
   created_at: string;
 }): EmployeeRecord {
@@ -74,6 +79,7 @@ function toEmployee(row: {
     name: row.name,
     mobile_number: row.mobile_number,
     commission: asMoneyNumber(row.commission),
+    employee_type: (row.employee_type as EmployeeType) ?? "Sarin",
     is_active: row.is_active,
     created_at: row.created_at,
   };
@@ -268,6 +274,7 @@ export async function createEmployee(input: CreateEmployeeInput): Promise<Employ
       name: input.name,
       mobile_number: input.mobile_number,
       commission: asMoneyNumber(input.commission),
+      employee_type: input.employee_type ?? "Sarin",
       is_active: input.is_active,
     })
     .select(EMPLOYEE_LIST_COLUMNS)
@@ -289,6 +296,7 @@ export async function updateEmployee(input: UpdateEmployeeInput): Promise<Employ
       name: input.name,
       mobile_number: input.mobile_number,
       commission: asMoneyNumber(input.commission),
+      employee_type: input.employee_type,
     })
     .eq("id", input.id)
     .select(EMPLOYEE_LIST_COLUMNS)
@@ -351,6 +359,7 @@ export type EmployeeOption = {
   id: string;
   name: string;
   commission: number;
+  employee_type: EmployeeType;
   is_active: boolean;
 };
 
@@ -359,7 +368,7 @@ export async function listEmployeeOptions(): Promise<EmployeeOption[]> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("employees")
-    .select("id, name, commission, is_active")
+    .select("id, name, commission, employee_type, is_active")
     .order("name", { ascending: true });
 
   if (error) {
@@ -370,6 +379,7 @@ export async function listEmployeeOptions(): Promise<EmployeeOption[]> {
     id: row.id,
     name: row.name,
     commission: asMoneyNumber(row.commission),
+    employee_type: (row.employee_type as EmployeeType) ?? "Sarin",
     is_active: row.is_active,
   }));
 }

@@ -58,3 +58,18 @@ describe("invoice bill totals", () => {
     expect(INVOICE_BILL.minTableRows).toBe(8);
   });
 });
+
+describe("invoice PDF file name generator", () => {
+  it("formats file name as 'Company Name - Invoice Number.pdf'", async () => {
+    const { getInvoicePdfFileName } = await import("@/lib/invoices/pdf-download");
+    expect(getInvoicePdfFileName("ABC Jewellers", "INV-1025")).toBe("ABC Jewellers - INV-1025.pdf");
+    expect(getInvoicePdfFileName("Maruti Diamonds Pvt Ltd", "INV-2040")).toBe("Maruti Diamonds Pvt Ltd - INV-2040.pdf");
+  });
+
+  it("handles empty or special character fallbacks cleanly", async () => {
+    const { getInvoicePdfFileName } = await import("@/lib/invoices/pdf-download");
+    expect(getInvoicePdfFileName("", "")).toBe("Party - Invoice.pdf");
+    expect(getInvoicePdfFileName("ABC/Jewellers:Global", "INV/1025")).toBe("ABC-Jewellers-Global - INV-1025.pdf");
+  });
+});
+

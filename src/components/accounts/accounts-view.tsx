@@ -105,7 +105,7 @@ export function AccountsView({ query, result }: AccountsViewProps) {
         <SearchInput
           value={query.search}
           onValueChange={(search) =>
-            push(listHref("/accounting/accounts", { ...query, search, page: 1 }))
+            pushQuery({ ...query, search, page: 1 })
           }
           placeholder="Search account name"
         />

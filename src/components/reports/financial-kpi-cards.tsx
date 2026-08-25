@@ -1,5 +1,5 @@
 import { KpiGridSkeleton } from "@/components/ui/skeleton";
-import { formatInr } from "@/lib/formatters";
+import { formatSignedInr } from "@/lib/formatters";
 
 type FinancialKpiCardsProps = {
   totalIncome: number;
@@ -39,16 +39,18 @@ export function FinancialKpiCards({
         <div className="ui-kpi-grid">
           <article className="ui-kpi-card">
             <p className="ui-kpi-label">Total Income</p>
-            <p className="ui-kpi-value ui-amount-income">{formatInr(totalIncome)}</p>
+            <p className="ui-kpi-value ui-amount-income">{formatSignedInr("Income", totalIncome)}</p>
           </article>
           <article className="ui-kpi-card">
             <p className="ui-kpi-label">Total Expense</p>
-            <p className="ui-kpi-value ui-amount-expense">{formatInr(totalExpense)}</p>
+            <p className="ui-kpi-value ui-amount-expense">{formatSignedInr("Expense", totalExpense)}</p>
           </article>
           <article className="ui-kpi-card">
             <p className="ui-kpi-label">{resolvedNetLabel}</p>
-            <p className={`ui-kpi-value ${isLoss ? "ui-amount-expense" : "ui-amount-income"}`}>
-              {formatInr(net)}
+            <p className={`ui-kpi-value ${isLoss ? "ui-amount-negative" : "ui-amount-positive"}`}>
+              {isLoss
+                ? formatSignedInr("Expense", Math.abs(net))
+                : formatSignedInr("Income", net)}
             </p>
             <p className="ui-kpi-help">{netHelp(net)}</p>
           </article>
