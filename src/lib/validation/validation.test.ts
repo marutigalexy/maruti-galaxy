@@ -4,6 +4,7 @@ import { AppError, fail, ok } from "@/lib/api/result";
 import { parseOrThrow } from "@/lib/validation";
 import {
   isoDateSchema,
+  mobileSchema,
   moneyPositiveSchema,
   moneySchema,
   paginationSchema,
@@ -94,6 +95,37 @@ describe("search and dates", () => {
     expect(parseOrThrow(isoDateSchema, "2026-08-15")).toBe("2026-08-15");
     expect(() => parseOrThrow(isoDateSchema, "15-08-2026")).toThrow(AppError);
     expect(() => parseOrThrow(isoDateSchema, "2026-02-31")).toThrow(AppError);
+    expect(() => parseOrThrow(isoDateSchema, "")).toThrow(AppError);
+  });
+});
+
+describe("mobileSchema", () => {
+  it("accepts exactly 10 numeric digits", () => {
+    expect(parseOrThrow(mobileSchema, "9876543210")).toBe("9876543210");
+    expect(parseOrThrow(mobileSchema, " 9876543210 ")).toBe("9876543210");
+  });
+
+  it("rejects non-digit characters, spaces inside, and invalid length", () => {
+    expect(() => parseOrThrow(mobileSchema, "")).toThrow(/Mobile Number is required/i);
+    expect(() => parseOrThrow(mobileSchema, "987654321")).toThrow(/10 digits/i);
+    expect(() => parseOrThrow(mobileSchema, "98765432100")).toThrow(/10 digits/i);
+    expect(() => parseOrThrow(mobileSchema, "987654321a")).toThrow(/digits only/i);
+    expect(() => parseOrThrow(mobileSchema, "+919876543210")).toThrow(/digits only/i);
+    expect(() => parseOrThrow(mobileSchema, "98765 43210")).toThrow(/digits only/i);
+  });
+});
+
+describe("numeric boundaries and formats", () => {
+  it("rejects numbers exceeding max allowed values", () => {
+    expect(() => parseOrThrow(moneySchema, "1000000000.00")).toThrow(/out of range/i);
+    expect(() => parseOrThrow(thanSchema, "1000000.000")).toThrow(/out of range/i);
+    expect(() => parseOrThrow(weightSchema, "1000000.000")).toThrow(/out of range/i);
+  });
+
+  it("rejects letters and special characters in numeric fields", () => {
+    expect(() => parseOrThrow(moneySchema, "12a.50")).toThrow(AppError);
+    expect(() => parseOrThrow(thanSchema, "$10.5")).toThrow(AppError);
+    expect(() => parseOrThrow(weightSchema, "2.5kg")).toThrow(AppError);
   });
 });
 

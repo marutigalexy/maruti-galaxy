@@ -26,44 +26,57 @@ export const searchSchema = z
 export const isoDateSchema = z
   .string()
   .trim()
+  .min(1, "Date is required.")
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD.")
   .refine((value) => {
     const date = new Date(`${value}T00:00:00Z`);
     return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
   }, "Date is invalid.");
 
-function decimalSchema(maxDecimals: number, options: { min?: number; exclusiveMin?: number }) {
+function decimalSchema(
+  maxDecimals: number,
+  options: { min?: number; exclusiveMin?: number; max?: number; label?: string },
+) {
   const pattern = new RegExp(`^\\d+(\\.\\d{1,${maxDecimals}})?$`);
+  const fieldName = options.label ?? "This value";
 
   return z
     .string()
     .trim()
+    .min(1, `${fieldName} is required.`)
     .refine((value) => pattern.test(value), `Use a number with up to ${maxDecimals} decimal places.`)
     .refine((value) => {
       const amount = Number(value);
       if (!Number.isFinite(amount)) {
         return false;
       }
-      if (options.exclusiveMin !== undefined) {
-        return amount > options.exclusiveMin;
+      if (options.exclusiveMin !== undefined && amount <= options.exclusiveMin) {
+        return false;
       }
-      if (options.min !== undefined) {
-        return amount >= options.min;
+      if (options.min !== undefined && amount < options.min) {
+        return false;
+      }
+      if (options.max !== undefined && amount > options.max) {
+        return false;
       }
       return true;
-    }, "This value is out of range.");
+    }, `${fieldName} is out of range.`);
 }
 
-export const moneySchema = decimalSchema(2, { min: 0 });
-export const moneyPositiveSchema = decimalSchema(2, { exclusiveMin: 0 });
-export const thanSchema = decimalSchema(3, { exclusiveMin: 0 });
-export const weightSchema = decimalSchema(3, { min: 0 });
+export const moneySchema = decimalSchema(2, { min: 0, max: 999_999_999.99, label: "Amount" });
+export const moneyPositiveSchema = decimalSchema(2, { exclusiveMin: 0, max: 999_999_999.99, label: "Amount" });
+export const thanSchema = decimalSchema(3, { exclusiveMin: 0, max: 999_999.999, label: "Than" });
+export const weightSchema = decimalSchema(3, { min: 0, max: 999_999.999, label: "Weight" });
 
 export const signedMoneySchema = z
   .string()
   .trim()
+  .min(1, "Opening balance is required.")
   .refine((value) => /^-?\d+(\.\d{1,2})?$/.test(value), "Use a number with up to 2 decimal places.")
-  .refine((value) => Number.isFinite(Number(value)), "This value is out of range.");
+  .refine((value) => {
+    const num = Number(value);
+    return Number.isFinite(num) && num >= -999_999_999.99 && num <= 999_999_999.99;
+  }, "Opening balance is out of range.");
 
 export const optionalTextSchema = z
   .string()
@@ -81,7 +94,8 @@ export const mobileSchema = z
   .string()
   .trim()
   .min(1, "Mobile Number is required.")
-  .max(20, "Mobile Number is limited to 20 characters.");
+  .regex(/^\d+$/, "Mobile Number must contain digits only.")
+  .length(10, "Mobile Number must contain exactly 10 digits.");
 
 export const statusFilterSchema = z.enum(["all", "active", "inactive"]).optional().default("all");
 

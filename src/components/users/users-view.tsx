@@ -58,11 +58,17 @@ function PasswordInput({
   name,
   placeholder,
   disabled,
+  minLength,
+  maxLength,
+  required,
 }: {
   id: string;
   name: string;
   placeholder: string;
   disabled?: boolean;
+  minLength?: number;
+  maxLength?: number;
+  required?: boolean;
 }) {
   const [show, setShow] = useState(false);
   return (
@@ -71,7 +77,9 @@ function PasswordInput({
         id={id}
         name={name}
         type={show ? "text" : "password"}
-        required
+        required={required}
+        minLength={minLength}
+        maxLength={maxLength}
         disabled={disabled}
         autoComplete="new-password"
         placeholder={placeholder}
@@ -269,15 +277,35 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
             }}
           >
             <FormField label="Name" htmlFor="create-name" required>
-              <Input id="create-name" name="name" required disabled={pending} autoComplete="name" placeholder="e.g. Priya Mehta" />
+              <Input
+                id="create-name"
+                name="name"
+                required
+                maxLength={100}
+                disabled={pending}
+                autoComplete="name"
+                placeholder="e.g. Priya Mehta"
+              />
             </FormField>
             <FormField label="Email" htmlFor="create-email" required>
-              <Input id="create-email" name="email" type="email" required disabled={pending} autoComplete="off" placeholder="name@company.com" />
+              <Input
+                id="create-email"
+                name="email"
+                type="email"
+                maxLength={254}
+                required
+                disabled={pending}
+                autoComplete="off"
+                placeholder="name@company.com"
+              />
             </FormField>
             <FormField label="Password" htmlFor="create-password" required>
               <PasswordInput
                 id="create-password"
                 name="password"
+                minLength={6}
+                maxLength={100}
+                required
                 placeholder="At least 6 characters"
                 disabled={pending}
               />
@@ -286,6 +314,9 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
               <PasswordInput
                 id="create-confirm"
                 name="confirmPassword"
+                minLength={6}
+                maxLength={100}
+                required
                 placeholder="Re-enter password"
                 disabled={pending}
               />
@@ -343,7 +374,15 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
             }}
           >
             <FormField label="Name" htmlFor="edit-name" required>
-              <Input id="edit-name" name="name" required defaultValue={editUser.name} disabled={pending} placeholder="e.g. Priya Mehta" />
+              <Input
+                id="edit-name"
+                name="name"
+                required
+                maxLength={100}
+                defaultValue={editUser.name}
+                disabled={pending}
+                placeholder="e.g. Priya Mehta"
+              />
             </FormField>
             <FormField label="Email" htmlFor="edit-email">
               <Input
@@ -408,6 +447,9 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
               <PasswordInput
                 id="pw-password"
                 name="password"
+                minLength={6}
+                maxLength={100}
+                required
                 placeholder="At least 6 characters"
                 disabled={pending}
               />
@@ -416,6 +458,9 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
               <PasswordInput
                 id="pw-confirm"
                 name="confirmPassword"
+                minLength={6}
+                maxLength={100}
+                required
                 placeholder="Re-enter password"
                 disabled={pending}
               />

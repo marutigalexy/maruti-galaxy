@@ -70,7 +70,7 @@ export function EmployeePaymentDialog({
             });
           }}
         >
-          <dl className="ui-summary-grid">
+          <dl className="ui-summary-grid is-cols-3">
             <div className="ui-detail-item">
               <dt>Total Earning</dt>
               <dd>{formatInr(summary.total_earning)}</dd>

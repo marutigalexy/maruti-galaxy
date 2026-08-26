@@ -20,6 +20,7 @@ import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useToast } from "@/components/ui/toast";
 import { formatDisplayDate, formatInr, formatSignedInr, formatThan } from "@/lib/formatters";
+import { decimalOnly, digitsOnly } from "@/lib/ui/input-filters";
 import type { AccountOption } from "@/services/accounts/accounts-service";
 import type { CategoryOption } from "@/services/categories/categories-service";
 import type { EmployeeRecord, EmployeeSummary, EmployeePaymentRow } from "@/services/employees/employees-service";
@@ -258,6 +259,7 @@ export function EmployeeDetailView({ employee, summary, accounts, categories }: 
                 id="detail-edit-employee-name"
                 name="name"
                 required
+                maxLength={100}
                 defaultValue={employee.name}
                 disabled={pending}
                 placeholder="e.g. Rahul Sharma"
@@ -267,10 +269,17 @@ export function EmployeeDetailView({ employee, summary, accounts, categories }: 
               <Input
                 id="detail-edit-employee-mobile"
                 name="mobile_number"
+                type="tel"
+                inputMode="numeric"
+                pattern="[0-9]{10}"
+                maxLength={10}
                 required
                 defaultValue={employee.mobile_number}
                 disabled={pending}
-                placeholder="e.g. 9876543210"
+                placeholder="10-digit mobile number"
+                onInput={(e) => {
+                  e.currentTarget.value = digitsOnly(e.currentTarget.value, 10);
+                }}
               />
             </FormField>
             <FormField label="Employee Type" htmlFor="detail-edit-employee-type" required>
@@ -299,6 +308,9 @@ export function EmployeeDetailView({ employee, summary, accounts, categories }: 
                 defaultValue={String(employee.commission)}
                 disabled={pending}
                 placeholder="e.g. 50.00"
+                onInput={(e) => {
+                  e.currentTarget.value = decimalOnly(e.currentTarget.value, 2);
+                }}
               />
             </FormField>
             {formError ? (

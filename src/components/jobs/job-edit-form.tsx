@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import { decimalOnly } from "@/lib/ui/input-filters";
 import type { JobDetail } from "@/services/jobs/jobs-service";
 
 type JobEditFormProps = {
@@ -92,7 +93,7 @@ export function JobEditForm({ job, onCancel }: JobEditFormProps) {
           value={than}
           onChange={(event) => {
             setDirty(true);
-            setThan(event.target.value);
+            setThan(decimalOnly(event.target.value, 3));
           }}
         />
       </FormField>
@@ -108,7 +109,7 @@ export function JobEditForm({ job, onCancel }: JobEditFormProps) {
           value={price}
           onChange={(event) => {
             setDirty(true);
-            setPrice(event.target.value);
+            setPrice(decimalOnly(event.target.value, 2));
           }}
         />
       </FormField>
@@ -117,6 +118,7 @@ export function JobEditForm({ job, onCancel }: JobEditFormProps) {
           id="edit-job-kapan"
           name="kapan_number"
           required
+          maxLength={50}
           disabled={pending}
           value={kapanNumber}
           onChange={(event) => {
@@ -136,7 +138,7 @@ export function JobEditForm({ job, onCancel }: JobEditFormProps) {
           value={weight}
           onChange={(event) => {
             setDirty(true);
-            setWeight(event.target.value);
+            setWeight(decimalOnly(event.target.value, 3));
           }}
           placeholder="e.g. 2.250"
         />

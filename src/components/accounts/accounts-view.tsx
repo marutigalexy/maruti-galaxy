@@ -31,6 +31,7 @@ import { listHref } from "@/lib/api/list-href";
 import type { Paginated } from "@/lib/api/pagination";
 import { queryHref } from "@/lib/api/query-href";
 import { formatSignedInr, signedAmountType } from "@/lib/formatters";
+import { signedDecimalOnly } from "@/lib/ui/input-filters";
 import type { ListAccountsInput } from "@/lib/validation/accounts";
 import type { AccountRecord } from "@/services/accounts/accounts-service";
 
@@ -250,7 +251,14 @@ export function AccountsView({ query, result }: AccountsViewProps) {
             }}
           >
             <FormField label="Account Name" htmlFor="create-account-name" required>
-              <Input id="create-account-name" name="name" required disabled={pending} placeholder="e.g. HDFC Current" />
+              <Input
+                id="create-account-name"
+                name="name"
+                required
+                maxLength={200}
+                disabled={pending}
+                placeholder="e.g. HDFC Current"
+              />
             </FormField>
             <FormField label="Opening Balance" htmlFor="create-opening" required>
               <Input
@@ -261,6 +269,9 @@ export function AccountsView({ query, result }: AccountsViewProps) {
                 defaultValue="0.00"
                 disabled={pending}
                 placeholder="e.g. 0.00"
+                onInput={(e) => {
+                  e.currentTarget.value = signedDecimalOnly(e.currentTarget.value, 2);
+                }}
               />
             </FormField>
             {formError && createOpen ? (
@@ -310,6 +321,7 @@ export function AccountsView({ query, result }: AccountsViewProps) {
                 id="edit-account-name"
                 name="name"
                 required
+                maxLength={200}
                 defaultValue={editAccount.name}
                 disabled={pending}
                 placeholder="e.g. HDFC Current"
@@ -334,6 +346,9 @@ export function AccountsView({ query, result }: AccountsViewProps) {
                 disabled={pending || editAccount.entry_count > 0}
                 readOnly={editAccount.entry_count > 0}
                 placeholder="e.g. 0.00"
+                onInput={(e) => {
+                  e.currentTarget.value = signedDecimalOnly(e.currentTarget.value, 2);
+                }}
               />
               {editAccount.entry_count > 0 ? (
                 <input type="hidden" name="opening_balance" value={String(editAccount.opening_balance)} />

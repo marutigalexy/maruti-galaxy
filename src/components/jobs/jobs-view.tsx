@@ -38,6 +38,7 @@ import { useQueryPush } from "@/hooks/use-query-push";
 import type { Paginated } from "@/lib/api/pagination";
 import type { ActionResult } from "@/lib/api/result";
 import { formatInr, formatThan } from "@/lib/formatters";
+import { decimalOnly, integerOnly } from "@/lib/ui/input-filters";
 import { normalizeStages, STAGE_ORDER, type ListJobsInput, type StageType } from "@/lib/validation/jobs";
 import type { EmployeeOption } from "@/services/employees/employees-service";
 import type {
@@ -740,7 +741,7 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
                 autoComplete="off"
                 required
                 value={editThan}
-                onChange={(e) => setEditThan(e.target.value.replace(/[^0-9]/g, ""))}
+                onChange={(e) => setEditThan(integerOnly(e.target.value))}
                 disabled={deletePending}
                 placeholder="e.g. 4"
                 onKeyDown={(e) => {
@@ -757,7 +758,7 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
                 inputMode="decimal"
                 required
                 value={editWeight}
-                onChange={(e) => setEditWeight(e.target.value)}
+                onChange={(e) => setEditWeight(decimalOnly(e.target.value, 3))}
                 disabled={deletePending}
                 placeholder="e.g. 1.250"
               />
@@ -873,7 +874,7 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
                 disabled={deletePending}
                 placeholder="e.g. 2.00"
                 value={workDoneThan}
-                onChange={(event) => setWorkDoneThan(event.target.value)}
+                onChange={(event) => setWorkDoneThan(decimalOnly(event.target.value, 3))}
               />
             </FormField>
             {workPreview != null ? (
@@ -946,6 +947,9 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
                 defaultValue={String(editWork.done_than)}
                 disabled={deletePending}
                 placeholder="e.g. 2.00"
+                onInput={(e) => {
+                  e.currentTarget.value = decimalOnly(e.currentTarget.value, 3);
+                }}
               />
             </FormField>
             {formError && editWork ? (

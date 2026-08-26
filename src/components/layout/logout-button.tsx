@@ -12,7 +12,7 @@ export function LogoutButton() {
 
   return (
     <>
-      <Button variant="ghost" onClick={() => setOpen(true)}>
+      <Button variant="danger" onClick={() => setOpen(true)}>
         Log out
       </Button>
       <ConfirmDialog
@@ -20,6 +20,7 @@ export function LogoutButton() {
         title="Confirm Logout"
         description="Sign out of Maruti Galaxy?"
         confirmLabel="Log out"
+        danger
         pending={pending}
         onCancel={() => setOpen(false)}
         onConfirm={() => {

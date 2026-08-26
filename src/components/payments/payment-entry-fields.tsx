@@ -3,6 +3,7 @@ import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { decimalOnly } from "@/lib/ui/input-filters";
 import type { AccountOption } from "@/services/accounts/accounts-service";
 import type { CategoryOption } from "@/services/categories/categories-service";
 
@@ -89,11 +90,17 @@ export function PaymentEntryFields({
           disabled={pending}
           placeholder="e.g. 1000.00"
           value={amount}
-          onChange={(event) => onAmountChange(event.target.value)}
+          onChange={(event) => onAmountChange(decimalOnly(event.target.value, 2))}
         />
       </FormField>
       <FormField label="Remarks" htmlFor={`${idPrefix}-remarks`}>
-        <Textarea id={`${idPrefix}-remarks`} name="remarks" disabled={pending} placeholder="Optional note" />
+        <Textarea
+          id={`${idPrefix}-remarks`}
+          name="remarks"
+          maxLength={100}
+          disabled={pending}
+          placeholder="Optional note"
+        />
       </FormField>
     </>
   );

@@ -21,6 +21,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { WeightCt } from "@/components/ui/weight-ct";
 import { useToast } from "@/components/ui/toast";
 import { formatInr, formatSignedInr, formatThan } from "@/lib/formatters";
+import { decimalOnly, digitsOnly } from "@/lib/ui/input-filters";
 import type { AccountOption } from "@/services/accounts/accounts-service";
 import type { CategoryOption } from "@/services/categories/categories-service";
 import type { PartyInvoiceRow, PartyJobRow, PartyRecord, PartySummary } from "@/services/parties/parties-service";
@@ -364,6 +365,7 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
               id="detail-edit-company"
               name="company_name"
               required
+              maxLength={200}
               defaultValue={party.company_name}
               disabled={pending}
               placeholder="e.g. Shree Ram Diamonds"
@@ -373,6 +375,7 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
             <Input
               id="detail-edit-contact"
               name="contact_person_name"
+              maxLength={100}
               defaultValue={party.contact_person_name ?? ""}
               disabled={pending}
               placeholder="e.g. Amit Patel"
@@ -382,10 +385,17 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
             <Input
               id="detail-edit-mobile"
               name="mobile_number"
+              type="tel"
+              inputMode="numeric"
+              pattern="[0-9]{10}"
+              maxLength={10}
               required
               defaultValue={party.mobile_number}
               disabled={pending}
-              placeholder="e.g. 9876543210"
+              placeholder="10-digit mobile number"
+              onInput={(e) => {
+                e.currentTarget.value = digitsOnly(e.currentTarget.value, 10);
+              }}
             />
           </FormField>
           <FormField label="Price/Than" htmlFor="detail-edit-price">
@@ -397,6 +407,9 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
               disabled={pending}
               placeholder="e.g. 1500.00 (optional)"
               className="ui-price"
+              onInput={(e) => {
+                e.currentTarget.value = decimalOnly(e.currentTarget.value, 2);
+              }}
             />
           </FormField>
           {formError ? (

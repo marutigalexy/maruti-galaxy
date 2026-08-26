@@ -33,6 +33,7 @@ import { useToast } from "@/components/ui/toast";
 import { useQueryPush } from "@/hooks/use-query-push";
 import { queryHref } from "@/lib/api/query-href";
 import { formatDisplayDate, formatInr, formatSignedInr } from "@/lib/formatters";
+import { decimalOnly } from "@/lib/ui/input-filters";
 import type { ListEntriesInput } from "@/lib/validation/entries";
 import type { AccountOption } from "@/services/accounts/accounts-service";
 import type { OutstandingInvoiceOption } from "@/services/allocations/allocations-service";
@@ -496,15 +497,19 @@ export function EntriesView({
                 name="amount"
                 inputMode="decimal"
                 required
-                defaultValue="0"
+                defaultValue="0.00"
                 disabled={pending}
-                placeholder="0"
+                placeholder="0.00"
+                onInput={(e) => {
+                  e.currentTarget.value = decimalOnly(e.currentTarget.value, 2);
+                }}
               />
             </FormField>
             <FormField label="Remarks" htmlFor="create-remarks" className="ui-entry-span">
               <Textarea
                 id="create-remarks"
                 name="remarks"
+                maxLength={100}
                 disabled={pending}
                 placeholder="Add notes for this entry (optional)"
               />
@@ -637,13 +642,17 @@ export function EntriesView({
                 defaultValue={Number(editEntry.amount).toFixed(2)}
                 disabled={pending}
                 readOnly={editEntry.allocated > 0}
-                placeholder="0"
+                placeholder="0.00"
+                onInput={(e) => {
+                  e.currentTarget.value = decimalOnly(e.currentTarget.value, 2);
+                }}
               />
             </FormField>
             <FormField label="Remarks" htmlFor="edit-remarks" className="ui-entry-span">
               <Textarea
                 id="edit-remarks"
                 name="remarks"
+                maxLength={100}
                 defaultValue={editEntry.remarks ?? ""}
                 disabled={pending}
                 placeholder="Add notes for this entry (optional)"
@@ -659,16 +668,21 @@ export function EntriesView({
                 Cancel
               </Button>
               <Button type="submit" loading={pending}>
-                Save Entry
+                Save Changes
               </Button>
             </div>
           </form>
         ) : null}
       </Dialog>
 
+      {/* Allocate Entry Dialog */}
       <Dialog
         open={Boolean(allocateEntry)}
-        title="Allocate Income"
+        title={
+          allocateEntry
+            ? `Allocate Entry #${allocateEntry.id.slice(0, 8)} · ${allocateEntry.party_name ?? "Party"}`
+            : "Allocate Entry"
+        }
         onClose={() => setAllocateEntry(null)}
         disableClose={pending}
         footer={null}
@@ -724,7 +738,7 @@ export function EntriesView({
                     placeholder="e.g. 500.00"
                     onChange={(event) => {
                       const next = [...allocRows];
-                      next[index] = { ...row, amount: event.target.value };
+                      next[index] = { ...row, amount: decimalOnly(event.target.value, 2) };
                       setAllocRows(next);
                     }}
                   />

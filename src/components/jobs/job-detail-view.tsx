@@ -34,6 +34,7 @@ import { WeightCt } from "@/components/ui/weight-ct";
 import { TableActions } from "@/components/ui/table-actions";
 import { useToast } from "@/components/ui/toast";
 import { formatDisplayDate, formatInr, formatThan } from "@/lib/formatters";
+import { decimalOnly, integerOnly } from "@/lib/ui/input-filters";
 import { normalizeStages, STAGE_ORDER, type StageType } from "@/lib/validation/jobs";
 import type { EmployeeOption } from "@/services/employees/employees-service";
 import type { JobDetail, JobSubJobRecord, JobWorkRecord } from "@/services/jobs/jobs-service";
@@ -495,7 +496,6 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
               })}
             </div>
           </div>
-
           <FormField
             label="Than"
             htmlFor="create-sub-than"
@@ -513,7 +513,7 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
               disabled={pending}
               placeholder={Math.floor(job.remaining_than) > 0 ? String(Math.floor(job.remaining_than)) : "e.g. 4"}
               value={subThan}
-              onChange={(e) => setSubThan(e.target.value.replace(/[^0-9]/g, ""))}
+              onChange={(e) => setSubThan(integerOnly(e.target.value))}
               onKeyDown={(e) => {
                 if (e.key === "." || e.key === "e" || e.key === "E" || e.key === "-" || e.key === "+") {
                   e.preventDefault();
@@ -530,7 +530,7 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
               required
               disabled={pending}
               value={subWeight}
-              onChange={(e) => setSubWeight(e.target.value)}
+              onChange={(e) => setSubWeight(decimalOnly(e.target.value, 3))}
               placeholder="e.g. 1.250"
             />
           </FormField>
@@ -562,7 +562,7 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
               Cancel
             </Button>
             <Button type="submit" loading={pending}>
-              Create Sub-Job
+              Add Sub-Job
             </Button>
           </div>
         </form>
@@ -571,13 +571,14 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
       {/* Edit Sub Job Modal */}
       <Dialog
         open={Boolean(editSub)}
-        title={editSub ? `Edit ${editSub.display_no}` : "Edit Sub Job"}
+        title={editSub ? `Edit Sub Job • ${editSub.display_no}` : "Edit Sub Job"}
         onClose={() => setEditSub(null)}
         disableClose={pending}
         footer={null}
       >
         {editSub ? (
           <form
+            key={`edit-sub-${editSub.id}`}
             className="ui-dialog-form"
             autoComplete="off"
             onSubmit={(event) => {
@@ -654,7 +655,7 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
                 autoComplete="off"
                 required
                 value={editThan}
-                onChange={(e) => setEditThan(e.target.value.replace(/[^0-9]/g, ""))}
+                onChange={(e) => setEditThan(integerOnly(e.target.value))}
                 disabled={pending}
                 placeholder="e.g. 4"
                 onKeyDown={(e) => {
@@ -671,7 +672,7 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
                 inputMode="decimal"
                 required
                 value={editWeight}
-                onChange={(e) => setEditWeight(e.target.value)}
+                onChange={(e) => setEditWeight(decimalOnly(e.target.value, 3))}
                 disabled={pending}
                 placeholder="e.g. 1.250"
               />
@@ -781,7 +782,7 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
                 disabled={pending}
                 placeholder="e.g. 2.00"
                 value={workDoneThan}
-                onChange={(event) => setWorkDoneThan(event.target.value)}
+                onChange={(event) => setWorkDoneThan(decimalOnly(event.target.value, 3))}
               />
             </FormField>
             {workPreview != null ? (
@@ -848,6 +849,9 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
                 defaultValue={String(editWork.done_than)}
                 disabled={pending}
                 placeholder="e.g. 2.00"
+                onInput={(e) => {
+                  e.currentTarget.value = decimalOnly(e.currentTarget.value, 3);
+                }}
               />
             </FormField>
             {formError && editWork ? (

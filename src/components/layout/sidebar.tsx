@@ -173,6 +173,7 @@ export function Sidebar({
         title="Confirm Logout"
         description="Are you sure you want to logout?"
         confirmLabel="Log out"
+        danger
         pending={pending}
         onCancel={() => setLogoutOpen(false)}
         onConfirm={() => {

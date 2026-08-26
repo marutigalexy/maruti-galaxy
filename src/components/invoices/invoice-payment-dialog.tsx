@@ -78,7 +78,7 @@ export function InvoicePaymentDialog({ invoice, accounts, categories }: InvoiceP
             });
           }}
         >
-          <dl className="ui-summary-grid">
+          <dl className="ui-summary-grid is-cols-4">
             <div className="ui-detail-item">
               <dt>Invoice Total</dt>
               <dd>{formatInr(invoice.amount)}</dd>

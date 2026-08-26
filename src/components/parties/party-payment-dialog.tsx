@@ -14,6 +14,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
 import { formatInr } from "@/lib/formatters";
+import { decimalOnly } from "@/lib/ui/input-filters";
 import type { AccountOption } from "@/services/accounts/accounts-service";
 import type { CategoryOption } from "@/services/categories/categories-service";
 import type { PartyInvoiceRow } from "@/services/parties/parties-service";
@@ -184,6 +185,7 @@ export function PartyPaymentDialog({
             <Textarea
               id="pp-remarks"
               name="remarks"
+              maxLength={100}
               disabled={pending}
               placeholder="Any internal notes for this payment..."
             />
@@ -233,9 +235,9 @@ export function PartyPaymentDialog({
                           <Input
                             aria-label={`Pay now for ${inv.invoice_number}`}
                             inputMode="decimal"
-                            placeholder="0"
+                            placeholder="0.00"
                             value={payNow[inv.id] ?? ""}
-                            onChange={(e) => setAmount(inv.id, e.target.value)}
+                            onChange={(e) => setAmount(inv.id, decimalOnly(e.target.value, 2))}
                             disabled={pending}
                             className="ui-pay-now-input"
                           />

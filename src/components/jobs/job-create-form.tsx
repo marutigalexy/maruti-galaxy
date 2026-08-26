@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import { decimalOnly } from "@/lib/ui/input-filters";
 import type { PartyOption } from "@/services/parties/parties-service";
 
 type JobCreateFormProps = {
@@ -120,6 +121,9 @@ export function JobCreateForm({ parties, onCancel }: JobCreateFormProps) {
           required
           disabled={pending}
           placeholder="e.g. 10.50"
+          onInput={(e) => {
+            e.currentTarget.value = decimalOnly(e.currentTarget.value, 3);
+          }}
         />
       </FormField>
       <FormField label="Price" htmlFor="job-price" required>
@@ -134,15 +138,32 @@ export function JobCreateForm({ parties, onCancel }: JobCreateFormProps) {
           value={price}
           onChange={(event) => {
             setPriceEdited(true);
-            setPrice(event.target.value);
+            setPrice(decimalOnly(event.target.value, 2));
           }}
         />
       </FormField>
       <FormField label="Kapan Number" htmlFor="job-kapan" required>
-        <Input id="job-kapan" name="kapan_number" required disabled={pending} placeholder="e.g. KAPAN-2418" />
+        <Input
+          id="job-kapan"
+          name="kapan_number"
+          required
+          maxLength={50}
+          disabled={pending}
+          placeholder="e.g. KAPAN-2418"
+        />
       </FormField>
       <FormField label="Weight" htmlFor="job-weight" required>
-        <Input id="job-weight" name="weight" inputMode="decimal" required disabled={pending} placeholder="e.g. 2.250" />
+        <Input
+          id="job-weight"
+          name="weight"
+          inputMode="decimal"
+          required
+          disabled={pending}
+          placeholder="e.g. 2.250"
+          onInput={(e) => {
+            e.currentTarget.value = decimalOnly(e.currentTarget.value, 3);
+          }}
+        />
       </FormField>
       {formError ? (
         <p className="ui-field-error" role="alert">

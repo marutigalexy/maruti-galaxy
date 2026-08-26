@@ -23,6 +23,7 @@ import { useQueryPush } from "@/hooks/use-query-push";
 import type { Paginated } from "@/lib/api/pagination";
 import { queryHref } from "@/lib/api/query-href";
 import { formatDisplayDate, formatSignedInr, signedAmountType } from "@/lib/formatters";
+import { signedDecimalOnly } from "@/lib/ui/input-filters";
 import type { ListEntriesInput } from "@/lib/validation/entries";
 import type { AccountRecord } from "@/services/accounts/accounts-service";
 import type { CategoryOption } from "@/services/categories/categories-service";
@@ -272,6 +273,7 @@ export function AccountDetailView({ account, query, entries, categories }: Accou
               id="detail-edit-account-name"
               name="name"
               required
+              maxLength={200}
               defaultValue={account.name}
               disabled={pending}
               placeholder="e.g. HDFC Current"
@@ -296,6 +298,9 @@ export function AccountDetailView({ account, query, entries, categories }: Accou
               disabled={pending || account.entry_count > 0}
               readOnly={account.entry_count > 0}
               placeholder="e.g. 0.00"
+              onInput={(e) => {
+                e.currentTarget.value = signedDecimalOnly(e.currentTarget.value, 2);
+              }}
             />
             {account.entry_count > 0 ? (
               <input type="hidden" name="opening_balance" value={String(account.opening_balance)} />
