@@ -63,6 +63,26 @@ export function AccountsView({ query, result }: AccountsViewProps) {
     push(listHref("/accounting/accounts", next));
   };
 
+  function handleOpenCreate() {
+    setFormError(null);
+    setCreateOpen(true);
+  }
+
+  function handleCloseCreate() {
+    setFormError(null);
+    setCreateOpen(false);
+  }
+
+  function handleOpenEdit(acc: AccountRecord) {
+    setFormError(null);
+    setEditAccount(acc);
+  }
+
+  function handleCloseEdit() {
+    setFormError(null);
+    setEditAccount(null);
+  }
+
   function runMutation(
     action: () => Promise<{ ok: boolean; error?: { message: string } }>,
     success: string,
@@ -90,12 +110,7 @@ export function AccountsView({ query, result }: AccountsViewProps) {
         action={
           <>
             <ExportButton href={queryHref("/api/export/accounts", { search: query.search, status: query.status })} />
-            <AddButton
-              onClick={() => {
-                setFormError(null);
-                setCreateOpen(true);
-              }}
-            >
+            <AddButton onClick={handleOpenCreate}>
               Add Account
             </AddButton>
           </>
@@ -158,10 +173,7 @@ export function AccountsView({ query, result }: AccountsViewProps) {
                 <IconButton
                   tone="edit"
                   label="Edit account"
-                  onClick={() => {
-                    setFormError(null);
-                    setEditAccount(row);
-                  }}
+                  onClick={() => handleOpenEdit(row)}
                 >
                   <EditIcon width={16} height={16} />
                 </IconButton>
@@ -215,65 +227,69 @@ export function AccountsView({ query, result }: AccountsViewProps) {
       <Dialog
         open={createOpen}
         title="Add Account"
-        onClose={() => setCreateOpen(false)}
+        onClose={handleCloseCreate}
         disableClose={pending}
         footer={null}
       >
-        <form
-          className="ui-dialog-form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const form = new FormData(event.currentTarget);
-            runMutation(
-              () =>
-                createAccountAction({
-                  name: String(form.get("name") ?? ""),
-                  opening_balance: String(form.get("opening_balance") ?? ""),
-                  is_active: true,
-                }),
-              "Account created successfully.",
-            );
-          }}
-        >
-          <FormField label="Account Name" htmlFor="create-account-name" required>
-            <Input id="create-account-name" name="name" required disabled={pending} placeholder="e.g. HDFC Current" />
-          </FormField>
-          <FormField label="Opening Balance" htmlFor="create-opening" required>
-            <Input
-              id="create-opening"
-              name="opening_balance"
-              inputMode="decimal"
-              required
-              defaultValue="0.00"
-              disabled={pending}
-              placeholder="e.g. 0.00"
-            />
-          </FormField>
-          {formError && createOpen ? (
-            <p className="ui-field-error" role="alert">
-              {formError}
-            </p>
-          ) : null}
-          <div className="ui-dialog-actions">
-            <Button variant="secondary" disabled={pending} onClick={() => setCreateOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={pending}>
-              Create
-            </Button>
-          </div>
-        </form>
+        {createOpen ? (
+          <form
+            key="create-account-form"
+            className="ui-dialog-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const form = new FormData(event.currentTarget);
+              runMutation(
+                () =>
+                  createAccountAction({
+                    name: String(form.get("name") ?? ""),
+                    opening_balance: String(form.get("opening_balance") ?? ""),
+                    is_active: true,
+                  }),
+                "Account created successfully.",
+              );
+            }}
+          >
+            <FormField label="Account Name" htmlFor="create-account-name" required>
+              <Input id="create-account-name" name="name" required disabled={pending} placeholder="e.g. HDFC Current" />
+            </FormField>
+            <FormField label="Opening Balance" htmlFor="create-opening" required>
+              <Input
+                id="create-opening"
+                name="opening_balance"
+                inputMode="decimal"
+                required
+                defaultValue="0.00"
+                disabled={pending}
+                placeholder="e.g. 0.00"
+              />
+            </FormField>
+            {formError && createOpen ? (
+              <p className="ui-field-error" role="alert">
+                {formError}
+              </p>
+            ) : null}
+            <div className="ui-dialog-actions">
+              <Button variant="secondary" disabled={pending} onClick={handleCloseCreate}>
+                Cancel
+              </Button>
+              <Button type="submit" loading={pending}>
+                Create
+              </Button>
+            </div>
+          </form>
+        ) : null}
       </Dialog>
 
       <Dialog
         open={Boolean(editAccount)}
         title="Edit Account"
-        onClose={() => setEditAccount(null)}
+        onClose={handleCloseEdit}
         disableClose={pending}
         footer={null}
       >
         {editAccount ? (
           <form
+            key={`edit-account-${editAccount.id}`}
             className="ui-dialog-form"
             onSubmit={(event) => {
               event.preventDefault();

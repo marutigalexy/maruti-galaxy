@@ -241,75 +241,92 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
       <Dialog
         open={createOpen}
         title="Add User"
-        onClose={() => setCreateOpen(false)}
+        onClose={() => {
+          setFormError(null);
+          setCreateOpen(false);
+        }}
         disableClose={pending}
         footer={null}
       >
-        <form
-          className="ui-dialog-form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const form = new FormData(event.currentTarget);
-            runMutation(
-              () =>
-                createUserAction({
-                  name: String(form.get("name") ?? ""),
-                  email: String(form.get("email") ?? ""),
-                  password: String(form.get("password") ?? ""),
-                  confirmPassword: String(form.get("confirmPassword") ?? ""),
-                  is_active: true,
-                }),
-              "User created successfully.",
-            );
-          }}
-        >
-          <FormField label="Name" htmlFor="create-name" required>
-            <Input id="create-name" name="name" required disabled={pending} autoComplete="name" placeholder="e.g. Priya Mehta" />
-          </FormField>
-          <FormField label="Email" htmlFor="create-email" required>
-            <Input id="create-email" name="email" type="email" required disabled={pending} autoComplete="off" placeholder="name@company.com" />
-          </FormField>
-          <FormField label="Password" htmlFor="create-password" required>
-            <PasswordInput
-              id="create-password"
-              name="password"
-              placeholder="At least 6 characters"
-              disabled={pending}
-            />
-          </FormField>
-          <FormField label="Confirm Password" htmlFor="create-confirm" required>
-            <PasswordInput
-              id="create-confirm"
-              name="confirmPassword"
-              placeholder="Re-enter password"
-              disabled={pending}
-            />
-          </FormField>
-          {formError && createOpen ? (
-            <p className="ui-field-error" role="alert">
-              {formError}
-            </p>
-          ) : null}
-          <div className="ui-dialog-actions">
-            <Button variant="secondary" disabled={pending} onClick={() => setCreateOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={pending}>
-              Create
-            </Button>
-          </div>
-        </form>
+        {createOpen ? (
+          <form
+            key="create-user-form"
+            className="ui-dialog-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const form = new FormData(event.currentTarget);
+              runMutation(
+                () =>
+                  createUserAction({
+                    name: String(form.get("name") ?? ""),
+                    email: String(form.get("email") ?? ""),
+                    password: String(form.get("password") ?? ""),
+                    confirmPassword: String(form.get("confirmPassword") ?? ""),
+                    is_active: true,
+                  }),
+                "User created successfully.",
+              );
+            }}
+          >
+            <FormField label="Name" htmlFor="create-name" required>
+              <Input id="create-name" name="name" required disabled={pending} autoComplete="name" placeholder="e.g. Priya Mehta" />
+            </FormField>
+            <FormField label="Email" htmlFor="create-email" required>
+              <Input id="create-email" name="email" type="email" required disabled={pending} autoComplete="off" placeholder="name@company.com" />
+            </FormField>
+            <FormField label="Password" htmlFor="create-password" required>
+              <PasswordInput
+                id="create-password"
+                name="password"
+                placeholder="At least 6 characters"
+                disabled={pending}
+              />
+            </FormField>
+            <FormField label="Confirm Password" htmlFor="create-confirm" required>
+              <PasswordInput
+                id="create-confirm"
+                name="confirmPassword"
+                placeholder="Re-enter password"
+                disabled={pending}
+              />
+            </FormField>
+            {formError && createOpen ? (
+              <p className="ui-field-error" role="alert">
+                {formError}
+              </p>
+            ) : null}
+            <div className="ui-dialog-actions">
+              <Button
+                variant="secondary"
+                disabled={pending}
+                onClick={() => {
+                  setFormError(null);
+                  setCreateOpen(false);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" loading={pending}>
+                Create
+              </Button>
+            </div>
+          </form>
+        ) : null}
       </Dialog>
 
       <Dialog
         open={Boolean(editUser)}
         title="Edit User"
-        onClose={() => setEditUser(null)}
+        onClose={() => {
+          setFormError(null);
+          setEditUser(null);
+        }}
         disableClose={pending}
         footer={null}
       >
         {editUser ? (
           <form
+            key={`edit-user-${editUser.id}`}
             className="ui-dialog-form"
             onSubmit={(event) => {
               event.preventDefault();
@@ -344,7 +361,14 @@ export function UsersView({ currentUserId, query, result }: UsersViewProps) {
               </p>
             ) : null}
             <div className="ui-dialog-actions">
-              <Button variant="secondary" disabled={pending} onClick={() => setEditUser(null)}>
+              <Button
+                variant="secondary"
+                disabled={pending}
+                onClick={() => {
+                  setFormError(null);
+                  setEditUser(null);
+                }}
+              >
                 Cancel
               </Button>
               <Button type="submit" loading={pending}>

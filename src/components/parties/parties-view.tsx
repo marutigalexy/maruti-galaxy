@@ -52,6 +52,26 @@ export function PartiesView({ query, result }: PartiesViewProps) {
     push(listHref("/parties", next));
   };
 
+  function handleOpenCreate() {
+    setFormError(null);
+    setCreateOpen(true);
+  }
+
+  function handleCloseCreate() {
+    setFormError(null);
+    setCreateOpen(false);
+  }
+
+  function handleOpenEdit(party: PartyRecord) {
+    setFormError(null);
+    setEditParty(party);
+  }
+
+  function handleCloseEdit() {
+    setFormError(null);
+    setEditParty(null);
+  }
+
   function runMutation(
     action: () => Promise<{ ok: boolean; error?: { message: string } }>,
     success: string,
@@ -77,12 +97,7 @@ export function PartiesView({ query, result }: PartiesViewProps) {
     <>
       <FilterBar
         action={
-          <AddButton
-            onClick={() => {
-              setFormError(null);
-              setCreateOpen(true);
-            }}
-          >
+          <AddButton onClick={handleOpenCreate}>
             Add Party
           </AddButton>
         }
@@ -132,10 +147,7 @@ export function PartiesView({ query, result }: PartiesViewProps) {
                 <IconButton
                   tone="edit"
                   label="Edit party"
-                  onClick={() => {
-                    setFormError(null);
-                    setEditParty(row);
-                  }}
+                  onClick={() => handleOpenEdit(row)}
                 >
                   <EditIcon width={16} height={16} />
                 </IconButton>
@@ -185,65 +197,69 @@ export function PartiesView({ query, result }: PartiesViewProps) {
       <Dialog
         open={createOpen}
         title="Add Party"
-        onClose={() => setCreateOpen(false)}
+        onClose={handleCloseCreate}
         disableClose={pending}
         footer={null}
       >
-        <form
-          className="ui-dialog-form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const form = new FormData(event.currentTarget);
-            runMutation(
-              () =>
-                createPartyAction({
-                  company_name: String(form.get("company_name") ?? ""),
-                  contact_person_name: String(form.get("contact_person_name") ?? ""),
-                  mobile_number: String(form.get("mobile_number") ?? ""),
-                  price: String(form.get("price") ?? ""),
-                  is_active: true,
-                }),
-              "Party created successfully.",
-            );
-          }}
-        >
-          <FormField label="Company Name" htmlFor="create-company" required>
-            <Input id="create-company" name="company_name" required disabled={pending} placeholder="e.g. Shree Ram Diamonds" />
-          </FormField>
-          <FormField label="Contact Person Name" htmlFor="create-contact">
-            <Input id="create-contact" name="contact_person_name" disabled={pending} placeholder="e.g. Amit Patel" />
-          </FormField>
-          <FormField label="Mobile Number" htmlFor="create-mobile" required>
-            <Input id="create-mobile" name="mobile_number" required disabled={pending} placeholder="e.g. 9876543210" />
-          </FormField>
-          <FormField label="Price/Than" htmlFor="create-price">
-            <Input id="create-price" name="price" inputMode="decimal" disabled={pending} placeholder="e.g. 1500.00 (optional)" className="ui-price" />
-          </FormField>
-          {formError && createOpen ? (
-            <p className="ui-field-error" role="alert">
-              {formError}
-            </p>
-          ) : null}
-          <div className="ui-dialog-actions">
-            <Button variant="secondary" disabled={pending} onClick={() => setCreateOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={pending}>
-              Create
-            </Button>
-          </div>
-        </form>
+        {createOpen ? (
+          <form
+            key="create-party-form"
+            className="ui-dialog-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const form = new FormData(event.currentTarget);
+              runMutation(
+                () =>
+                  createPartyAction({
+                    company_name: String(form.get("company_name") ?? ""),
+                    contact_person_name: String(form.get("contact_person_name") ?? ""),
+                    mobile_number: String(form.get("mobile_number") ?? ""),
+                    price: String(form.get("price") ?? ""),
+                    is_active: true,
+                  }),
+                "Party created successfully.",
+              );
+            }}
+          >
+            <FormField label="Company Name" htmlFor="create-company" required>
+              <Input id="create-company" name="company_name" required disabled={pending} placeholder="e.g. Shree Ram Diamonds" />
+            </FormField>
+            <FormField label="Contact Person Name" htmlFor="create-contact">
+              <Input id="create-contact" name="contact_person_name" disabled={pending} placeholder="e.g. Amit Patel" />
+            </FormField>
+            <FormField label="Mobile Number" htmlFor="create-mobile" required>
+              <Input id="create-mobile" name="mobile_number" required disabled={pending} placeholder="e.g. 9876543210" />
+            </FormField>
+            <FormField label="Price/Than" htmlFor="create-price">
+              <Input id="create-price" name="price" inputMode="decimal" disabled={pending} placeholder="e.g. 1500.00 (optional)" className="ui-price" />
+            </FormField>
+            {formError && createOpen ? (
+              <p className="ui-field-error" role="alert">
+                {formError}
+              </p>
+            ) : null}
+            <div className="ui-dialog-actions">
+              <Button variant="secondary" disabled={pending} onClick={handleCloseCreate}>
+                Cancel
+              </Button>
+              <Button type="submit" loading={pending}>
+                Create
+              </Button>
+            </div>
+          </form>
+        ) : null}
       </Dialog>
 
       <Dialog
         open={Boolean(editParty)}
         title="Edit Party"
-        onClose={() => setEditParty(null)}
+        onClose={handleCloseEdit}
         disableClose={pending}
         footer={null}
       >
         {editParty ? (
           <form
+            key={`edit-party-${editParty.id}`}
             className="ui-dialog-form"
             onSubmit={(event) => {
               event.preventDefault();

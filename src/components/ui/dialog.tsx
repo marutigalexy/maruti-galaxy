@@ -76,16 +76,18 @@ export function Dialog({
           </Button>
         </div>
       </div>
-      {children}
-      {footer !== undefined ? (
-        footer
-      ) : (
-        <div className="ui-dialog-actions">
-          <Button variant="secondary" onClick={onClose} disabled={disableClose}>
-            Close
-          </Button>
-        </div>
-      )}
+      {open ? children : null}
+      {open ? (
+        footer !== undefined ? (
+          footer
+        ) : (
+          <div className="ui-dialog-actions">
+            <Button variant="secondary" onClick={onClose} disabled={disableClose}>
+              Close
+            </Button>
+          </div>
+        )
+      ) : null}
     </dialog>
   );
 }

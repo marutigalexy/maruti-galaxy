@@ -185,6 +185,30 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
     setEditSub(sub);
   }
 
+  function openAddWork(sub: JobSubJobRecord) {
+    setFormError(null);
+    setWorkEmployeeId("");
+    setWorkDoneThan("");
+    setWorkSub(sub);
+  }
+
+  function closeAddWork() {
+    setFormError(null);
+    setWorkEmployeeId("");
+    setWorkDoneThan("");
+    setWorkSub(null);
+  }
+
+  function openEditWork(work: JobWorkRecord) {
+    setFormError(null);
+    setEditWork(work);
+  }
+
+  function closeEditWork() {
+    setFormError(null);
+    setEditWork(null);
+  }
+
   const runMutation = (
     action: () => Promise<ActionResult<unknown>>,
     successMessage: string,
@@ -777,12 +801,13 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
       <Dialog
         open={Boolean(workSub)}
         title={workSub ? `Add Work · ${workSub.display_no} (${workSub.current_stage})` : "Add Work"}
-        onClose={() => setWorkSub(null)}
+        onClose={closeAddWork}
         disableClose={deletePending}
         footer={null}
       >
         {workSub ? (
           <form
+            key={`work-create-${workSub.id}-${workSub.current_stage}`}
             className="ui-dialog-form"
             onSubmit={(event) => {
               event.preventDefault();
@@ -796,7 +821,7 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
                   }),
                 "Work recorded successfully.",
                 () => {
-                  setWorkSub(null);
+                  closeAddWork();
                   if (viewSubDetail && viewSubDetail.sub.id === workSub.id) {
                     setViewSubDetail(null);
                   }
@@ -865,7 +890,7 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
               <Button
                 variant="secondary"
                 disabled={deletePending}
-                onClick={() => setWorkSub(null)}
+                onClick={closeAddWork}
               >
                 Cancel
               </Button>
@@ -881,12 +906,13 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
       <Dialog
         open={Boolean(editWork)}
         title="Edit Work"
-        onClose={() => setEditWork(null)}
+        onClose={closeEditWork}
         disableClose={deletePending}
         footer={null}
       >
         {editWork ? (
           <form
+            key={`work-edit-${editWork.id}`}
             className="ui-dialog-form"
             onSubmit={(event) => {
               event.preventDefault();
@@ -899,7 +925,7 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
                   }),
                 "Work updated successfully.",
                 () => {
-                  setEditWork(null);
+                  closeEditWork();
                   if (viewSubDetail) {
                     setViewSubDetail(null);
                   }
@@ -931,7 +957,7 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
               <Button
                 variant="secondary"
                 disabled={deletePending}
-                onClick={() => setEditWork(null)}
+                onClick={closeEditWork}
               >
                 Cancel
               </Button>
@@ -960,7 +986,7 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
           if (!deleteWork) return;
           runMutation(
             () => deleteEmployeeWorkAction({ id: deleteWork.id }),
-            "Work deleted successfully.",
+            "Work record deleted successfully.",
             () => {
               setDeleteWork(null);
               if (viewSubDetail) {
@@ -1028,12 +1054,8 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
             setViewSubDetail(null);
             setDeleteSub(sub);
           }}
-          onAddWork={(sub) => {
-            setWorkEmployeeId("");
-            setWorkDoneThan("");
-            setWorkSub(sub);
-          }}
-          onEditWork={(work) => setEditWork(work)}
+          onAddWork={(sub) => openAddWork(sub)}
+          onEditWork={(work) => openEditWork(work)}
           onDeleteWork={(work) => setDeleteWork(work)}
         />
       )}

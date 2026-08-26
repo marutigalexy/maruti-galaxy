@@ -53,6 +53,26 @@ export function EmployeesView({ query, result }: EmployeesViewProps) {
     push(listHref("/employees", next));
   };
 
+  function handleOpenCreate() {
+    setFormError(null);
+    setCreateOpen(true);
+  }
+
+  function handleCloseCreate() {
+    setFormError(null);
+    setCreateOpen(false);
+  }
+
+  function handleOpenEdit(emp: EmployeeRecord) {
+    setFormError(null);
+    setEditEmployee(emp);
+  }
+
+  function handleCloseEdit() {
+    setFormError(null);
+    setEditEmployee(null);
+  }
+
   function runMutation(
     action: () => Promise<{ ok: boolean; error?: { message: string } }>,
     success: string,
@@ -78,12 +98,7 @@ export function EmployeesView({ query, result }: EmployeesViewProps) {
     <>
       <FilterBar
         action={
-          <AddButton
-            onClick={() => {
-              setFormError(null);
-              setCreateOpen(true);
-            }}
-          >
+          <AddButton onClick={handleOpenCreate}>
             Add Employee
           </AddButton>
         }
@@ -141,10 +156,7 @@ export function EmployeesView({ query, result }: EmployeesViewProps) {
                 <IconButton
                   tone="edit"
                   label="Edit employee"
-                  onClick={() => {
-                    setFormError(null);
-                    setEditEmployee(row);
-                  }}
+                  onClick={() => handleOpenEdit(row)}
                 >
                   <EditIcon width={16} height={16} />
                 </IconButton>
@@ -196,73 +208,77 @@ export function EmployeesView({ query, result }: EmployeesViewProps) {
       <Dialog
         open={createOpen}
         title="Add Employee"
-        onClose={() => setCreateOpen(false)}
+        onClose={handleCloseCreate}
         disableClose={pending}
         footer={null}
       >
-        <form
-          className="ui-dialog-form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const form = new FormData(event.currentTarget);
-            runMutation(
-              () =>
-                createEmployeeAction({
-                  name: String(form.get("name") ?? ""),
-                  mobile_number: String(form.get("mobile_number") ?? ""),
-                  commission: String(form.get("commission") ?? ""),
-                  employee_type: String(form.get("employee_type") ?? "Sarin"),
-                  is_active: true,
-                }),
-              "Employee created successfully.",
-            );
-          }}
-        >
-          <FormField label="Name" htmlFor="create-employee-name" required>
-            <Input id="create-employee-name" name="name" required disabled={pending} placeholder="e.g. Rahul Sharma" />
-          </FormField>
-          <FormField label="Mobile Number" htmlFor="create-employee-mobile" required>
-            <Input id="create-employee-mobile" name="mobile_number" required disabled={pending} placeholder="e.g. 9876543210" />
-          </FormField>
-          <FormField label="Employee Type" htmlFor="create-employee-type" required>
-            <Select id="create-employee-type" name="employee_type" required defaultValue="Sarin" disabled={pending}>
-              <option value="Sarin">Sarin</option>
-              <option value="Dropping">Dropping</option>
-              <option value="Galaxy">Galaxy</option>
-            </Select>
-          </FormField>
-          <FormField
-            label="Commission"
-            htmlFor="create-commission"
-            required
+        {createOpen ? (
+          <form
+            key="create-employee-form"
+            className="ui-dialog-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const form = new FormData(event.currentTarget);
+              runMutation(
+                () =>
+                  createEmployeeAction({
+                    name: String(form.get("name") ?? ""),
+                    mobile_number: String(form.get("mobile_number") ?? ""),
+                    commission: String(form.get("commission") ?? ""),
+                    employee_type: String(form.get("employee_type") ?? "Sarin"),
+                    is_active: true,
+                  }),
+                "Employee created successfully.",
+              );
+            }}
           >
-            <Input id="create-commission" name="commission" inputMode="decimal" required disabled={pending} placeholder="e.g. 50.00" />
-          </FormField>
-          {formError && createOpen ? (
-            <p className="ui-field-error" role="alert">
-              {formError}
-            </p>
-          ) : null}
-          <div className="ui-dialog-actions">
-            <Button variant="secondary" disabled={pending} onClick={() => setCreateOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={pending}>
-              Create
-            </Button>
-          </div>
-        </form>
+            <FormField label="Name" htmlFor="create-employee-name" required>
+              <Input id="create-employee-name" name="name" required disabled={pending} placeholder="e.g. Rahul Sharma" />
+            </FormField>
+            <FormField label="Mobile Number" htmlFor="create-employee-mobile" required>
+              <Input id="create-employee-mobile" name="mobile_number" required disabled={pending} placeholder="e.g. 9876543210" />
+            </FormField>
+            <FormField label="Employee Type" htmlFor="create-employee-type" required>
+              <Select id="create-employee-type" name="employee_type" required defaultValue="Sarin" disabled={pending}>
+                <option value="Sarin">Sarin</option>
+                <option value="Dropping">Dropping</option>
+                <option value="Galaxy">Galaxy</option>
+              </Select>
+            </FormField>
+            <FormField
+              label="Commission"
+              htmlFor="create-commission"
+              required
+            >
+              <Input id="create-commission" name="commission" inputMode="decimal" required disabled={pending} placeholder="e.g. 50.00" />
+            </FormField>
+            {formError && createOpen ? (
+              <p className="ui-field-error" role="alert">
+                {formError}
+              </p>
+            ) : null}
+            <div className="ui-dialog-actions">
+              <Button variant="secondary" disabled={pending} onClick={handleCloseCreate}>
+                Cancel
+              </Button>
+              <Button type="submit" loading={pending}>
+                Create
+              </Button>
+            </div>
+          </form>
+        ) : null}
       </Dialog>
 
       <Dialog
         open={Boolean(editEmployee)}
         title="Edit Employee"
-        onClose={() => setEditEmployee(null)}
+        onClose={handleCloseEdit}
         disableClose={pending}
         footer={null}
       >
         {editEmployee ? (
           <form
+            key={`edit-employee-${editEmployee.id}`}
             className="ui-dialog-form"
             onSubmit={(event) => {
               event.preventDefault();
@@ -334,7 +350,7 @@ export function EmployeesView({ query, result }: EmployeesViewProps) {
               </p>
             ) : null}
             <div className="ui-dialog-actions">
-              <Button variant="secondary" disabled={pending} onClick={() => setEditEmployee(null)}>
+              <Button variant="secondary" disabled={pending} onClick={handleCloseEdit}>
                 Cancel
               </Button>
               <Button type="submit" loading={pending}>

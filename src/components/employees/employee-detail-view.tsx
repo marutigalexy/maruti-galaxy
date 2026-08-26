@@ -60,6 +60,16 @@ export function EmployeeDetailView({ employee, summary, accounts, categories }: 
   const [activeTab, setActiveTab] = useState<TabKey>("work");
   useRecordTitle(employee.name, employee.mobile_number);
 
+  function handleOpenEdit() {
+    setFormError(null);
+    setEditOpen(true);
+  }
+
+  function handleCloseEdit() {
+    setFormError(null);
+    setEditOpen(false);
+  }
+
   const kpis = [
     { label: "Employee Type", value: <JobTypeBadge type={employee.employee_type} /> },
     { label: "Commission", value: formatInr(employee.commission) },
@@ -109,7 +119,7 @@ export function EmployeeDetailView({ employee, summary, accounts, categories }: 
           accounts={accounts}
           categories={categories}
         />
-        <IconButton tone="edit" label="Edit employee" onClick={() => setEditOpen(true)}>
+        <IconButton tone="edit" label="Edit employee" onClick={handleOpenEdit}>
           <EditIcon width={16} height={16} />
         </IconButton>
       </TopbarActions>
@@ -212,97 +222,100 @@ export function EmployeeDetailView({ employee, summary, accounts, categories }: 
       <Dialog
         open={editOpen}
         title="Edit Employee"
-        onClose={() => setEditOpen(false)}
+        onClose={handleCloseEdit}
         disableClose={pending}
         footer={null}
       >
-        <form
-          className="ui-dialog-form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const form = new FormData(event.currentTarget);
-            setFormError(null);
-            startTransition(async () => {
-              const outcome = await updateEmployeeAction({
-                id: employee.id,
-                name: String(form.get("name") ?? ""),
-                mobile_number: String(form.get("mobile_number") ?? ""),
-                commission: String(form.get("commission") ?? ""),
-                employee_type: String(form.get("employee_type") ?? "Sarin"),
+        {editOpen ? (
+          <form
+            key={`edit-employee-${employee.id}`}
+            className="ui-dialog-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const form = new FormData(event.currentTarget);
+              setFormError(null);
+              startTransition(async () => {
+                const outcome = await updateEmployeeAction({
+                  id: employee.id,
+                  name: String(form.get("name") ?? ""),
+                  mobile_number: String(form.get("mobile_number") ?? ""),
+                  commission: String(form.get("commission") ?? ""),
+                  employee_type: String(form.get("employee_type") ?? "Sarin"),
+                });
+                if (!outcome.ok) {
+                  setFormError(outcome.error.message);
+                  toast.error(outcome.error.message);
+                  return;
+                }
+                setEditOpen(false);
+                toast.success("Employee updated successfully.");
+                router.refresh();
               });
-              if (!outcome.ok) {
-                setFormError(outcome.error.message);
-                toast.error(outcome.error.message);
-                return;
-              }
-              setEditOpen(false);
-              toast.success("Employee updated successfully.");
-              router.refresh();
-            });
-          }}
-        >
-          <FormField label="Name" htmlFor="detail-edit-employee-name" required>
-            <Input
-              id="detail-edit-employee-name"
-              name="name"
-              required
-              defaultValue={employee.name}
-              disabled={pending}
-              placeholder="e.g. Rahul Sharma"
-            />
-          </FormField>
-          <FormField label="Mobile Number" htmlFor="detail-edit-employee-mobile" required>
-            <Input
-              id="detail-edit-employee-mobile"
-              name="mobile_number"
-              required
-              defaultValue={employee.mobile_number}
-              disabled={pending}
-              placeholder="e.g. 9876543210"
-            />
-          </FormField>
-          <FormField label="Employee Type" htmlFor="detail-edit-employee-type" required>
-            <Select
-              id="detail-edit-employee-type"
-              name="employee_type"
-              required
-              defaultValue={employee.employee_type}
-              disabled={pending}
-            >
-              <option value="Sarin">Sarin</option>
-              <option value="Dropping">Dropping</option>
-              <option value="Galaxy">Galaxy</option>
-            </Select>
-          </FormField>
-          <FormField
-            label="Commission"
-            htmlFor="detail-edit-commission"
-            required
+            }}
           >
-            <Input
-              id="detail-edit-commission"
-              name="commission"
-              inputMode="decimal"
+            <FormField label="Name" htmlFor="detail-edit-employee-name" required>
+              <Input
+                id="detail-edit-employee-name"
+                name="name"
+                required
+                defaultValue={employee.name}
+                disabled={pending}
+                placeholder="e.g. Rahul Sharma"
+              />
+            </FormField>
+            <FormField label="Mobile Number" htmlFor="detail-edit-employee-mobile" required>
+              <Input
+                id="detail-edit-employee-mobile"
+                name="mobile_number"
+                required
+                defaultValue={employee.mobile_number}
+                disabled={pending}
+                placeholder="e.g. 9876543210"
+              />
+            </FormField>
+            <FormField label="Employee Type" htmlFor="detail-edit-employee-type" required>
+              <Select
+                id="detail-edit-employee-type"
+                name="employee_type"
+                required
+                defaultValue={employee.employee_type}
+                disabled={pending}
+              >
+                <option value="Sarin">Sarin</option>
+                <option value="Dropping">Dropping</option>
+                <option value="Galaxy">Galaxy</option>
+              </Select>
+            </FormField>
+            <FormField
+              label="Commission"
+              htmlFor="detail-edit-commission"
               required
-              defaultValue={String(employee.commission)}
-              disabled={pending}
-              placeholder="e.g. 50.00"
-            />
-          </FormField>
-          {formError ? (
-            <p className="ui-field-error" role="alert">
-              {formError}
-            </p>
-          ) : null}
-          <div className="ui-dialog-actions">
-            <Button variant="secondary" disabled={pending} onClick={() => setEditOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={pending}>
-              Save
-            </Button>
-          </div>
-        </form>
+            >
+              <Input
+                id="detail-edit-commission"
+                name="commission"
+                inputMode="decimal"
+                required
+                defaultValue={String(employee.commission)}
+                disabled={pending}
+                placeholder="e.g. 50.00"
+              />
+            </FormField>
+            {formError ? (
+              <p className="ui-field-error" role="alert">
+                {formError}
+              </p>
+            ) : null}
+            <div className="ui-dialog-actions">
+              <Button variant="secondary" disabled={pending} onClick={handleCloseEdit}>
+                Cancel
+              </Button>
+              <Button type="submit" loading={pending}>
+                Save
+              </Button>
+            </div>
+          </form>
+        ) : null}
       </Dialog>
     </>
   );

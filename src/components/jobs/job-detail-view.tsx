@@ -149,6 +149,30 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
     setEditSub(sub);
   }
 
+  function handleOpenAddWork(sub: JobSubJobRecord) {
+    setFormError(null);
+    setWorkEmployeeId("");
+    setWorkDoneThan("");
+    setWorkSub(sub);
+  }
+
+  function handleCloseAddWork() {
+    setFormError(null);
+    setWorkEmployeeId("");
+    setWorkDoneThan("");
+    setWorkSub(null);
+  }
+
+  function handleOpenEditWork(work: JobWorkRecord) {
+    setFormError(null);
+    setEditWork(work);
+  }
+
+  function handleCloseEditWork() {
+    setFormError(null);
+    setEditWork(null);
+  }
+
   const eligibleEmployees = useMemo(() => {
     if (!workSub) return [];
     const targetStage = workSub.current_stage ?? workSub.stage ?? "Sarin";
@@ -691,12 +715,13 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
       <Dialog
         open={Boolean(workSub)}
         title={workSub ? `Add Work · ${workSub.display_no} (${workSub.current_stage})` : "Add Work"}
-        onClose={() => setWorkSub(null)}
+        onClose={handleCloseAddWork}
         disableClose={pending}
         footer={null}
       >
         {workSub ? (
           <form
+            key={`work-create-${workSub.id}-${workSub.current_stage}`}
             className="ui-dialog-form"
             onSubmit={(event) => {
               event.preventDefault();
@@ -773,7 +798,7 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
               <Button
                 variant="secondary"
                 disabled={pending}
-                onClick={() => setWorkSub(null)}
+                onClick={handleCloseAddWork}
               >
                 Cancel
               </Button>
@@ -789,12 +814,13 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
       <Dialog
         open={Boolean(editWork)}
         title="Edit Work"
-        onClose={() => setEditWork(null)}
+        onClose={handleCloseEditWork}
         disableClose={pending}
         footer={null}
       >
         {editWork ? (
           <form
+            key={`work-edit-${editWork.id}`}
             className="ui-dialog-form"
             onSubmit={(event) => {
               event.preventDefault();
@@ -833,7 +859,7 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
               <Button
                 variant="secondary"
                 disabled={pending}
-                onClick={() => setEditWork(null)}
+                onClick={handleCloseEditWork}
               >
                 Cancel
               </Button>
@@ -864,7 +890,7 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
           }
           runMutation(
             () => deleteEmployeeWorkAction({ id: deleteWork.id }),
-            "Work deleted successfully.",
+            "Work record deleted successfully.",
           );
         }}
       />
@@ -930,16 +956,8 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
           setFormError(null);
           setDeleteSub(sub);
         }}
-        onAddWork={(sub) => {
-          setFormError(null);
-          setWorkEmployeeId("");
-          setWorkDoneThan("");
-          setWorkSub(sub);
-        }}
-        onEditWork={(work) => {
-          setFormError(null);
-          setEditWork(work);
-        }}
+        onAddWork={(sub) => handleOpenAddWork(sub)}
+        onEditWork={(work) => handleOpenEditWork(work)}
         onDeleteWork={(work) => {
           setFormError(null);
           setDeleteWork(work);

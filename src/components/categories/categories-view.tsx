@@ -59,6 +59,26 @@ export function CategoriesView({ query, result }: CategoriesViewProps) {
     );
   };
 
+  function handleOpenCreate() {
+    setFormError(null);
+    setCreateOpen(true);
+  }
+
+  function handleCloseCreate() {
+    setFormError(null);
+    setCreateOpen(false);
+  }
+
+  function handleOpenEdit(cat: CategoryRecord) {
+    setFormError(null);
+    setEditCategory(cat);
+  }
+
+  function handleCloseEdit() {
+    setFormError(null);
+    setEditCategory(null);
+  }
+
   function runMutation(
     action: () => Promise<{ ok: boolean; error?: { message: string } }>,
     success: string,
@@ -92,12 +112,7 @@ export function CategoriesView({ query, result }: CategoriesViewProps) {
                 type: query.type,
               })}
             />
-            <AddButton
-              onClick={() => {
-                setFormError(null);
-                setCreateOpen(true);
-              }}
-            >
+            <AddButton onClick={handleOpenCreate}>
               Add Category
             </AddButton>
           </>
@@ -168,10 +183,7 @@ export function CategoriesView({ query, result }: CategoriesViewProps) {
                 <IconButton
                   tone="edit"
                   label="Edit category"
-                  onClick={() => {
-                    setFormError(null);
-                    setEditCategory(row);
-                  }}
+                  onClick={() => handleOpenEdit(row)}
                 >
                   <EditIcon width={16} height={16} />
                 </IconButton>
@@ -204,10 +216,7 @@ export function CategoriesView({ query, result }: CategoriesViewProps) {
         ]}
         rows={result.records}
         rowKey={(row) => row.id}
-        onRowClick={(row) => {
-          setFormError(null);
-          setEditCategory(row);
-        }}
+        onRowClick={(row) => handleOpenEdit(row)}
         loading={queryPending}
         emptyTitle={
           query.search || query.status !== "all" || query.type !== "all"
@@ -228,66 +237,70 @@ export function CategoriesView({ query, result }: CategoriesViewProps) {
       <Dialog
         open={createOpen}
         title="Add Category"
-        onClose={() => setCreateOpen(false)}
+        onClose={handleCloseCreate}
         disableClose={pending}
         footer={null}
       >
-        <form
-          className="ui-dialog-form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const form = new FormData(event.currentTarget);
-            runMutation(
-              () =>
-                createCategoryAction({
-                  name: String(form.get("name") ?? ""),
-                  type: String(form.get("type") ?? ""),
-                  is_active: String(form.get("is_active") ?? "true") === "true",
-                }),
-              "Category created successfully.",
-            );
-          }}
-        >
-          <FormField label="Category Name" htmlFor="create-category-name" required>
-            <Input id="create-category-name" name="name" required disabled={pending} placeholder="e.g. Job Income" />
-          </FormField>
-          <FormField label="Type" htmlFor="create-category-type" required>
-            <Select id="create-category-type" name="type" required disabled={pending} defaultValue="Income">
-              <option value="Income">Income</option>
-              <option value="Expense">Expense</option>
-            </Select>
-          </FormField>
-          <FormField label="Status" htmlFor="create-category-status">
-            <Select id="create-category-status" name="is_active" disabled={pending} defaultValue="true">
-              <option value="true">Active</option>
-              <option value="false">Inactive</option>
-            </Select>
-          </FormField>
-          {formError && createOpen ? (
-            <p className="ui-field-error" role="alert">
-              {formError}
-            </p>
-          ) : null}
-          <div className="ui-dialog-actions">
-            <Button variant="secondary" disabled={pending} onClick={() => setCreateOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={pending}>
-              Create
-            </Button>
-          </div>
-        </form>
+        {createOpen ? (
+          <form
+            key="create-category-form"
+            className="ui-dialog-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const form = new FormData(event.currentTarget);
+              runMutation(
+                () =>
+                  createCategoryAction({
+                    name: String(form.get("name") ?? ""),
+                    type: String(form.get("type") ?? ""),
+                    is_active: String(form.get("is_active") ?? "true") === "true",
+                  }),
+                "Category created successfully.",
+              );
+            }}
+          >
+            <FormField label="Category Name" htmlFor="create-category-name" required>
+              <Input id="create-category-name" name="name" required disabled={pending} placeholder="e.g. Job Income" />
+            </FormField>
+            <FormField label="Type" htmlFor="create-category-type" required>
+              <Select id="create-category-type" name="type" required disabled={pending} defaultValue="Income">
+                <option value="Income">Income</option>
+                <option value="Expense">Expense</option>
+              </Select>
+            </FormField>
+            <FormField label="Status" htmlFor="create-category-status">
+              <Select id="create-category-status" name="is_active" disabled={pending} defaultValue="true">
+                <option value="true">Active</option>
+                <option value="false">Inactive</option>
+              </Select>
+            </FormField>
+            {formError && createOpen ? (
+              <p className="ui-field-error" role="alert">
+                {formError}
+              </p>
+            ) : null}
+            <div className="ui-dialog-actions">
+              <Button variant="secondary" disabled={pending} onClick={handleCloseCreate}>
+                Cancel
+              </Button>
+              <Button type="submit" loading={pending}>
+                Create
+              </Button>
+            </div>
+          </form>
+        ) : null}
       </Dialog>
 
       <Dialog
         open={Boolean(editCategory)}
         title="Edit Category"
-        onClose={() => setEditCategory(null)}
+        onClose={handleCloseEdit}
         disableClose={pending}
         footer={null}
       >
         {editCategory ? (
           <form
+            key={`edit-category-${editCategory.id}`}
             className="ui-dialog-form"
             onSubmit={(event) => {
               event.preventDefault();
