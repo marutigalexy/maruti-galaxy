@@ -4687,6 +4687,7 @@ a {
 
 /* ── Sub-Job Detail Dialog (Desktop & Laptop Optimized Layout) ───────────── */
 .ui-dialog.ui-subjob-detail-dialog,
+.ui-dialog.ui-invoice-detail-dialog,
 .ui-dialog:has(.ui-subjob-detail-dialog-content) {
   width: min(calc(100vw - 32px), 74rem);
   max-width: 74rem;

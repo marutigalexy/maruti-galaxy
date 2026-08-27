@@ -38,7 +38,9 @@ export function InvoicePrintView({ invoice }: InvoicePrintViewProps) {
     <InvoiceBillView
       invoiceNumber={invoice.invoice_number}
       invoiceDate={invoice.invoice_date}
-      partyName={invoice.party_name}
+      partyName={invoice.party_name !== "—" ? invoice.party_name : undefined}
+      partyContactPerson={invoice.party_contact_person_name}
+      partyMobile={invoice.party_mobile_number}
       lines={lines}
     />
   );

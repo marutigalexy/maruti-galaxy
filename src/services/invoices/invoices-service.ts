@@ -100,6 +100,8 @@ export type InvoiceDetail = {
   job_type: JobType;
   party_id: string;
   party_name: string;
+  party_contact_person_name: string | null;
+  party_mobile_number: string | null;
   allocated: number;
   outstanding: number;
   allocations: InvoiceAllocationRow[];
@@ -472,7 +474,7 @@ export async function getInvoice(id: string): Promise<InvoiceDetail> {
 
   const { data: party } = await supabase
     .from("parties")
-    .select("company_name")
+    .select("company_name, contact_person_name, mobile_number")
     .eq("id", primaryJob.party_id)
     .maybeSingle();
 
@@ -517,6 +519,8 @@ export async function getInvoice(id: string): Promise<InvoiceDetail> {
     job_type: primaryJob.job_type,
     party_id: primaryJob.party_id,
     party_name: party?.company_name ?? "—",
+    party_contact_person_name: party?.contact_person_name ?? null,
+    party_mobile_number: party?.mobile_number ?? null,
     allocated: outstanding.allocated,
     outstanding: outstanding.outstanding,
     allocations: (allocationRows ?? []).map((row) => {

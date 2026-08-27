@@ -7,6 +7,7 @@ import { updatePartyAction } from "@/app/actions/parties";
 import { TopbarActions, TopbarStatus, useRecordTitle } from "@/components/layout/page-chrome";
 import { PartyPaymentDialog } from "@/components/parties/party-payment-dialog";
 import { PartyInvoiceDialog } from "@/components/parties/party-invoice-dialog";
+import { InvoiceConnectedJobsDialog } from "@/components/invoices/invoice-connected-jobs-dialog";
 import { InvoicePrintButton } from "@/components/invoices/invoice-print-button";
 import { ClientTabs } from "@/components/ui/client-tabs";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,7 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
   const toast = useToast();
   const [pending, startTransition] = useTransition();
   const [editOpen, setEditOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<PartyInvoiceRow | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>(() => {
     if (typeof window !== "undefined") {
@@ -269,9 +271,7 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
               ]}
               rows={summary.invoices}
               rowKey={(row) => row.id}
-              onRowClick={(row) =>
-                row.job_work_ids[0] ? router.push(`/jobs/${row.job_work_ids[0]}#fromParty=${party.id}&tab=invoices`) : undefined
-              }
+              onRowClick={(row) => setSelectedInvoice(row)}
               emptyTitle="No invoices have been created for this party."
             />
           </Card>
@@ -427,6 +427,13 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
           </div>
         </form>
       </Dialog>
+
+      <InvoiceConnectedJobsDialog
+        invoice={selectedInvoice}
+        jobs={summary.jobs}
+        partyId={party.id}
+        onClose={() => setSelectedInvoice(null)}
+      />
     </>
   );
 }

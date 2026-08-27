@@ -2,7 +2,9 @@ import { formatBillDate, formatBillNumber, formatInrWords } from "@/lib/formatte
 import { INVOICE_BILL, summarizeBillLines, type InvoiceBillLine } from "@/lib/invoices/bill";
 
 type InvoiceBillViewProps = {
-  partyName: string;
+  partyName?: string;
+  partyContactPerson?: string | null;
+  partyMobile?: string | null;
   /** The invoice's own invoice_date — shown as "Invoice Date" in the header. */
   invoiceDate: string;
   /** The invoice number shown at the top of the party section. */
@@ -19,22 +21,30 @@ function numericCell(value: number, fractionDigits?: number) {
   return formatBillNumber(value, fractionDigits);
 }
 
-export function InvoiceBillView({ partyName, invoiceDate, invoiceNumber, lines }: InvoiceBillViewProps) {
+export function InvoiceBillView({
+  partyName,
+  partyContactPerson,
+  partyMobile,
+  invoiceDate,
+  invoiceNumber,
+  lines,
+}: InvoiceBillViewProps) {
   const totals = summarizeBillLines(lines);
   const rowCount = Math.max(lines.length, INVOICE_BILL.minTableRows);
   const rowSlots = Array.from({ length: rowCount }, (_, index) => lines[index] ?? null);
+
+  const cleanPartyName = partyName?.trim() || "";
+  const cleanContactPerson = partyContactPerson?.trim() || "";
+  const cleanMobile = partyMobile?.trim() || "";
 
   return (
     <div className="invoice-print-shell">
       <div className="invoice-print-sheet invoice-bill">
         <header className="invoice-bill-header">
           <div className="invoice-bill-contact">
-            <p>
-              {INVOICE_BILL.contactName}
-            </p>
-            <p>
-              {INVOICE_BILL.phone}
-            </p>
+            {cleanPartyName ? <p>{cleanPartyName}</p> : null}
+            {cleanContactPerson ? <p>{cleanContactPerson}</p> : null}
+            {cleanMobile ? <p>{cleanMobile}</p> : null}
           </div>
           <div className="invoice-bill-brand">
             <p className="invoice-bill-greeting">
@@ -57,7 +67,7 @@ export function InvoiceBillView({ partyName, invoiceDate, invoiceNumber, lines }
 
             {/* Party name and invoice date on the same horizontal line */}
             <div className="invoice-bill-party-row">
-              <div className="invoice-bill-party-name">{partyName}</div>
+              <div className="invoice-bill-party-name">{cleanPartyName || "—"}</div>
               <div className="invoice-bill-invoice-date">
                 <span>Invoice Date : </span>
                 <strong>{formatBillDate(invoiceDate)}</strong>

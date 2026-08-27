@@ -2,8 +2,6 @@ export const INVOICE_BILL = {
   greeting: "Shree Ganeshay Namh",
   companyName: "MARUTI GALEXY",
   companyLocation: "SHIV APARTMENT MINIBAZAR",
-  contactName: "ALPESH BHAI",
-  phone: "9727151214",
   bankName: "BANK OF INDIA",
   accountNumber: "270710110016340",
   ifsc: "BKID0002707",

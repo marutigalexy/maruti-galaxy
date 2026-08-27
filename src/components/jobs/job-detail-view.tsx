@@ -93,7 +93,7 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
   // Add work states
   const [workEmployeeId, setWorkEmployeeId] = useState("");
   const [workDoneThan, setWorkDoneThan] = useState("");
-  const [activeTab, setActiveTab] = useState<"details" | "subjobs">("details");
+  const [activeTab, setActiveTab] = useState<"details" | "subjobs">("subjobs");
   useRecordTitle(job.lot_number);
 
   const activeEmployees = useMemo(
@@ -133,7 +133,7 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
   function handleOpenAddSubModal() {
     const remaining = Math.max(0, Math.floor(job.remaining_than));
     setSubThan(remaining > 0 ? String(remaining) : "");
-    setSubWeight("");
+    setSubWeight(job.weight > 0 ? String(job.weight) : "");
     setSubStatus("Pending");
     setSubStages([]);
     setFormError(null);
@@ -187,8 +187,8 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
       : null;
 
   const tabItems = [
-    { id: "details", label: "Job Details" },
     { id: "subjobs", label: "Sub Jobs", count: job.sub_jobs.length },
+    { id: "details", label: "Job Details" },
   ] as const;
 
   function runMutation(
@@ -245,78 +245,6 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
           onChange={setActiveTab}
           ariaLabel="Job details"
         />
-
-        <div role="tabpanel" id="details-panel" aria-labelledby="details-tab" hidden={activeTab !== "details"}>
-          <Card title="Job Details">
-            <div className="ui-job-details-grid ui-job-details-grid-3">
-              <section className="ui-job-details-column">
-                <h3 className="ui-card-title">Basic Information</h3>
-                <dl className="ui-property-list">
-                  <div className="ui-detail-item">
-                    <dt>Job Number</dt>
-                    <dd>{job.lot_number}</dd>
-                  </div>
-                  <div className="ui-detail-item">
-                    <dt>Kapan Number</dt>
-                    <dd>{job.kapan_number}</dd>
-                  </div>
-                  <div className="ui-detail-item">
-                    <dt>Party Name</dt>
-                    <dd>{job.party_name}</dd>
-                  </div>
-                  <div className="ui-detail-item">
-                    <dt>Sub Jobs</dt>
-                    <dd>{job.sub_jobs.length}</dd>
-                  </div>
-                  <div className="ui-detail-item">
-                    <dt>Created Date</dt>
-                    <dd>{formatDisplayDate(job.created_at)}</dd>
-                  </div>
-                </dl>
-              </section>
-              <section className="ui-job-details-column">
-                <h3 className="ui-card-title">Quantity & Metrics</h3>
-                <dl className="ui-property-list">
-                  <div className="ui-detail-item">
-                    <dt>Total Taan</dt>
-                    <dd>{formatThan(job.than)}</dd>
-                  </div>
-                  <div className="ui-detail-item">
-                    <dt>Allocated Taan</dt>
-                    <dd>{formatThan(job.allocated_than)}</dd>
-                  </div>
-                  <div className="ui-detail-item">
-                    <dt>Remaining Taan</dt>
-                    <dd>{formatThan(job.remaining_than)}</dd>
-                  </div>
-                  <div className="ui-detail-item">
-                    <dt>Total Weight</dt>
-                    <dd><WeightCt value={job.weight} /></dd>
-                  </div>
-                </dl>
-              </section>
-              <section className="ui-job-details-column">
-                <h3 className="ui-card-title">Pricing & Billing</h3>
-                <dl className="ui-property-list">
-                  <div className="ui-detail-item">
-                    <dt>Unit Price</dt>
-                    <dd className="ui-price">{formatInr(job.price)}</dd>
-                  </div>
-                  <div className="ui-detail-item">
-                    <dt>Total Billing Amount</dt>
-                    <dd className="ui-price">
-                      {formatInr(
-                        job.billing_amount != null
-                          ? job.billing_amount
-                          : Math.round(job.than * job.price * 100) / 100,
-                      )}
-                    </dd>
-                  </div>
-                </dl>
-              </section>
-            </div>
-          </Card>
-        </div>
 
         <div role="tabpanel" id="subjobs-panel" aria-labelledby="subjobs-tab" hidden={activeTab !== "subjobs"}>
           <Card
@@ -426,6 +354,78 @@ export function JobDetailView({ job, employees }: JobDetailViewProps) {
                 ]}
               />
             )}
+          </Card>
+        </div>
+
+        <div role="tabpanel" id="details-panel" aria-labelledby="details-tab" hidden={activeTab !== "details"}>
+          <Card title="Job Details">
+            <div className="ui-job-details-grid ui-job-details-grid-3">
+              <section className="ui-job-details-column">
+                <h3 className="ui-card-title">Basic Information</h3>
+                <dl className="ui-property-list">
+                  <div className="ui-detail-item">
+                    <dt>Job Number</dt>
+                    <dd>{job.lot_number}</dd>
+                  </div>
+                  <div className="ui-detail-item">
+                    <dt>Kapan Number</dt>
+                    <dd>{job.kapan_number}</dd>
+                  </div>
+                  <div className="ui-detail-item">
+                    <dt>Party Name</dt>
+                    <dd>{job.party_name}</dd>
+                  </div>
+                  <div className="ui-detail-item">
+                    <dt>Sub Jobs</dt>
+                    <dd>{job.sub_jobs.length}</dd>
+                  </div>
+                  <div className="ui-detail-item">
+                    <dt>Created Date</dt>
+                    <dd>{formatDisplayDate(job.created_at)}</dd>
+                  </div>
+                </dl>
+              </section>
+              <section className="ui-job-details-column">
+                <h3 className="ui-card-title">Quantity & Metrics</h3>
+                <dl className="ui-property-list">
+                  <div className="ui-detail-item">
+                    <dt>Total Taan</dt>
+                    <dd>{formatThan(job.than)}</dd>
+                  </div>
+                  <div className="ui-detail-item">
+                    <dt>Allocated Taan</dt>
+                    <dd>{formatThan(job.allocated_than)}</dd>
+                  </div>
+                  <div className="ui-detail-item">
+                    <dt>Remaining Taan</dt>
+                    <dd>{formatThan(job.remaining_than)}</dd>
+                  </div>
+                  <div className="ui-detail-item">
+                    <dt>Total Weight</dt>
+                    <dd><WeightCt value={job.weight} /></dd>
+                  </div>
+                </dl>
+              </section>
+              <section className="ui-job-details-column">
+                <h3 className="ui-card-title">Pricing & Billing</h3>
+                <dl className="ui-property-list">
+                  <div className="ui-detail-item">
+                    <dt>Unit Price</dt>
+                    <dd className="ui-price">{formatInr(job.price)}</dd>
+                  </div>
+                  <div className="ui-detail-item">
+                    <dt>Total Billing Amount</dt>
+                    <dd className="ui-price">
+                      {formatInr(
+                        job.billing_amount != null
+                          ? job.billing_amount
+                          : Math.round(job.than * job.price * 100) / 100,
+                      )}
+                    </dd>
+                  </div>
+                </dl>
+              </section>
+            </div>
           </Card>
         </div>
       </div>

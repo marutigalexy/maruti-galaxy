@@ -73,3 +73,115 @@ describe("invoice PDF file name generator", () => {
   });
 });
 
+describe("dynamic party details on invoice bill view", () => {
+  it("has no hardcoded party or contact details in INVOICE_BILL constants", () => {
+    expect(INVOICE_BILL).not.toHaveProperty("contactName");
+    expect(INVOICE_BILL).not.toHaveProperty("phone");
+    expect(JSON.stringify(INVOICE_BILL)).not.toMatch(/Alpesh/i);
+    expect(JSON.stringify(INVOICE_BILL)).not.toMatch(/9727151214/);
+  });
+
+  it("renders all party fields when present and non-empty", async () => {
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const { InvoiceBillView } = await import("@/components/invoices/invoice-bill-view");
+
+    const html = renderToStaticMarkup(
+      InvoiceBillView({
+        partyName: "ABC Jewellers",
+        partyContactPerson: "Rajesh Bhai",
+        partyMobile: "9876543210",
+        invoiceDate: "2026-04-18",
+        invoiceNumber: "INV-1001",
+        lines: [],
+      }),
+    );
+
+    expect(html).toContain("<p>ABC Jewellers</p>");
+    expect(html).toContain("<p>Rajesh Bhai</p>");
+    expect(html).toContain("<p>9876543210</p>");
+    expect(html).not.toMatch(/Alpesh/i);
+  });
+
+  it("renders only company name and mobile when contact person is empty or null", async () => {
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const { InvoiceBillView } = await import("@/components/invoices/invoice-bill-view");
+
+    const html = renderToStaticMarkup(
+      InvoiceBillView({
+        partyName: "XYZ Gems",
+        partyContactPerson: null,
+        partyMobile: "9123456789",
+        invoiceDate: "2026-04-18",
+        invoiceNumber: "INV-1002",
+        lines: [],
+      }),
+    );
+
+    expect(html).toContain("<p>XYZ Gems</p>");
+    expect(html).toContain("<p>9123456789</p>");
+    expect(html).not.toContain("Contact Person");
+    expect(html).not.toMatch(/Alpesh/i);
+  });
+
+  it("renders only company name and contact person when mobile is empty or null", async () => {
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const { InvoiceBillView } = await import("@/components/invoices/invoice-bill-view");
+
+    const html = renderToStaticMarkup(
+      InvoiceBillView({
+        partyName: "PQR Diamonds",
+        partyContactPerson: "Suresh Patel",
+        partyMobile: null,
+        invoiceDate: "2026-04-18",
+        invoiceNumber: "INV-1003",
+        lines: [],
+      }),
+    );
+
+    expect(html).toContain("<p>PQR Diamonds</p>");
+    expect(html).toContain("<p>Suresh Patel</p>");
+    expect(html).not.toContain("Mobile");
+    expect(html).not.toMatch(/Alpesh/i);
+  });
+
+  it("renders only company name when contact person and mobile are missing", async () => {
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const { InvoiceBillView } = await import("@/components/invoices/invoice-bill-view");
+
+    const html = renderToStaticMarkup(
+      InvoiceBillView({
+        partyName: "Solo Company",
+        partyContactPerson: "  ",
+        partyMobile: "",
+        invoiceDate: "2026-04-18",
+        invoiceNumber: "INV-1004",
+        lines: [],
+      }),
+    );
+
+    expect(html).toContain("<p>Solo Company</p>");
+    expect(html).not.toMatch(/<p>\s*<\/p>/);
+    expect(html).not.toMatch(/Alpesh/i);
+  });
+
+  it("renders no top-left contact paragraphs when all party fields are empty", async () => {
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const { InvoiceBillView } = await import("@/components/invoices/invoice-bill-view");
+
+    const html = renderToStaticMarkup(
+      InvoiceBillView({
+        partyName: "",
+        partyContactPerson: null,
+        partyMobile: null,
+        invoiceDate: "2026-04-18",
+        invoiceNumber: "INV-1005",
+        lines: [],
+      }),
+    );
+
+    expect(html).toContain('<div class="invoice-bill-contact"></div>');
+    expect(html).not.toMatch(/Alpesh/i);
+  });
+});
+
+

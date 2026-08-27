@@ -74,7 +74,6 @@ export function JobCreateForm({ parties, onCancel }: JobCreateFormProps) {
           setDirty(false);
           toast.success(`Job ${outcome.data.lot_number} created.`);
           onCancel();
-          router.push(`/jobs/${outcome.data.id}`);
           router.refresh();
         });
       }}
