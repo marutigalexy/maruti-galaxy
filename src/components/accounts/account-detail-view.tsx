@@ -3,17 +3,19 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
-import { updateAccountAction } from "@/app/actions/accounts";
+import { deleteAccountAction, updateAccountAction } from "@/app/actions/accounts";
+import { deleteEntryAction } from "@/app/actions/entries";
 import { TopbarActions, TopbarStatus, useRecordTitle } from "@/components/layout/page-chrome";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Dialog } from "@/components/ui/dialog";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { FormField } from "@/components/ui/form-field";
 import { IconButton } from "@/components/ui/icon-button";
-import { EditIcon } from "@/components/ui/icons";
+import { DeleteIcon, EditIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
 import { Select } from "@/components/ui/select";
@@ -69,6 +71,9 @@ export function AccountDetailView({ account, query, entries, categories }: Accou
   const toast = useToast();
   const [pending, startTransition] = useTransition();
   const [editOpen, setEditOpen] = useState(false);
+  const [deleteAccountTarget, setDeleteAccountTarget] = useState<AccountRecord | null>(null);
+  const [cannotDeleteAccount, setCannotDeleteAccount] = useState<AccountRecord | null>(null);
+  const [deleteEntryTarget, setDeleteEntryTarget] = useState<EntryListRecord | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   useRecordTitle(account.name);
   const pushQuery = (next: ListEntriesInput) => {
@@ -86,6 +91,19 @@ export function AccountDetailView({ account, query, entries, categories }: Accou
         <StatusBadge tone={account.is_active ? "active" : "inactive"} />
       </TopbarStatus>
       <TopbarActions>
+        <IconButton
+          tone="delete"
+          label="Delete account"
+          onClick={() => {
+            if (account.entry_count > 0) {
+              setCannotDeleteAccount(account);
+            } else {
+              setDeleteAccountTarget(account);
+            }
+          }}
+        >
+          <DeleteIcon width={16} height={16} />
+        </IconButton>
         <IconButton tone="edit" label="Edit account" onClick={() => setEditOpen(true)}>
           <EditIcon width={16} height={16} />
         </IconButton>
@@ -125,117 +143,131 @@ export function AccountDetailView({ account, query, entries, categories }: Accou
           </div>
         </section>
         <Card title="Related Entries">
-        <FilterBar
-          onReset={() =>
-            pushQuery({
-              search: "",
-              entry_type: "all",
-              account_id: account.id,
-              category_id: undefined,
-              party_id: undefined,
-              employee_id: undefined,
-              date_from: undefined,
-              date_to: undefined,
-              sort: "date",
-              dir: "desc",
-              page: 1,
-              pageSize: query.pageSize,
-            })
-          }
-        >
-          <FormField label="Entry Type" htmlFor="account-entry-type">
-            <Select
-              id="account-entry-type"
-              value={query.entry_type}
-              onChange={(event) =>
-                pushQuery({
-                  ...query,
-                  entry_type: event.target.value as ListEntriesInput["entry_type"],
-                  page: 1,
-                })
-              }
-            >
-              <option value="all">All</option>
-              <option value="Income">Income</option>
-              <option value="Expense">Expense</option>
-            </Select>
-          </FormField>
-          <FormField label="Category" htmlFor="account-entry-category">
-            <Select
-              id="account-entry-category"
-              value={query.category_id ?? ""}
-              onChange={(event) =>
-                pushQuery({ ...query, category_id: event.target.value || undefined, page: 1 })
-              }
-            >
-              <option value="">All</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name} ({category.type})
-                </option>
-              ))}
-            </Select>
-          </FormField>
-          <FormField label="Date From" htmlFor="account-date-from">
-            <DatePicker
-              id="account-date-from"
-              value={query.date_from ?? ""}
-              onChange={(event) =>
-                pushQuery({ ...query, date_from: event.target.value || undefined, page: 1 })
-              }
-            />
-          </FormField>
-          <FormField label="Date To" htmlFor="account-date-to">
-            <DatePicker
-              id="account-date-to"
-              value={query.date_to ?? ""}
-              onChange={(event) =>
-                pushQuery({ ...query, date_to: event.target.value || undefined, page: 1 })
-              }
-            />
-          </FormField>
-        </FilterBar>
-        <DataTable
-          caption="Related entries"
-          columns={[
-            { key: "date", header: "Date", sortKey: "date", render: (row) => formatDisplayDate(row.entry_date) },
-            {
-              key: "type",
-              header: "Type",
-              sortKey: "type",
-              render: (row) => <StatusBadge tone={row.entry_type === "Income" ? "income" : "expense"} />,
-            },
-            { key: "category", header: "Category", render: (row) => row.category_name },
-            {
-              key: "amount",
-              header: "Amount",
-              numeric: true,
-              sortKey: "amount",
-              render: (row) => (
-                <span className={row.entry_type === "Income" ? "ui-amount-income" : "ui-amount-expense"}>
-                  {formatSignedInr(row.entry_type, row.amount)}
-                </span>
-              ),
-            },
-            { key: "remarks", header: "Remarks", render: (row) => row.remarks ?? "—" },
-          ]}
-          rows={entries.records}
-          rowKey={(row) => row.id}
-          sort={query.sort}
-          sortDir={query.dir}
-          onSort={(key) => pushQuery(nextSort(query, key))}
-          loading={queryPending}
-          emptyTitle={filtered ? "No entries match the selected filters." : "No entries yet."}
-          footer={
-            <Pagination
-              page={entries.page}
-              pageSize={entries.pageSize}
-              totalCount={entries.totalCount}
-              disabled={queryPending}
-              onPageChange={(page) => pushQuery({ ...query, page })}
-            />
-          }
-        />
+          <FilterBar
+            onReset={() =>
+              pushQuery({
+                search: "",
+                entry_type: "all",
+                account_id: account.id,
+                category_id: undefined,
+                party_id: undefined,
+                employee_id: undefined,
+                date_from: undefined,
+                date_to: undefined,
+                sort: "date",
+                dir: "desc",
+                page: 1,
+                pageSize: query.pageSize,
+              })
+            }
+          >
+            <FormField label="Entry Type" htmlFor="account-entry-type">
+              <Select
+                id="account-entry-type"
+                value={query.entry_type}
+                onChange={(event) =>
+                  pushQuery({
+                    ...query,
+                    entry_type: event.target.value as ListEntriesInput["entry_type"],
+                    page: 1,
+                  })
+                }
+              >
+                <option value="all">All</option>
+                <option value="Income">Income</option>
+                <option value="Expense">Expense</option>
+              </Select>
+            </FormField>
+            <FormField label="Category" htmlFor="account-entry-category">
+              <Select
+                id="account-entry-category"
+                value={query.category_id ?? ""}
+                onChange={(event) =>
+                  pushQuery({ ...query, category_id: event.target.value || undefined, page: 1 })
+                }
+              >
+                <option value="">All</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name} ({category.type})
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+            <FormField label="Date From" htmlFor="account-date-from">
+              <DatePicker
+                id="account-date-from"
+                value={query.date_from ?? ""}
+                onChange={(event) =>
+                  pushQuery({ ...query, date_from: event.target.value || undefined, page: 1 })
+                }
+              />
+            </FormField>
+            <FormField label="Date To" htmlFor="account-date-to">
+              <DatePicker
+                id="account-date-to"
+                value={query.date_to ?? ""}
+                onChange={(event) =>
+                  pushQuery({ ...query, date_to: event.target.value || undefined, page: 1 })
+                }
+              />
+            </FormField>
+          </FilterBar>
+          <DataTable
+            caption="Related entries"
+            columns={[
+              { key: "date", header: "Date", sortKey: "date", render: (row) => formatDisplayDate(row.entry_date) },
+              {
+                key: "type",
+                header: "Type",
+                sortKey: "type",
+                render: (row) => <StatusBadge tone={row.entry_type === "Income" ? "income" : "expense"} />,
+              },
+              { key: "category", header: "Category", render: (row) => row.category_name },
+              {
+                key: "amount",
+                header: "Amount",
+                numeric: true,
+                sortKey: "amount",
+                render: (row) => (
+                  <span className={row.entry_type === "Income" ? "ui-amount-income" : "ui-amount-expense"}>
+                    {formatSignedInr(row.entry_type, row.amount)}
+                  </span>
+                ),
+              },
+              { key: "remarks", header: "Remarks", render: (row) => row.remarks ?? "—" },
+              {
+                key: "actions",
+                header: "Actions",
+                render: (row) => (
+                  <IconButton
+                    tone="delete"
+                    label="Delete entry"
+                    disabled={pending}
+                    onClick={() => setDeleteEntryTarget(row)}
+                  >
+                    <DeleteIcon width={16} height={16} />
+                  </IconButton>
+                ),
+              },
+            ]}
+            rows={entries.records}
+            rowKey={(row) => row.id}
+            sort={query.sort}
+            sortDir={query.dir}
+            onSort={(key) => pushQuery(nextSort(query, key))}
+            loading={queryPending}
+            emptyTitle={filtered ? "No entries match the selected filters." : "No entries yet."}
+            footer={
+              <Pagination
+                page={entries.page}
+                pageSize={entries.pageSize}
+                totalCount={entries.totalCount}
+                disabled={queryPending}
+                onPageChange={(page) => pushQuery({ ...query, page })}
+              />
+            }
+          />
         </Card>
       </div>
       <Dialog
@@ -321,6 +353,95 @@ export function AccountDetailView({ account, query, entries, categories }: Accou
           </div>
         </form>
       </Dialog>
+
+      <Dialog
+        open={Boolean(cannotDeleteAccount)}
+        title="Cannot Delete Account"
+        onClose={() => setCannotDeleteAccount(null)}
+        disableClose={pending}
+        footer={
+          <div className="ui-dialog-actions">
+            <Button
+              variant="primary"
+              disabled={pending}
+              onClick={() => setCannotDeleteAccount(null)}
+            >
+              Close
+            </Button>
+          </div>
+        }
+      >
+        {cannotDeleteAccount ? (
+          <div className="ui-account-blocked-dialog">
+            <p>
+              <strong>{cannotDeleteAccount.name}</strong> cannot be deleted because it has{" "}
+              <strong>{cannotDeleteAccount.entry_count} transaction records</strong> linked to it.
+            </p>
+            <div className="ui-account-blocked-summary">
+              <p><strong>Total In:</strong> {formatSignedInr("Income", cannotDeleteAccount.total_in)}</p>
+              <p><strong>Total Out:</strong> {formatSignedInr("Expense", cannotDeleteAccount.total_out)}</p>
+              <p><strong>Current Balance:</strong> {formatSignedInr(cannotDeleteAccount.current_balance >= 0 ? "Income" : "Expense", Math.abs(cannotDeleteAccount.current_balance))}</p>
+            </div>
+            <p className="ui-account-blocked-note">
+              Deleting an account with existing transactions would cause accounting discrepancies and orphaned ledger entries. To remove this account, delete its linked entries first, or deactivate the account instead.
+            </p>
+          </div>
+        ) : null}
+      </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(deleteAccountTarget)}
+        title="Delete Account?"
+        description={
+          deleteAccountTarget
+            ? `Are you sure you want to permanently delete "${deleteAccountTarget.name}"? This action cannot be undone.`
+            : ""
+        }
+        confirmLabel="Delete"
+        danger
+        pending={pending}
+        onCancel={() => setDeleteAccountTarget(null)}
+        onConfirm={() => {
+          if (!deleteAccountTarget) return;
+          startTransition(async () => {
+            const outcome = await deleteAccountAction({ id: deleteAccountTarget.id });
+            if (!outcome.ok) {
+              toast.error(outcome.error.message);
+              return;
+            }
+            setDeleteAccountTarget(null);
+            toast.success("Account deleted successfully.");
+            router.push("/accounting/accounts");
+          });
+        }}
+      />
+
+      <ConfirmDialog
+        open={Boolean(deleteEntryTarget)}
+        title="Delete Entry?"
+        description={
+          deleteEntryTarget
+            ? `Are you sure you want to delete this ${deleteEntryTarget.entry_type.toLowerCase()} entry of ${formatSignedInr(deleteEntryTarget.entry_type, deleteEntryTarget.amount)}? Any linked invoice allocations and account balances will be automatically recalculated.`
+            : ""
+        }
+        confirmLabel="Delete"
+        danger
+        pending={pending}
+        onCancel={() => setDeleteEntryTarget(null)}
+        onConfirm={() => {
+          if (!deleteEntryTarget) return;
+          startTransition(async () => {
+            const outcome = await deleteEntryAction({ id: deleteEntryTarget.id });
+            if (!outcome.ok) {
+              toast.error(outcome.error.message);
+              return;
+            }
+            setDeleteEntryTarget(null);
+            toast.success("Entry deleted successfully.");
+            router.refresh();
+          });
+        }}
+      />
     </>
   );
 }

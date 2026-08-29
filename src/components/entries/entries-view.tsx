@@ -385,11 +385,9 @@ export function EntriesView({
                     <AllocateIcon width={16} height={16} />
                   </IconButton>
                 ) : null}
-                {row.allocated === 0 ? (
-                  <IconButton tone="delete" label="Delete entry" onClick={() => setDeleteEntry(row)}>
-                    <DeleteIcon width={16} height={16} />
-                  </IconButton>
-                ) : null}
+                <IconButton tone="delete" label="Delete entry" onClick={() => setDeleteEntry(row)}>
+                  <DeleteIcon width={16} height={16} />
+                </IconButton>
               </TableActions>
             ),
           },
@@ -664,6 +662,18 @@ export function EntriesView({
               </p>
             ) : null}
             <div className="ui-dialog-actions">
+              <Button
+                variant="danger"
+                type="button"
+                disabled={pending}
+                onClick={() => {
+                  const toDel = editEntry;
+                  setEditEntry(null);
+                  setDeleteEntry(toDel);
+                }}
+              >
+                Delete
+              </Button>
               <Button variant="ghost" disabled={pending} onClick={() => setEditEntry(null)}>
                 Cancel
               </Button>
@@ -781,7 +791,7 @@ export function EntriesView({
         title="Delete Entry?"
         description={
           deleteEntry
-            ? "This entry will be permanently deleted. Entries with invoice allocations cannot be deleted."
+            ? `Are you sure you want to delete this ${deleteEntry.entry_type.toLowerCase()} entry of ${formatInr(deleteEntry.amount)}? Any linked invoice allocations and account balances will be automatically recalculated and adjusted.`
             : ""
         }
         confirmLabel="Delete"

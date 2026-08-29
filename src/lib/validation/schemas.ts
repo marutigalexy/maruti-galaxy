@@ -78,6 +78,16 @@ export const signedMoneySchema = z
     return Number.isFinite(num) && num >= -999_999_999.99 && num <= 999_999_999.99;
   }, "Opening balance is out of range.");
 
+export const optionalSignedMoneySchema = z.preprocess(
+  (value) => {
+    if (value === "" || value === null || value === undefined) {
+      return "0.00";
+    }
+    return value;
+  },
+  signedMoneySchema,
+);
+
 export const optionalTextSchema = z
   .string()
   .trim()

@@ -3,17 +3,19 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+import { deleteEntryAction } from "@/app/actions/entries";
 import { updateEmployeeAction } from "@/app/actions/employees";
 import { EmployeePaymentDialog } from "@/components/employees/employee-payment-dialog";
 import { TopbarActions, TopbarStatus, useRecordTitle } from "@/components/layout/page-chrome";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ClientTabs } from "@/components/ui/client-tabs";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
 import { FormField } from "@/components/ui/form-field";
 import { IconButton } from "@/components/ui/icon-button";
-import { EditIcon } from "@/components/ui/icons";
+import { DeleteIcon, EditIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { JobTypeBadge } from "@/components/ui/job-type-badge";
 import { Select } from "@/components/ui/select";
@@ -57,6 +59,7 @@ export function EmployeeDetailView({ employee, summary, accounts, categories }: 
   const toast = useToast();
   const [pending, startTransition] = useTransition();
   const [editOpen, setEditOpen] = useState(false);
+  const [deletePaymentTarget, setDeletePaymentTarget] = useState<EmployeePaymentRow | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>("work");
   useRecordTitle(employee.name, employee.mobile_number);
@@ -212,6 +215,25 @@ export function EmployeeDetailView({ employee, summary, accounts, categories }: 
                     <span className={paymentAmountClass(row)}>{formatInr(row.amount)}</span>
                   ),
                 },
+                {
+                  key: "actions",
+                  header: "Actions",
+                  render: (row) => (
+                    <div
+                      style={{ display: "flex", alignItems: "center", gap: "4px" }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <IconButton
+                        tone="delete"
+                        label="Delete payment entry"
+                        disabled={pending}
+                        onClick={() => setDeletePaymentTarget(row)}
+                      >
+                        <DeleteIcon width={16} height={16} />
+                      </IconButton>
+                    </div>
+                  ),
+                },
               ]}
               rows={summary.payments}
               rowKey={(row) => row.id}
@@ -329,6 +351,33 @@ export function EmployeeDetailView({ employee, summary, accounts, categories }: 
           </form>
         ) : null}
       </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(deletePaymentTarget)}
+        title="Delete Payment Entry?"
+        description={
+          deletePaymentTarget
+            ? `Are you sure you want to delete this payment of ${formatInr(deletePaymentTarget.amount)}? The employee remaining balance and account balance will be automatically recalculated.`
+            : ""
+        }
+        confirmLabel="Delete"
+        danger
+        pending={pending}
+        onCancel={() => setDeletePaymentTarget(null)}
+        onConfirm={() => {
+          if (!deletePaymentTarget) return;
+          startTransition(async () => {
+            const outcome = await deleteEntryAction({ id: deletePaymentTarget.id });
+            if (!outcome.ok) {
+              toast.error(outcome.error.message);
+              return;
+            }
+            setDeletePaymentTarget(null);
+            toast.success("Payment entry deleted successfully.");
+            router.refresh();
+          });
+        }}
+      />
     </>
   );
 }

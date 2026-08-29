@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import {
   listQuerySchema,
+  optionalSignedMoneySchema,
   signedMoneySchema,
   uuidSchema,
 } from "@/lib/validation/schemas";
@@ -14,7 +15,7 @@ export const accountNameSchema = z
 
 export const createAccountSchema = z.object({
   name: accountNameSchema,
-  opening_balance: signedMoneySchema,
+  opening_balance: optionalSignedMoneySchema.optional().default("0.00"),
   is_active: z.boolean().optional().default(true),
 });
 

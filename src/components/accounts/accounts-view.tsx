@@ -58,6 +58,7 @@ export function AccountsView({ query, result }: AccountsViewProps) {
   const [editAccount, setEditAccount] = useState<AccountRecord | null>(null);
   const [deactivateAccount, setDeactivateAccount] = useState<AccountRecord | null>(null);
   const [deleteAccount, setDeleteAccount] = useState<AccountRecord | null>(null);
+  const [cannotDeleteAccount, setCannotDeleteAccount] = useState<AccountRecord | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
   const pushQuery = (next: ListAccountsInput) => {
@@ -196,11 +197,19 @@ export function AccountsView({ query, result }: AccountsViewProps) {
                     <PowerIcon width={16} height={16} />
                   </IconButton>
                 )}
-                {row.entry_count === 0 ? (
-                  <IconButton tone="delete" label="Delete account" onClick={() => setDeleteAccount(row)}>
-                    <DeleteIcon width={16} height={16} />
-                  </IconButton>
-                ) : null}
+                <IconButton
+                  tone="delete"
+                  label="Delete account"
+                  onClick={() => {
+                    if (row.entry_count > 0) {
+                      setCannotDeleteAccount(row);
+                    } else {
+                      setDeleteAccount(row);
+                    }
+                  }}
+                >
+                  <DeleteIcon width={16} height={16} />
+                </IconButton>
               </TableActions>
             ),
           },
@@ -260,15 +269,14 @@ export function AccountsView({ query, result }: AccountsViewProps) {
                 placeholder="e.g. HDFC Current"
               />
             </FormField>
-            <FormField label="Opening Balance" htmlFor="create-opening" required>
+            <FormField label="Opening Balance" htmlFor="create-opening">
               <Input
                 id="create-opening"
                 name="opening_balance"
                 inputMode="decimal"
-                required
-                defaultValue="0.00"
+                defaultValue=""
                 disabled={pending}
-                placeholder="e.g. 0.00"
+                placeholder="e.g. 0.00 (optional)"
                 onInput={(e) => {
                   e.currentTarget.value = signedDecimalOnly(e.currentTarget.value, 2);
                 }}
@@ -394,12 +402,60 @@ export function AccountsView({ query, result }: AccountsViewProps) {
         }}
       />
 
+      <Dialog
+        open={Boolean(cannotDeleteAccount)}
+        title="Cannot Delete Account"
+        onClose={() => setCannotDeleteAccount(null)}
+        disableClose={pending}
+        footer={
+          <div className="ui-dialog-actions">
+            {cannotDeleteAccount?.is_active ? (
+              <Button
+                variant="secondary"
+                disabled={pending}
+                onClick={() => {
+                  const acc = cannotDeleteAccount;
+                  setCannotDeleteAccount(null);
+                  setDeactivateAccount(acc);
+                }}
+              >
+                Deactivate Instead
+              </Button>
+            ) : null}
+            <Button
+              variant="primary"
+              disabled={pending}
+              onClick={() => setCannotDeleteAccount(null)}
+            >
+              Close
+            </Button>
+          </div>
+        }
+      >
+        {cannotDeleteAccount ? (
+          <div className="ui-account-blocked-dialog">
+            <p>
+              <strong>{cannotDeleteAccount.name}</strong> cannot be deleted because it has{" "}
+              <strong>{cannotDeleteAccount.entry_count} transaction records</strong> linked to it.
+            </p>
+            <div className="ui-account-blocked-summary">
+              <p><strong>Total In:</strong> {formatSignedInr("Income", cannotDeleteAccount.total_in)}</p>
+              <p><strong>Total Out:</strong> {formatSignedInr("Expense", cannotDeleteAccount.total_out)}</p>
+              <p><strong>Current Balance:</strong> {formatSignedInr(cannotDeleteAccount.current_balance >= 0 ? "Income" : "Expense", Math.abs(cannotDeleteAccount.current_balance))}</p>
+            </div>
+            <p className="ui-account-blocked-note">
+              Deleting an account with existing transactions would cause accounting discrepancies and orphaned ledger entries. To remove this account, delete its linked entries first, or deactivate the account instead.
+            </p>
+          </div>
+        ) : null}
+      </Dialog>
+
       <ConfirmDialog
         open={Boolean(deleteAccount)}
         title="Delete Account?"
         description={
           deleteAccount
-            ? `${deleteAccount.name} will be permanently deleted. Accounts with entries cannot be deleted.`
+            ? `Are you sure you want to permanently delete "${deleteAccount.name}"? This action cannot be undone.`
             : ""
         }
         confirmLabel="Delete"

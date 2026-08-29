@@ -227,9 +227,9 @@ describe("entry and allocation security", () => {
     expect(allocations).not.toMatch(/planFifoAllocations/);
   });
 
-  it("blocks allocated amount/type edits and deletes", () => {
+  it("blocks allocated amount/type edits and provides automatic recalculation on delete", () => {
     expect(service).toMatch(/Remove invoice allocations before changing this entry amount or type/);
-    expect(service).toMatch(/Remove invoice allocations before deleting this entry/);
+    expect(service).toMatch(/deleteEntry/);
     expect(view).toMatch(/id="edit-amount"[\s\S]*disabled=\{pending\}[\s\S]*readOnly=\{editEntry\.allocated > 0\}/);
     expect(view).not.toMatch(/edit-party/);
     expect(view).not.toMatch(/edit-employee/);

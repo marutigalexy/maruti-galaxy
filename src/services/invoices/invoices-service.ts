@@ -548,3 +548,68 @@ export async function getInvoice(id: string): Promise<InvoiceDetail> {
     })),
   };
 }
+
+export async function deleteInvoice(id: string): Promise<{ ok: true; id: string }> {
+  await requireActiveAdmin();
+  const supabase = await createSupabaseServerClient();
+
+  // Validate that invoice exists and is unpaid with 0 allocations
+  const { data: invoice, error: invoiceError } = await supabase
+    .from("invoices")
+    .select("id, status")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (invoiceError) {
+    throw new AppError("INTERNAL", "Unable to load invoice.");
+  }
+
+  if (!invoice) {
+    throw new AppError("NOT_FOUND", "Invoice was not found.");
+  }
+
+  const outstanding = await getInvoiceOutstanding(id);
+  if (outstanding.allocated > 0 || outstanding.status !== "Unpaid") {
+    throw new AppError(
+      "INTEGRITY",
+      "Only pending/unpaid invoices can be deleted. Invoices with payment records cannot be deleted.",
+    );
+  }
+
+  // Attempt RPC first, fallback to table deletes
+  const { error: rpcError } = await supabase.rpc("delete_invoice", { p_invoice_id: id });
+  if (rpcError) {
+    if (rpcError.message.includes("INVOICE_NOT_PENDING")) {
+      throw new AppError(
+        "INTEGRITY",
+        "Only pending/unpaid invoices can be deleted. Invoices with payment records cannot be deleted.",
+      );
+    }
+    if (rpcError.message.includes("INVOICE_NOT_FOUND")) {
+      throw new AppError("NOT_FOUND", "Invoice was not found.");
+    }
+
+    const { error: ijError } = await supabase.from("invoice_jobs").delete().eq("invoice_id", id);
+    if (ijError) {
+      throw new AppError("INTERNAL", "Unable to delete invoice jobs links.");
+    }
+
+    const { data: delData, error: delError } = await supabase
+      .from("invoices")
+      .delete()
+      .eq("id", id)
+      .select("id")
+      .maybeSingle();
+
+    if (delError) {
+      throw delError;
+    }
+
+    if (!delData) {
+      throw new AppError("NOT_FOUND", "Invoice was not found.");
+    }
+  }
+
+  return { ok: true, id };
+}
+

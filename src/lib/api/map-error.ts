@@ -27,6 +27,8 @@ const RPC_MESSAGES: Record<string, string> = {
   INVOICE_NUMBER_IMMUTABLE: "Invoice number cannot be changed.",
   INVOICE_JOB_IMMUTABLE: "Invoice job cannot be changed.",
   INVOICE_ALREADY_EXISTS: "One or more selected jobs already have an invoice.",
+  INVOICE_NOT_PENDING: "Only pending/unpaid invoices can be deleted. Invoices with payment records cannot be deleted.",
+  ACCOUNT_HAS_ENTRIES: "This account has existing transaction entries and cannot be deleted.",
   VALIDATION_FAILED: "Invalid input.",
   EMPLOYEE_INACTIVE: "Cannot record work for an inactive employee.",
   PARTY_NOT_FOUND: "Party was not found.",

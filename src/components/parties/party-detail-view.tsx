@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition, useEffect } from "react";
 
+import { deleteEntryAction } from "@/app/actions/entries";
+import { deleteInvoiceAction } from "@/app/actions/invoices";
 import { updatePartyAction } from "@/app/actions/parties";
 import { TopbarActions, TopbarStatus, useRecordTitle } from "@/components/layout/page-chrome";
 import { PartyPaymentDialog } from "@/components/parties/party-payment-dialog";
@@ -12,11 +14,12 @@ import { InvoicePrintButton } from "@/components/invoices/invoice-print-button";
 import { ClientTabs } from "@/components/ui/client-tabs";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
 import { FormField } from "@/components/ui/form-field";
 import { IconButton } from "@/components/ui/icon-button";
-import { EditIcon } from "@/components/ui/icons";
+import { DeleteIcon, EditIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { WeightCt } from "@/components/ui/weight-ct";
@@ -25,7 +28,13 @@ import { formatInr, formatSignedInr, formatThan } from "@/lib/formatters";
 import { decimalOnly, digitsOnly } from "@/lib/ui/input-filters";
 import type { AccountOption } from "@/services/accounts/accounts-service";
 import type { CategoryOption } from "@/services/categories/categories-service";
-import type { PartyInvoiceRow, PartyJobRow, PartyRecord, PartySummary } from "@/services/parties/parties-service";
+import type {
+  PartyInvoiceRow,
+  PartyJobRow,
+  PartyPaymentRow,
+  PartyRecord,
+  PartySummary,
+} from "@/services/parties/parties-service";
 
 type PartyDetailViewProps = {
   party: PartyRecord;
@@ -65,6 +74,9 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
   const [pending, startTransition] = useTransition();
   const [editOpen, setEditOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<PartyInvoiceRow | null>(null);
+  const [deleteInvoiceTarget, setDeleteInvoiceTarget] = useState<PartyInvoiceRow | null>(null);
+  const [cannotDeleteInvoiceTarget, setCannotDeleteInvoiceTarget] = useState<PartyInvoiceRow | null>(null);
+  const [deleteEntryTarget, setDeleteEntryTarget] = useState<PartyPaymentRow | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>(() => {
     if (typeof window !== "undefined") {
@@ -263,8 +275,24 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
                   key: "actions",
                   header: "Actions",
                   render: (row) => (
-                    <div onClick={(e) => e.stopPropagation()}>
+                    <div
+                      style={{ display: "flex", alignItems: "center", gap: "4px" }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <InvoicePrintButton variant="icon" invoiceId={row.id} />
+                      <IconButton
+                        tone="delete"
+                        label="Delete invoice"
+                        onClick={() => {
+                          if (row.status === "Unpaid" && row.allocated === 0) {
+                            setDeleteInvoiceTarget(row);
+                          } else {
+                            setCannotDeleteInvoiceTarget(row);
+                          }
+                        }}
+                      >
+                        <DeleteIcon width={16} height={16} />
+                      </IconButton>
                     </div>
                   ),
                 },
@@ -318,6 +346,24 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
                   key: "remarks",
                   header: "Remarks",
                   render: (row) => row.remarks ?? "—",
+                },
+                {
+                  key: "actions",
+                  header: "Actions",
+                  render: (row) => (
+                    <div
+                      style={{ display: "flex", alignItems: "center", gap: "4px" }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <IconButton
+                        tone="delete"
+                        label="Delete payment entry"
+                        onClick={() => setDeleteEntryTarget(row)}
+                      >
+                        <DeleteIcon width={16} height={16} />
+                      </IconButton>
+                    </div>
+                  ),
                 },
               ]}
               rows={summary.payments ?? []}
@@ -434,6 +480,90 @@ export function PartyDetailView({ party, summary, accounts, categories }: PartyD
         partyId={party.id}
         onClose={() => setSelectedInvoice(null)}
       />
+
+      <ConfirmDialog
+        open={Boolean(deleteInvoiceTarget)}
+        title="Delete Invoice?"
+        description={
+          deleteInvoiceTarget
+            ? `Are you sure you want to delete invoice ${deleteInvoiceTarget.invoice_number}? This will permanently delete the invoice and unlink its ${deleteInvoiceTarget.lot_numbers.length} jobs so they can be invoiced again.`
+            : ""
+        }
+        confirmLabel="Delete"
+        danger
+        pending={pending}
+        onCancel={() => setDeleteInvoiceTarget(null)}
+        onConfirm={() => {
+          if (!deleteInvoiceTarget) return;
+          startTransition(async () => {
+            const outcome = await deleteInvoiceAction({ id: deleteInvoiceTarget.id });
+            if (!outcome.ok) {
+              toast.error(outcome.error.message);
+              return;
+            }
+            setDeleteInvoiceTarget(null);
+            toast.success("Invoice deleted successfully.");
+            router.refresh();
+          });
+        }}
+      />
+
+      <ConfirmDialog
+        open={Boolean(deleteEntryTarget)}
+        title="Delete Payment Entry?"
+        description={
+          deleteEntryTarget
+            ? `Are you sure you want to delete this payment of ${formatInr(deleteEntryTarget.amount)}? Related invoice allocations, outstanding balances, and account balances will be automatically recalculated.`
+            : ""
+        }
+        confirmLabel="Delete"
+        danger
+        pending={pending}
+        onCancel={() => setDeleteEntryTarget(null)}
+        onConfirm={() => {
+          if (!deleteEntryTarget) return;
+          startTransition(async () => {
+            const outcome = await deleteEntryAction({ id: deleteEntryTarget.id });
+            if (!outcome.ok) {
+              toast.error(outcome.error.message);
+              return;
+            }
+            setDeleteEntryTarget(null);
+            toast.success("Payment entry deleted successfully.");
+            router.refresh();
+          });
+        }}
+      />
+      <Dialog
+        open={Boolean(cannotDeleteInvoiceTarget)}
+        title="Cannot Delete Invoice"
+        onClose={() => setCannotDeleteInvoiceTarget(null)}
+        disableClose={pending}
+        footer={
+          <div className="ui-dialog-actions">
+            <Button
+              variant="primary"
+              disabled={pending}
+              onClick={() => setCannotDeleteInvoiceTarget(null)}
+            >
+              Close
+            </Button>
+          </div>
+        }
+      >
+        {cannotDeleteInvoiceTarget ? (
+          <div className="ui-account-blocked-dialog">
+            <p>
+              <strong>Invoice {cannotDeleteInvoiceTarget.invoice_number}</strong> cannot be deleted because its status is{" "}
+              <strong>{cannotDeleteInvoiceTarget.status}</strong> with{" "}
+              <strong>{formatInr(cannotDeleteInvoiceTarget.allocated)}</strong> in payment allocations.
+            </p>
+            <p className="ui-account-blocked-note">
+              Only pending/unpaid invoices with 0 payment allocations can be deleted. To delete this invoice, delete its related payment entries first.
+            </p>
+          </div>
+        ) : null}
+      </Dialog>
     </>
   );
 }

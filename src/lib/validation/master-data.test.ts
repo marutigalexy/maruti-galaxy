@@ -114,7 +114,7 @@ describe("employee schemas", () => {
 });
 
 describe("account schemas", () => {
-  it("requires a unique-name-ready account name and signed opening balance", () => {
+  it("requires a unique-name-ready account name and allows optional signed opening balance", () => {
     expect(() =>
       parseOrThrow(createAccountSchema, { name: "", opening_balance: "0" }),
     ).toThrow(/Account Name is required/);
@@ -122,6 +122,16 @@ describe("account schemas", () => {
     expect(parseOrThrow(createAccountSchema, { name: "Cash", opening_balance: "-10.25" })).toMatchObject({
       name: "Cash",
       opening_balance: "-10.25",
+    });
+
+    expect(parseOrThrow(createAccountSchema, { name: "Cash" })).toMatchObject({
+      name: "Cash",
+      opening_balance: "0.00",
+    });
+
+    expect(parseOrThrow(createAccountSchema, { name: "Cash", opening_balance: "" })).toMatchObject({
+      name: "Cash",
+      opening_balance: "0.00",
     });
 
     expect(() =>

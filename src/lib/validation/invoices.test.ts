@@ -115,7 +115,7 @@ describe("invoice read security", () => {
     "utf8",
   );
 
-  it("uses a JWT service with derived outstanding and an explicit create RPC", () => {
+  it("uses a JWT service with derived outstanding, create RPC, and delete RPC", () => {
     expect(service).toMatch(/from\("v_invoice_outstanding"\)/);
     expect(service).toMatch(/derived_status/);
     expect(service).toMatch(/from\("entry_invoice_allocations"\)/);
@@ -123,18 +123,18 @@ describe("invoice read security", () => {
     expect(service).not.toMatch(/createSupabaseAdminClient/);
     expect(service).not.toMatch(/\.insert\(/);
     expect(service).not.toMatch(/\.update\(/);
-    expect(service).not.toMatch(/\.delete\(/);
     expect(service).toMatch(/rpc\("create_invoice_for_job/);
+    expect(service).toMatch(/deleteInvoice/);
     expect(service.match(/await requireActiveAdmin\(\)/g)?.length).toBeGreaterThanOrEqual(3);
   });
 
-  it("exposes only invoice creation and read actions", () => {
+  it("exposes invoice creation, read, and delete actions", () => {
     expect(actions).toMatch(/parseOrThrow\(listInvoicesSchema/);
     expect(actions).toMatch(/parseOrThrow\(invoiceIdSchema/);
     expect(actions).toMatch(/parseOrThrow\(createInvoiceSchema/);
     expect(actions).toMatch(/createInvoiceAction/);
+    expect(actions).toMatch(/deleteInvoiceAction/);
     expect(actions).not.toMatch(/updateInvoice/);
-    expect(actions).not.toMatch(/deleteInvoice/);
   });
 
   it("keeps one invoice per job and stores amount as than × price", () => {

@@ -728,6 +728,14 @@ export type Database = {
         Args: { p_invoice_id: string };
         Returns: Database["public"]["Enums"]["invoice_status"];
       };
+      delete_invoice: {
+        Args: { p_invoice_id: string };
+        Returns: undefined;
+      };
+      delete_entry: {
+        Args: { p_entry_id: string };
+        Returns: undefined;
+      };
       dashboard_kpis: {
         Args: { p_from: string; p_to: string };
         Returns: {

@@ -4809,3 +4809,31 @@ a {
   gap: 4px;
   flex-wrap: wrap;
 }
+
+.ui-account-blocked-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-normal);
+}
+
+.ui-account-blocked-summary {
+  background: var(--color-surface-hover);
+  padding: var(--space-12);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.ui-account-blocked-summary p {
+  margin: 0 0 var(--space-4) 0;
+}
+
+.ui-account-blocked-summary p:last-child {
+  margin: 0;
+}
+
+.ui-account-blocked-note {
+  color: var(--color-secondary-text);
+  margin: 0;
+}

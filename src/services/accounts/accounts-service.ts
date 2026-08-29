@@ -171,11 +171,13 @@ export async function listAccountEntries(id: string): Promise<AccountEntryRow[]>
 export async function createAccount(input: CreateAccountInput): Promise<AccountRecord> {
   await requireActiveAdmin();
   const supabase = await createSupabaseServerClient();
+  const openingBalance = input.opening_balance ? asMoneyNumber(input.opening_balance) : 0;
+
   const { data, error } = await supabase
     .from("accounts")
     .insert({
       name: input.name,
-      opening_balance: asMoneyNumber(input.opening_balance),
+      opening_balance: openingBalance,
       is_active: input.is_active,
     })
     .select("id")
@@ -240,11 +242,14 @@ export async function setAccountActive(input: SetAccountActiveInput): Promise<Ac
   return getAccountRow(data.id);
 }
 
-export async function deleteAccount(id: string): Promise<{ ok: true }> {
+export async function deleteAccount(id: string): Promise<{ ok: true; id: string }> {
   await requireActiveAdmin();
   const existing = await getAccountRow(id);
   if (existing.entry_count > 0) {
-    throw new AppError("INTEGRITY", "This account has entries and cannot be deleted.");
+    throw new AppError(
+      "INTEGRITY",
+      `Cannot delete account "${existing.name}": It has ${existing.entry_count} transaction records linked to it (Total In: ₹${existing.total_in.toFixed(2)}, Total Out: ₹${existing.total_out.toFixed(2)}). Delete or reassign all linked entries before deleting this account, or deactivate it instead.`,
+    );
   }
 
   const supabase = await createSupabaseServerClient();
@@ -263,7 +268,7 @@ export async function deleteAccount(id: string): Promise<{ ok: true }> {
     throw new AppError("NOT_FOUND", "Account was not found.");
   }
 
-  return { ok: true };
+  return { ok: true, id };
 }
 
 export type AccountOption = {

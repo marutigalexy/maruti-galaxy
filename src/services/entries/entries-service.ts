@@ -420,25 +420,61 @@ export async function updateEntry(input: UpdateEntryInput): Promise<EntryDetail>
   return getEntry(data.id);
 }
 
-export async function deleteEntry(id: string): Promise<{ ok: true }> {
+export async function deleteEntry(id: string): Promise<{ ok: true; id: string }> {
   await requireActiveAdmin();
-  const existing = await getEntry(id);
-  if (existing.allocated > 0) {
-    throw new AppError("INTEGRITY", "Remove invoice allocations before deleting this entry.");
-  }
-
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.from("entries").delete().eq("id", id).select("id").maybeSingle();
 
-  if (error) {
-    throw error;
+  // Attempt atomic RPC first
+  const { error: rpcError } = await supabase.rpc("delete_entry", { p_entry_id: id });
+  if (rpcError) {
+    if (rpcError.message.includes("ENTRY_NOT_FOUND")) {
+      throw new AppError("NOT_FOUND", "Entry was not found.");
+    }
+
+    // Fallback: find allocations, clear them, re-evaluate invoice statuses, and delete entry
+    const { data: allocations, error: allocError } = await supabase
+      .from("entry_invoice_allocations")
+      .select("invoice_id")
+      .eq("entry_id", id);
+
+    if (allocError) {
+      throw new AppError("INTERNAL", "Unable to load entry allocations.");
+    }
+
+    const affectedInvoiceIds = uniqueIds((allocations ?? []).map((a) => a.invoice_id));
+
+    if (affectedInvoiceIds.length > 0) {
+      const { error: delAllocError } = await supabase
+        .from("entry_invoice_allocations")
+        .delete()
+        .eq("entry_id", id);
+
+      if (delAllocError) {
+        throw new AppError("INTERNAL", "Unable to remove entry allocations.");
+      }
+
+      for (const invoiceId of affectedInvoiceIds) {
+        await supabase.rpc("set_invoice_status_from_allocations", { p_invoice_id: invoiceId });
+      }
+    }
+
+    const { data, error } = await supabase
+      .from("entries")
+      .delete()
+      .eq("id", id)
+      .select("id")
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data) {
+      throw new AppError("NOT_FOUND", "Entry was not found.");
+    }
   }
 
-  if (!data) {
-    throw new AppError("NOT_FOUND", "Entry was not found.");
-  }
-
-  return { ok: true };
+  return { ok: true, id };
 }
 
 export async function exportEntriesXlsx(input: ListEntriesInput): Promise<{ buffer: Buffer; count: number }> {

@@ -11,6 +11,7 @@ import {
   getInvoiceOutstanding,
   listInvoices,
   createInvoice,
+  deleteInvoice,
   type InvoiceDetail,
   type InvoiceListRecord,
   type InvoiceOutstanding,
@@ -49,3 +50,13 @@ export async function getInvoiceOutstandingAction(
     return getInvoiceOutstanding(parsed.id);
   });
 }
+
+export async function deleteInvoiceAction(input: unknown): Promise<ActionResult<{ ok: true; id: string }>> {
+  return runAction(async () => {
+    const parsed = parseOrThrow(invoiceIdSchema, input);
+    const result = await deleteInvoice(parsed.id);
+    revalidatePaths(MutationPaths.invoices);
+    return result;
+  });
+}
+
