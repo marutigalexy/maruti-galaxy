@@ -278,7 +278,7 @@ export async function listJobs(input: ListJobsInput): Promise<Paginated<JobListR
   let query = supabase
     .from("job_works")
     .select(JOB_LIST_COLUMNS, { count: "exact" })
-    .order("created_at", { ascending: false })
+    .order("lot_number", { ascending: false })
     .range(offset, offset + input.pageSize - 1);
 
   if (allowedIds) {
@@ -668,6 +668,18 @@ export async function createJob(input: CreateJobInput): Promise<JobDetail> {
     p_billing_amount: billingValue,
   });
 
+  const selectedDate = input.job_date ?? input.date ?? input.created_at;
+  if (selectedDate) {
+    const isoTimestamp = selectedDate.includes("T")
+      ? selectedDate
+      : `${selectedDate}T12:00:00.000Z`;
+
+    await supabase
+      .from("job_works")
+      .update({ created_at: isoTimestamp })
+      .eq("id", created.job_id);
+  }
+
   return getJob(created.job_id);
 }
 
@@ -706,6 +718,18 @@ export async function updateJob(input: UpdateJobInput): Promise<JobDetail> {
     p_job_id: updated.job_id,
     p_billing_amount: billingValue,
   });
+
+  const selectedDate = input.job_date ?? input.date ?? input.created_at;
+  if (selectedDate) {
+    const isoTimestamp = selectedDate.includes("T")
+      ? selectedDate
+      : `${selectedDate}T12:00:00.000Z`;
+
+    await supabase
+      .from("job_works")
+      .update({ created_at: isoTimestamp })
+      .eq("id", updated.job_id);
+  }
 
   return getJob(updated.job_id);
 }

@@ -6,6 +6,7 @@ import { useMemo, useState, useTransition } from "react";
 
 import { createJobAction } from "@/app/actions/jobs";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -20,6 +21,13 @@ type JobCreateFormProps = {
 };
 
 const ACTIVE_PARTIES_EMPTY = "Add an active party before creating a job.";
+
+function todayIso(): string {
+  const now = new Date();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${m}-${d}`;
+}
 
 export function JobCreateForm({ parties, onCancel }: JobCreateFormProps) {
   const router = useRouter();
@@ -60,6 +68,7 @@ export function JobCreateForm({ parties, onCancel }: JobCreateFormProps) {
         startTransition(async () => {
           const outcome = await createJobAction({
             party_id: String(form.get("party_id") ?? ""),
+            job_date: String(form.get("job_date") ?? ""),
             than: String(form.get("than") ?? ""),
             price: String(form.get("price") ?? ""),
             kapan_number: String(form.get("kapan_number") ?? ""),
@@ -79,7 +88,7 @@ export function JobCreateForm({ parties, onCancel }: JobCreateFormProps) {
       }}
       onChange={() => setDirty(true)}
     >
-      <FormField label="Party" htmlFor="job-party" required>
+      <FormField className="ui-job-form-full" label="Party" htmlFor="job-party" required>
         <Select
           id="job-party"
           name="party_id"
@@ -101,14 +110,6 @@ export function JobCreateForm({ parties, onCancel }: JobCreateFormProps) {
               {party.company_name}
             </option>
           ))}
-        </Select>
-      </FormField>
-
-      <FormField label="Status" htmlFor="job-status" required>
-        <Select id="job-status" name="status" required disabled={pending} defaultValue="Pending">
-          <option value="Pending">Pending</option>
-          <option value="Progress">Progress</option>
-          <option value="Completed">Completed</option>
         </Select>
       </FormField>
 
@@ -163,6 +164,24 @@ export function JobCreateForm({ parties, onCancel }: JobCreateFormProps) {
             e.currentTarget.value = decimalOnly(e.currentTarget.value, 3);
           }}
         />
+      </FormField>
+
+      <FormField label="Job Date" htmlFor="job-date" required>
+        <DatePicker
+          id="job-date"
+          name="job_date"
+          required
+          defaultValue={todayIso()}
+          disabled={pending}
+        />
+      </FormField>
+
+      <FormField label="Status" htmlFor="job-status" required>
+        <Select id="job-status" name="status" required disabled={pending} defaultValue="Pending">
+          <option value="Pending">Pending</option>
+          <option value="Progress">Progress</option>
+          <option value="Completed">Completed</option>
+        </Select>
       </FormField>
       {formError ? (
         <p className="ui-field-error" role="alert">

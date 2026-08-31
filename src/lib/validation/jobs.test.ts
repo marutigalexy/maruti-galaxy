@@ -118,6 +118,52 @@ describe("job schemas", () => {
     expect(parsed).not.toHaveProperty("current_stage");
   });
 
+  it("validates job_date in createJobSchema and updateJobSchema", () => {
+    const validCreate = parseOrThrow(createJobSchema, {
+      party_id: UUID,
+      than: "10.000",
+      price: "100.00",
+      kapan_number: "K-100",
+      weight: "1.000",
+      job_date: "2026-08-31",
+    });
+    expect(validCreate.job_date).toBe("2026-08-31");
+
+    expect(() =>
+      parseOrThrow(createJobSchema, {
+        party_id: UUID,
+        than: "10.000",
+        price: "100.00",
+        kapan_number: "K-100",
+        weight: "1.000",
+        job_date: "invalid-date",
+      }),
+    ).toThrow(/Date must be YYYY-MM-DD/);
+
+    const validUpdate = parseOrThrow(updateJobSchema, {
+      id: UUID,
+      than: "10.000",
+      price: "100.00",
+      kapan_number: "K-100",
+      weight: "1.000",
+      status: "Pending",
+      job_date: "2026-08-31",
+    });
+    expect(validUpdate.job_date).toBe("2026-08-31");
+
+    expect(() =>
+      parseOrThrow(updateJobSchema, {
+        id: UUID,
+        than: "10.000",
+        price: "100.00",
+        kapan_number: "K-100",
+        weight: "1.000",
+        status: "Pending",
+        job_date: "invalid-date",
+      }),
+    ).toThrow(/Date must be YYYY-MM-DD/);
+  });
+
   it("normalizes multi-stage selection on subjob creation and sets initial stage", () => {
     const parsed = parseOrThrow(createSubJobSchema, {
       job_id: UUID,
@@ -281,6 +327,11 @@ describe("jobs service security", () => {
     expect(service).toMatch(/rpc\("update_job_with_invoice_recalc"/);
     expect(service).not.toMatch(/p_lot_number/);
     expect(createForm).not.toMatch(/name="lot_number"/);
+    expect(createForm).toMatch(/label="Job Date"/);
+    expect(createForm).toMatch(/name="job_date"/);
+    expect(createForm).toMatch(/DatePicker/);
+    expect(createForm).toMatch(/todayIso\(\)/);
+    expect(createForm).toMatch(/className="ui-job-form-full"/);
   });
 
   it("uses remaining-than and stage workflow RPCs for sub-jobs and snapshots work on the server", () => {
@@ -311,15 +362,20 @@ describe("jobs service security", () => {
     expect(editForm).toMatch(/disabled readOnly/);
     expect(editForm).not.toMatch(/name="lot_number"/);
     expect(editForm).not.toMatch(/name="party_id"/);
+    expect(editForm).toMatch(/label="Job Date"/);
+    expect(editForm).toMatch(/name="job_date"/);
+    expect(editForm).toMatch(/className="ui-job-form-full"/);
     expect(detail).toMatch(/JobEditForm/);
     expect(detail).toMatch(/setEditJobOpen\(true\)/);
     expect(list).toMatch(/JobCreateForm/);
     expect(list).toMatch(/JobEditForm/);
     expect(list).toMatch(/getJobAction/);
+    expect(list).toMatch(/header: "Job Date"/);
   });
 
-  it("nests expandable sub-jobs inside the main jobs table", () => {
+  it("nests expandable sub-jobs inside the main jobs table and sorts by lot number descending", () => {
     expect(service).toMatch(/from\("v_sub_jobs_display"\)/);
+    expect(service).toMatch(/\.order\("lot_number",\s*\{\s*ascending:\s*false\s*\}\)/);
     expect(list).toMatch(/Show sub-jobs/);
     expect(list).toMatch(/is-nested/);
   });

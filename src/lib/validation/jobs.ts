@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { DEFAULT_PAGE_SIZE } from "@/lib/api/pagination";
 import {
+  isoDateSchema,
   moneySchema,
   pageSchema,
   pageSizeSchema,
@@ -68,6 +69,9 @@ export const kapanSchema = z
 export const createJobSchema = z.object({
   party_id: uuidSchema,
   job_type: jobTypeSchema.optional().default("Sarin"),
+  job_date: z.preprocess(emptyToUndefined, isoDateSchema.optional()),
+  date: z.preprocess(emptyToUndefined, isoDateSchema.optional()),
+  created_at: z.preprocess(emptyToUndefined, isoDateSchema.optional()),
   than: thanSchema,
   price: moneySchema,
   kapan_number: kapanSchema,
@@ -82,6 +86,9 @@ export const createJobSchema = z.object({
 export const updateJobSchema = z.object({
   id: uuidSchema,
   job_type: jobTypeSchema.optional(),
+  job_date: z.preprocess(emptyToUndefined, isoDateSchema.optional()),
+  date: z.preprocess(emptyToUndefined, isoDateSchema.optional()),
+  created_at: z.preprocess(emptyToUndefined, isoDateSchema.optional()),
   than: thanSchema,
   price: moneySchema,
   kapan_number: kapanSchema,

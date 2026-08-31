@@ -37,7 +37,7 @@ import { useToast } from "@/components/ui/toast";
 import { useQueryPush } from "@/hooks/use-query-push";
 import type { Paginated } from "@/lib/api/pagination";
 import type { ActionResult } from "@/lib/api/result";
-import { formatInr, formatThan } from "@/lib/formatters";
+import { formatDisplayDate, formatInr, formatThan } from "@/lib/formatters";
 import { decimalOnly, integerOnly } from "@/lib/ui/input-filters";
 import { normalizeStages, STAGE_ORDER, type ListJobsInput, type StageType } from "@/lib/validation/jobs";
 import type { EmployeeOption } from "@/services/employees/employees-service";
@@ -457,6 +457,11 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
               }
               return row.job.lot_number;
             },
+          },
+          {
+            key: "date",
+            header: "Job Date",
+            render: (row) => (row.kind === "job" ? formatDisplayDate(row.job.created_at) : "—"),
           },
           {
             key: "party",

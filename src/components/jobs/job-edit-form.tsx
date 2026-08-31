@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 
 import { updateJobAction } from "@/app/actions/jobs";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -18,6 +19,16 @@ type JobEditFormProps = {
   onCancel: () => void;
 };
 
+function initialJobDate(isoString?: string | null): string {
+  if (!isoString) {
+    const now = new Date();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    return `${now.getFullYear()}-${m}-${d}`;
+  }
+  return isoString.slice(0, 10);
+}
+
 export function JobEditForm({ job, onCancel }: JobEditFormProps) {
   const router = useRouter();
   const toast = useToast();
@@ -27,6 +38,7 @@ export function JobEditForm({ job, onCancel }: JobEditFormProps) {
   const [price, setPrice] = useState(String(job.price));
   const [weight, setWeight] = useState(String(job.weight));
   const [kapanNumber, setKapanNumber] = useState(job.kapan_number);
+  const [jobDate, setJobDate] = useState(() => initialJobDate(job.created_at));
   const [status, setStatus] = useState(job.status);
   const [dirty, setDirty] = useState(false);
 
@@ -41,6 +53,7 @@ export function JobEditForm({ job, onCancel }: JobEditFormProps) {
         startTransition(async () => {
           const outcome = await updateJobAction({
             id: job.id,
+            job_date: jobDate.trim(),
             than: than.trim(),
             price: price.trim(),
             kapan_number: kapanNumber.trim(),
@@ -60,26 +73,8 @@ export function JobEditForm({ job, onCancel }: JobEditFormProps) {
       }}
       onChange={() => setDirty(true)}
     >
-      <FormField label="Party" htmlFor="edit-job-party">
+      <FormField className="ui-job-form-full" label="Party" htmlFor="edit-job-party">
         <Input id="edit-job-party" value={job.party_name} disabled readOnly placeholder="Party name" />
-      </FormField>
-
-      <FormField label="Status" htmlFor="edit-job-status" required>
-        <Select
-          id="edit-job-status"
-          name="status"
-          required
-          disabled={pending}
-          value={status}
-          onChange={(event) => {
-            setDirty(true);
-            setStatus(event.target.value as typeof job.status);
-          }}
-        >
-          <option value="Pending">Pending</option>
-          <option value="Progress">Progress</option>
-          <option value="Completed">Completed</option>
-        </Select>
       </FormField>
 
       <FormField label="Than" htmlFor="edit-job-than" required>
@@ -142,6 +137,38 @@ export function JobEditForm({ job, onCancel }: JobEditFormProps) {
           }}
           placeholder="e.g. 2.250"
         />
+      </FormField>
+
+      <FormField label="Job Date" htmlFor="edit-job-date" required>
+        <DatePicker
+          id="edit-job-date"
+          name="job_date"
+          required
+          disabled={pending}
+          value={jobDate}
+          onChange={(event) => {
+            setDirty(true);
+            setJobDate(event.target.value);
+          }}
+        />
+      </FormField>
+
+      <FormField label="Status" htmlFor="edit-job-status" required>
+        <Select
+          id="edit-job-status"
+          name="status"
+          required
+          disabled={pending}
+          value={status}
+          onChange={(event) => {
+            setDirty(true);
+            setStatus(event.target.value as typeof job.status);
+          }}
+        >
+          <option value="Pending">Pending</option>
+          <option value="Progress">Progress</option>
+          <option value="Completed">Completed</option>
+        </Select>
       </FormField>
       {formError ? (
         <p className="ui-field-error" role="alert">
