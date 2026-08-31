@@ -469,6 +469,11 @@ export function JobsView({ query, result, parties, employees }: JobsViewProps) {
             render: (row) => (row.kind === "job" ? row.job.party_name : "—"),
           },
           {
+            key: "kapan",
+            header: "Kapan Number",
+            render: (row) => (row.kind === "job" ? row.job.kapan_number || "—" : "—"),
+          },
+          {
             key: "than",
             header: "Than",
             numeric: true,

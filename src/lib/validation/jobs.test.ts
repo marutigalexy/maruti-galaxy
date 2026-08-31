@@ -371,6 +371,7 @@ describe("jobs service security", () => {
     expect(list).toMatch(/JobEditForm/);
     expect(list).toMatch(/getJobAction/);
     expect(list).toMatch(/header: "Job Date"/);
+    expect(list).toMatch(/header: "Kapan Number"/);
   });
 
   it("nests expandable sub-jobs inside the main jobs table and sorts by lot number descending", () => {
